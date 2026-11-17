@@ -999,9 +999,10 @@ export default function App() {
   );
 
   const [copied, setCopied] = useState(false);
-  const [mobileParamsOpen, setMobileParamsOpen] = useState(true);
-  const [mobileFuelOpen, setMobileFuelOpen] = useState(true);
+  const [mobileParamsOpen, setMobileParamsOpen] = useState(false);
+  const [mobileFuelOpen, setMobileFuelOpen] = useState(false);
   const [collapsedStints, setCollapsedStints] = useState({});
+  const mobileInitCollapsedRef = useRef(false);
   const [toast, setToast] = useState(() =>
     initialStateRef.current.loadedFromUrl
       ? { message: 'Estratégia carregada pelo link compartilhado!', type: 'success' }
@@ -1567,6 +1568,22 @@ export default function App() {
     return LMU_CIRCUITS.find((c) => c.id === params.circuitId) || LMU_CIRCUITS[3];
   }, [params.circuitId]);
 
+  useEffect(() => {
+    if (
+      !mobileInitCollapsedRef.current &&
+      typeof window !== 'undefined' &&
+      window.innerWidth < 768 &&
+      enrichedSchedule.length > 0
+    ) {
+      mobileInitCollapsedRef.current = true;
+      const allCollapsed = {};
+      enrichedSchedule.forEach((r) => {
+        allCollapsed[r.id] = true;
+      });
+      setCollapsedStints(allCollapsed);
+    }
+  }, [enrichedSchedule]);
+
   const toggleStintCollapse = (rowId) => {
     setCollapsedStints((prev) => ({ ...prev, [rowId]: !prev[rowId] }));
   };
@@ -1834,16 +1851,24 @@ export default function App() {
           </div>
 
           {nextEvent && (
-            <div className="flex items-center gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-1.5 text-xs">
-              <Sparkles className="h-3.5 w-3.5 shrink-0 text-[#eab308]" />
-              <div className="min-w-0">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-[#eab308] mr-1.5">
-                  Próxima Corrida:
-                </span>
-                <span className="font-bold text-white">{nextEvent.track}</span>
-                <span className="ml-1.5 font-mono text-[11px] text-amber-200">
-                  ({nextEvent.dates})
-                </span>
+            <div className="w-full sm:w-auto flex justify-center">
+              <div className="relative inline-flex overflow-hidden rounded-lg p-[1.5px] shadow-[0_0_15px_rgba(234,179,8,0.18)]">
+                <span
+                  aria-hidden="true"
+                  className="pointer-events-none absolute inset-[-150%] animate-[spin_3s_linear_infinite] bg-[conic-gradient(from_0deg,transparent_0deg_250deg,#eab308_310deg,#fef08a_335deg,transparent_360deg)]"
+                />
+                <div className="relative flex items-center justify-center gap-2 rounded-[7px] bg-[#0f172a] bg-gradient-to-r from-[#1e293b]/90 via-[#0f172a] to-[#1e293b]/90 px-3 py-1.5 text-xs text-center">
+                  <Sparkles className="h-3.5 w-3.5 shrink-0 text-[#eab308]" />
+                  <div className="min-w-0">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-[#eab308] mr-1.5">
+                      Próxima Corrida:
+                    </span>
+                    <span className="font-bold text-white">{nextEvent.track}</span>
+                    <span className="ml-1.5 font-mono text-[11px] text-amber-200">
+                      ({nextEvent.dates})
+                    </span>
+                  </div>
+                </div>
               </div>
             </div>
           )}
@@ -2066,7 +2091,7 @@ export default function App() {
             <div className="w-full sm:hidden flex items-center justify-between gap-2 rounded-lg border border-emerald-500/35 bg-[#1e293b] px-2.5 py-1.5 text-[10px] font-mono">
               <div className="flex items-center gap-1.5 shrink-0 text-[#22c55e] font-sans font-bold uppercase tracking-wider text-[9px]">
                 <Disc className="h-3.5 w-3.5" />
-                <span>Pneus</span>
+                <span>Melhores Pneus Usados</span>
               </div>
               <div className="flex flex-wrap items-center justify-end gap-x-2.5 gap-y-0.5">
                 {TIRE_CORNERS.map(({ key }) => {
