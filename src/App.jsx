@@ -1911,19 +1911,22 @@ export default function App() {
                   setPinDraft(roomPin);
                   setRoomModalOpen((prev) => !prev);
                 }}
-                className={`inline-flex sm:hidden items-center gap-1.5 rounded-lg border px-2.5 py-2 text-[11px] font-semibold transition-colors cursor-pointer ${syncStatus === 'live'
+                className={`inline-flex sm:hidden items-center gap-1.5 rounded-lg border px-2 py-1 text-left transition-colors cursor-pointer ${syncStatus === 'live'
                   ? 'border-emerald-500/40 bg-emerald-500/15 text-[#22c55e]'
                   : 'border-amber-500/40 bg-[#1e293b] text-slate-200'
                   }`}
                 title="Status e Sala Ao Vivo (PIN)"
               >
                 <span
-                  className={`h-2 w-2 rounded-full ${syncStatus === 'live' ? 'bg-[#22c55e] animate-pulse' : 'bg-[#eab308]'
+                  className={`h-2 w-2 shrink-0 rounded-full ${syncStatus === 'live' ? 'bg-[#22c55e] animate-pulse' : 'bg-[#eab308]'
                     }`}
                 />
-                <span>{syncStatus === 'live' ? 'Ao Vivo' : 'Modo Local'}</span>
-                <span className="text-slate-500">•</span>
-                <span className="font-mono font-bold text-white">{roomPin}</span>
+                <span className="flex flex-col leading-tight">
+                  <span className="text-[9px] font-semibold uppercase tracking-wider opacity-90">
+                    {syncStatus === 'live' ? 'Ao Vivo' : 'Modo Local'}
+                  </span>
+                  <span className="font-mono text-[10px] font-bold text-white">{roomPin}</span>
+                </span>
               </button>
 
               {roomModalOpen && (
@@ -2002,7 +2005,7 @@ export default function App() {
               type="button"
               onClick={handleExportJson}
               title="Exportar backup JSON"
-              className="inline-flex items-center gap-1 rounded-lg border border-[#334155] bg-[#1e293b] px-2.5 py-2 text-xs font-semibold text-slate-300 transition-colors hover:border-slate-500 hover:text-white cursor-pointer"
+              className="inline-flex items-center gap-1 rounded-lg border border-[#334155] bg-[#1e293b] px-2 py-2 sm:px-2.5 text-xs font-semibold text-slate-300 transition-colors hover:border-slate-500 hover:text-white cursor-pointer"
             >
               <Download className="h-3.5 w-3.5 text-slate-400" />
               <span className="hidden lg:inline">Exportar JSON</span>
@@ -2011,7 +2014,7 @@ export default function App() {
               type="button"
               onClick={() => fileInputRef.current?.click()}
               title="Importar backup JSON"
-              className="inline-flex items-center gap-1 rounded-lg border border-[#334155] bg-[#1e293b] px-2.5 py-2 text-xs font-semibold text-slate-300 transition-colors hover:border-slate-500 hover:text-white cursor-pointer"
+              className="inline-flex items-center gap-1 rounded-lg border border-[#334155] bg-[#1e293b] px-2 py-2 sm:px-2.5 text-xs font-semibold text-slate-300 transition-colors hover:border-slate-500 hover:text-white cursor-pointer"
             >
               <Upload className="h-3.5 w-3.5 text-slate-400" />
               <span className="hidden lg:inline">Importar JSON</span>
@@ -2021,7 +2024,7 @@ export default function App() {
               type="button"
               onClick={handleShareLink}
               title="Copiar link compartilhável da estratégia"
-              className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-500/40 bg-emerald-500/15 px-3 py-2 text-xs font-bold text-[#22c55e] transition-colors hover:border-emerald-400 hover:bg-emerald-500/25 cursor-pointer"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-500/40 bg-emerald-500/15 px-2.5 py-2 sm:px-3 text-xs font-bold text-[#22c55e] transition-colors hover:border-emerald-400 hover:bg-emerald-500/25 cursor-pointer"
             >
               <Share2 className="h-3.5 w-3.5" />
               <span className="hidden sm:inline">Compartilhar Link</span>
@@ -2030,7 +2033,7 @@ export default function App() {
             <button
               type="button"
               onClick={handleReset}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-[#334155] bg-[#1e293b] px-3 py-2 text-xs font-semibold text-slate-300 transition-colors hover:border-slate-500 hover:text-white cursor-pointer"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-[#334155] bg-[#1e293b] px-2.5 py-2 sm:px-3 text-xs font-semibold text-slate-300 transition-colors hover:border-slate-500 hover:text-white cursor-pointer"
             >
               <RotateCcw className="h-3.5 w-3.5 text-slate-400" />
               <span className="hidden sm:inline">Resetar Estratégia</span>
@@ -2039,7 +2042,7 @@ export default function App() {
             <button
               type="button"
               onClick={handleCopyWhatsApp}
-              className={`inline-flex items-center gap-1.5 rounded-lg border px-3.5 py-2 text-xs font-bold transition-all cursor-pointer ${copied
+              className={`inline-flex items-center gap-1 rounded-lg border px-2.5 py-2 sm:px-3.5 text-xs font-bold transition-all cursor-pointer ${copied
                 ? 'border-emerald-500/60 bg-emerald-500/20 text-[#22c55e]'
                 : 'border-amber-500/50 bg-[#eab308] text-slate-950 hover:bg-amber-400'
                 }`}
@@ -2047,7 +2050,8 @@ export default function App() {
               {copied ? (
                 <>
                   <Check className="h-3.5 w-3.5" />
-                  <span>Copiado p/ WhatsApp!</span>
+                  <span className="hidden sm:inline">Copiado p/ WhatsApp!</span>
+                  <span className="sm:hidden">Copiado!</span>
                 </>
               ) : (
                 <>
@@ -2058,10 +2062,13 @@ export default function App() {
               )}
             </button>
 
-            {/* Mobile-only best tire reuse summary next to WhatsApp */}
-            <div className="sm:hidden flex items-center gap-1.5 rounded-lg border border-emerald-500/35 bg-[#1e293b] px-2.5 py-1.5 text-[10px] font-mono">
-              <Disc className="h-3.5 w-3.5 shrink-0 text-[#22c55e]" />
-              <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+            {/* Mobile-only best tire reuse summary on its own row below */}
+            <div className="w-full sm:hidden flex items-center justify-between gap-2 rounded-lg border border-emerald-500/35 bg-[#1e293b] px-2.5 py-1.5 text-[10px] font-mono">
+              <div className="flex items-center gap-1.5 shrink-0 text-[#22c55e] font-sans font-bold uppercase tracking-wider text-[9px]">
+                <Disc className="h-3.5 w-3.5" />
+                <span>Pneus</span>
+              </div>
+              <div className="flex flex-wrap items-center justify-end gap-x-2.5 gap-y-0.5">
                 {TIRE_CORNERS.map(({ key }) => {
                   const best = tireRecommendations[key]?.best;
                   return (
