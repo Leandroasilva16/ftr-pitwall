@@ -2035,6 +2035,28 @@ export default function App() {
                 </>
               )}
             </button>
+
+            {/* Mobile-only best tire reuse summary next to WhatsApp */}
+            <div className="sm:hidden flex items-center gap-1.5 rounded-lg border border-emerald-500/35 bg-[#1e293b] px-2.5 py-1.5 text-[10px] font-mono">
+              <Disc className="h-3.5 w-3.5 shrink-0 text-[#22c55e]" />
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                {TIRE_CORNERS.map(({ key }) => {
+                  const best = tireRecommendations[key]?.best;
+                  return (
+                    <span key={`mob-rec-${key}`} className="tabular-nums">
+                      <span className="text-slate-400">{key}:</span>{' '}
+                      {best ? (
+                        <span className={`font-bold ${getTireTextColor(best.pct)}`}>
+                          {best.tireId} {best.pct}%
+                        </span>
+                      ) : (
+                        <span className="text-slate-500">—</span>
+                      )}
+                    </span>
+                  );
+                })}
+              </div>
+            </div>
           </div>
         </div>
       </header>
