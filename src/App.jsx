@@ -2086,6 +2086,47 @@ export default function App() {
                 })}
               </div>
             </div>
+
+            {/* Mobile-only 1-line race summary strip */}
+            <div className="w-full sm:hidden flex items-center justify-between gap-1 rounded-lg border border-[#334155] bg-[#1e293b]/90 px-2 py-1.5 text-[10px] font-mono tabular-nums">
+              <div className="flex flex-col items-center leading-tight">
+                <span className="text-[8px] font-sans uppercase text-slate-400">Stints</span>
+                <span className="font-bold text-white">{raceStintCount}</span>
+              </div>
+              <span className="text-slate-700">|</span>
+              <div className="flex flex-col items-center leading-tight">
+                <span className="text-[8px] font-sans uppercase text-slate-400">Voltas</span>
+                <span className="font-bold text-[#22c55e]">{totalEstimatedLaps}</span>
+              </div>
+              <span className="text-slate-700">|</span>
+              <div className="flex flex-col items-center leading-tight">
+                <span className="text-[8px] font-sans uppercase text-slate-400">Horário</span>
+                <span className="font-bold text-white">
+                  {schedule[0] ? formatMinutesToHHMM(schedule[0].startMin) : '--:--'}→
+                  {schedule[schedule.length - 1]
+                    ? formatMinutesToHHMM(schedule[schedule.length - 1].endMin)
+                    : '--:--'}
+                </span>
+              </div>
+              <span className="text-slate-700">|</span>
+              <div className="flex flex-col items-center leading-tight">
+                <span className="text-[8px] font-sans uppercase text-slate-400">Pilotos</span>
+                <span className="font-bold text-[#eab308]">
+                  {new Set(schedule.map((s) => s.driver)).size}
+                </span>
+              </div>
+              <span className="text-slate-700">|</span>
+              <div className="flex flex-col items-center leading-tight">
+                <span className="text-[8px] font-sans uppercase text-slate-400">Pneus</span>
+                <span
+                  className={`font-bold ${
+                    remainingTiresCount < 0 ? 'text-red-400' : 'text-[#22c55e]'
+                  }`}
+                >
+                  {usedTiresCount}/{availableTiresNum}
+                </span>
+              </div>
+            </div>
           </div>
         </div>
       </header>
@@ -2518,8 +2559,8 @@ export default function App() {
 
         {/* RIGHT MAIN AREA: STINTS TABLE & TIRE MANAGER */}
         <section className="flex-1 min-w-0 space-y-5">
-          {/* SUMMARY BAR */}
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">
+          {/* SUMMARY BAR (Desktop / Tablet) */}
+          <div className="hidden sm:grid gap-3 sm:grid-cols-3 xl:grid-cols-5">
             <div className="rounded-xl border border-[#334155] bg-[#1e293b] px-4 py-3">
               <div className="text-[11px] text-slate-400">Stints de Corrida</div>
               <div className="mt-0.5 text-xl font-bold font-mono tabular-nums text-white">
