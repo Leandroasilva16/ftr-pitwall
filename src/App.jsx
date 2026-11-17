@@ -998,6 +998,7 @@ export default function App() {
 
   const [copied, setCopied] = useState(false);
   const [mobileParamsOpen, setMobileParamsOpen] = useState(true);
+  const [collapsedStints, setCollapsedStints] = useState({});
   const [toast, setToast] = useState(() =>
     initialStateRef.current.loadedFromUrl
       ? { message: 'Estratégia carregada pelo link compartilhado!', type: 'success' }
@@ -1562,6 +1563,25 @@ export default function App() {
   const selectedCircuit = useMemo(() => {
     return LMU_CIRCUITS.find((c) => c.id === params.circuitId) || LMU_CIRCUITS[3];
   }, [params.circuitId]);
+
+  const toggleStintCollapse = (rowId) => {
+    setCollapsedStints((prev) => ({ ...prev, [rowId]: !prev[rowId] }));
+  };
+
+  const areAllStintsCollapsed =
+    enrichedSchedule.length > 0 && enrichedSchedule.every((r) => Boolean(collapsedStints[r.id]));
+
+  const toggleAllStintsCollapse = () => {
+    if (areAllStintsCollapsed) {
+      setCollapsedStints({});
+    } else {
+      const next = {};
+      enrichedSchedule.forEach((r) => {
+        next[r.id] = true;
+      });
+      setCollapsedStints(next);
+    }
+  };
 
   const handleShareLink = async () => {
     try {
@@ -2469,9 +2489,28 @@ export default function App() {
                   Cronograma de Sessões & Stints
                 </h2>
               </div>
-              <span className="text-[11px] text-slate-400">
-                Clique nos badges de pneus (<span className="font-mono text-slate-200">FL/FR/RL/RR</span>) para editar o desgaste restante
-              </span>
+              <div className="flex items-center gap-3">
+                <span className="hidden sm:inline text-[11px] text-slate-400">
+                  Clique nos badges de pneus (<span className="font-mono text-slate-200">FL/FR/RL/RR</span>) para editar
+                </span>
+                <button
+                  type="button"
+                  onClick={toggleAllStintsCollapse}
+                  className="inline-flex items-center gap-1 rounded-md border border-[#334155] bg-[#0f172a] px-2.5 py-1 text-[11px] font-semibold text-slate-200 transition-colors hover:border-[#eab308]/60 hover:text-[#eab308] cursor-pointer"
+                >
+                  {areAllStintsCollapsed ? (
+                    <>
+                      <ChevronDown className="h-3.5 w-3.5" />
+                      <span>Expandir Tudo</span>
+                    </>
+                  ) : (
+                    <>
+                      <ChevronUp className="h-3.5 w-3.5" />
+                      <span>Empacotar Tudo</span>
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
 
             {/* DESKTOP TABLE (md+) */}
@@ -2490,9 +2529,59 @@ export default function App() {
                 <tbody className="divide-y divide-[#334155]/60">
                   {enrichedSchedule.map((row) => {
                     const isPre = row.type !== 'race';
+                    const isCollapsed = Boolean(collapsedStints[row.id]);
                     const nextStintLabel = `Stint ${String((row.stintNum || 0) + 1).padStart(2, '0')}`;
                     return (
                       <React.Fragment key={row.id}>
+                      {isCollapsed ? (
+                        <tr
+                          className={`transition-colors ${
+                            isPre
+                              ? 'bg-slate-900/40 hover:bg-slate-900/70'
+                              : 'hover:bg-slate-800/70'
+                          }`}
+                        >
+                          <td colSpan={6} className="px-3 py-2">
+                            <div className="flex flex-wrap items-center justify-between gap-2">
+                              <div className="flex flex-wrap items-center gap-2.5 text-xs">
+                                <button
+                                  type="button"
+                                  onClick={() => toggleStintCollapse(row.id)}
+                                  title="Expandir stint"
+                                  className="inline-flex h-5 w-5 items-center justify-center rounded border border-[#334155] bg-[#0f172a] text-slate-400 hover:border-[#eab308]/60 hover:text-[#eab308] cursor-pointer"
+                                >
+                                  <ChevronDown className="h-3.5 w-3.5" />
+                                </button>
+                                <span
+                                  className={`inline-flex h-2 w-2 rounded-full ${
+                                    row.type === 'fp'
+                                      ? 'bg-sky-400'
+                                      : row.type === 'qualy'
+                                      ? 'bg-[#eab308]'
+                                      : 'bg-[#22c55e]'
+                                  }`}
+                                />
+                                <span className="font-bold text-slate-100">{row.label}</span>
+                                <span className="font-mono tabular-nums text-[11px] text-slate-400">
+                                  {formatMinutesToHHMM(row.startMin)} - {formatMinutesToHHMM(row.endMin)}
+                                </span>
+                                <span className="text-slate-600">•</span>
+                                <span className="font-mono text-[11px] text-slate-300">
+                                  {row.durationMin.toFixed(1)} min ({row.laps} v)
+                                </span>
+                                <span className="text-slate-600">•</span>
+                                <span className="font-semibold text-amber-300">{row.driver}</span>
+                              </div>
+                              {row.type === 'race' && !row.isLastStint && (
+                                <span className="font-mono text-[11px] text-amber-400/90">
+                                  Pit: {PIT_SCENARIOS.find((p) => p.id === row.pitScenario)?.label} ({row.pitDurationSec}s)
+                                </span>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      ) : (
+                      <>
                       <tr
                         className={`transition-colors ${
                           isPre
@@ -2503,6 +2592,14 @@ export default function App() {
                         {/* STINT + HORÁRIO */}
                         <td className="px-3 py-2.5 whitespace-nowrap">
                           <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => toggleStintCollapse(row.id)}
+                              title="Minimizar stint"
+                              className="inline-flex h-5 w-5 items-center justify-center rounded border border-[#334155] bg-[#0f172a] text-slate-400 hover:border-[#eab308]/60 hover:text-[#eab308] cursor-pointer"
+                            >
+                              <ChevronUp className="h-3.5 w-3.5" />
+                            </button>
                             <span
                               className={`inline-flex h-2 w-2 rounded-full ${
                                 row.type === 'fp'
@@ -2514,7 +2611,7 @@ export default function App() {
                             />
                             <span className="font-bold text-slate-100">{row.label}</span>
                           </div>
-                          <div className="mt-0.5 pl-4 font-mono tabular-nums text-[11px] text-slate-400">
+                          <div className="mt-0.5 pl-9 font-mono tabular-nums text-[11px] text-slate-400">
                             {formatMinutesToHHMM(row.startMin)} - {formatMinutesToHHMM(row.endMin)}
                             {row.type === 'race' && !row.isLastStint && (
                               <span className="ml-1.5 text-amber-400/90">
@@ -2741,6 +2838,8 @@ export default function App() {
                           </td>
                         </tr>
                       )}
+                      </>
+                      )}
                       </React.Fragment>
                     );
                   })}
@@ -2751,12 +2850,25 @@ export default function App() {
             {/* MOBILE CARDS (< md) */}
             <div className="divide-y divide-[#334155] md:hidden">
               {enrichedSchedule.map((row) => {
+                const isCollapsed = Boolean(collapsedStints[row.id]);
                 const nextStintLabel = `Stint ${String((row.stintNum || 0) + 1).padStart(2, '0')}`;
                 return (
                   <React.Fragment key={row.id}>
                   <div className="p-4 space-y-3 bg-[#1e293b]">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => toggleStintCollapse(row.id)}
+                          title={isCollapsed ? 'Expandir stint' : 'Minimizar stint'}
+                          className="inline-flex h-6 w-6 items-center justify-center rounded border border-[#334155] bg-[#0f172a] text-slate-400 hover:text-[#eab308]"
+                        >
+                          {isCollapsed ? (
+                            <ChevronDown className="h-3.5 w-3.5" />
+                          ) : (
+                            <ChevronUp className="h-3.5 w-3.5" />
+                          )}
+                        </button>
                         <span
                           className={`inline-flex h-2.5 w-2.5 rounded-full ${
                             row.type === 'fp'
@@ -2766,7 +2878,14 @@ export default function App() {
                               : 'bg-[#22c55e]'
                           }`}
                         />
-                        <span className="text-sm font-bold text-white">{row.label}</span>
+                        <div>
+                          <span className="text-sm font-bold text-white">{row.label}</span>
+                          {isCollapsed && (
+                            <div className="text-[11px] font-semibold text-amber-300">
+                              {row.driver}
+                            </div>
+                          )}
+                        </div>
                       </div>
                       <div className="text-right font-mono tabular-nums">
                         <div className="text-xs font-bold text-slate-100">
@@ -2778,6 +2897,8 @@ export default function App() {
                       </div>
                     </div>
 
+                    {!isCollapsed && (
+                    <>
                     <div className="flex items-center gap-3">
                       <DriverAvatar90s driver={row.driver} size={52} />
                       <div className="flex-1 min-w-0">
@@ -2912,9 +3033,11 @@ export default function App() {
                         </div>
                       </div>
                     )}
+                    </>
+                    )}
                   </div>
 
-                  {row.type === 'race' && !row.isLastStint && (
+                  {!isCollapsed && row.type === 'race' && !row.isLastStint && (
                     <div className="bg-amber-500/10 px-4 py-2.5 space-y-1.5">
                       <div className="flex items-center justify-between text-[11px]">
                         <div className="flex items-center gap-1.5">
