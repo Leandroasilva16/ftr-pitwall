@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
+import LZString from 'lz-string';
 import {
   Flag,
   Clock,
@@ -18,9 +19,20 @@ import {
   ChevronUp,
   Sparkles,
   MapPin,
+  Share2,
+  Download,
+  Upload,
+  Radio,
+  X,
 } from 'lucide-react';
+import { supabase, isSupabaseConfigured } from './lib/supabaseClient';
 
 const STORAGE_KEY = 'ftr_pitwall_strategy_v1';
+const ROOM_PIN_STORAGE_KEY = 'ftr_pitwall_room_pin_v1';
+const CLIENT_INSTANCE_ID =
+  typeof crypto !== 'undefined' && crypto.randomUUID
+    ? crypto.randomUUID()
+    : `ftr-${Math.random().toString(36).slice(2, 10)}`;
 
 const DRIVERS = [
   'Bruno Aguiar',
@@ -921,48 +933,106 @@ function TireBadgeEditor({ corner, tireId, value, onChange }) {
   );
 }
 
+function loadInitialStrategyState() {
+  const fallback = {
+    params: DEFAULT_PARAMS,
+    preSessions: DEFAULT_PRE_SESSIONS,
+    stintOverrides: DEFAULT_STINT_OVERRIDES,
+    loadedFromUrl: false,
+  };
+
+  try {
+    const searchParams = new URLSearchParams(window.location.search);
+    const encodedState = searchParams.get('s');
+    if (encodedState) {
+      const decompressed = LZString.decompressFromEncodedURIComponent(encodedState);
+      if (decompressed) {
+        const parsed = JSON.parse(decompressed);
+        if (parsed && typeof parsed === 'object') {
+          const merged = {
+            params: { ...DEFAULT_PARAMS, ...(parsed.params || {}) },
+            preSessions: { ...DEFAULT_PRE_SESSIONS, ...(parsed.preSessions || {}) },
+            stintOverrides: parsed.stintOverrides || DEFAULT_STINT_OVERRIDES,
+          };
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
+          window.history.replaceState({}, '', window.location.pathname);
+          return { ...merged, loadedFromUrl: true };
+        }
+      }
+    }
+  } catch {
+    // ignore malformed URL state and fall back to localStorage
+  }
+
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      if (parsed && typeof parsed === 'object') {
+        return {
+          params: { ...DEFAULT_PARAMS, ...(parsed.params || {}) },
+          preSessions: { ...DEFAULT_PRE_SESSIONS, ...(parsed.preSessions || {}) },
+          stintOverrides: parsed.stintOverrides || DEFAULT_STINT_OVERRIDES,
+          loadedFromUrl: false,
+        };
+      }
+    }
+  } catch {
+    // ignore storage errors
+  }
+
+  return fallback;
+}
+
 export default function App() {
-  const [params, setParams] = useState(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (parsed.params) return { ...DEFAULT_PARAMS, ...parsed.params };
-      }
-    } catch {
-      // ignore storage errors
-    }
-    return DEFAULT_PARAMS;
-  });
+  const initialStateRef = useRef(null);
+  if (!initialStateRef.current) {
+    initialStateRef.current = loadInitialStrategyState();
+  }
 
-  const [preSessions, setPreSessions] = useState(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (parsed.preSessions) return { ...DEFAULT_PRE_SESSIONS, ...parsed.preSessions };
-      }
-    } catch {
-      // ignore
-    }
-    return DEFAULT_PRE_SESSIONS;
-  });
-
-  const [stintOverrides, setStintOverrides] = useState(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (parsed.stintOverrides) return parsed.stintOverrides;
-      }
-    } catch {
-      // ignore
-    }
-    return DEFAULT_STINT_OVERRIDES;
-  });
+  const [params, setParams] = useState(() => initialStateRef.current.params);
+  const [preSessions, setPreSessions] = useState(() => initialStateRef.current.preSessions);
+  const [stintOverrides, setStintOverrides] = useState(
+    () => initialStateRef.current.stintOverrides
+  );
 
   const [copied, setCopied] = useState(false);
   const [mobileParamsOpen, setMobileParamsOpen] = useState(true);
+  const [toast, setToast] = useState(() =>
+    initialStateRef.current.loadedFromUrl
+      ? { message: 'Estratégia carregada pelo link compartilhado!', type: 'success' }
+      : null
+  );
+
+  const [roomPin, setRoomPin] = useState(() => {
+    try {
+      return localStorage.getItem(ROOM_PIN_STORAGE_KEY) || 'FTR2026';
+    } catch {
+      return 'FTR2026';
+    }
+  });
+  const [pinDraft, setPinDraft] = useState(roomPin);
+  const [liveRoomEnabled, setLiveRoomEnabled] = useState(false);
+  const [roomModalOpen, setRoomModalOpen] = useState(false);
+  const [syncStatus, setSyncStatus] = useState('local'); // 'local' | 'connecting' | 'live' | 'error'
+
+  const fileInputRef = useRef(null);
+  const isApplyingRemoteRef = useRef(false);
+  const syncTimeoutRef = useRef(null);
+  const toastTimeoutRef = useRef(null);
+
+  const showToast = (message, type = 'success') => {
+    setToast({ message, type });
+    if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
+    toastTimeoutRef.current = setTimeout(() => setToast(null), 3000);
+  };
+
+  useEffect(() => {
+    if (initialStateRef.current?.loadedFromUrl) {
+      const t = setTimeout(() => setToast(null), 3500);
+      return () => clearTimeout(t);
+    }
+  }, []);
 
   useEffect(() => {
     try {
@@ -974,6 +1044,134 @@ export default function App() {
       // ignore quota errors
     }
   }, [params, preSessions, stintOverrides]);
+
+  // Supabase Realtime Subscription (when configured and live room enabled)
+  useEffect(() => {
+    if (!isSupabaseConfigured || !supabase || !liveRoomEnabled || !roomPin.trim()) {
+      setSyncStatus('local');
+      return;
+    }
+
+    const activePin = roomPin.trim().toUpperCase();
+    let cancelled = false;
+    setSyncStatus('connecting');
+
+    async function initRoom() {
+      try {
+        const { data, error } = await supabase
+          .from('race_strategies')
+          .select('strategy_data, updated_by')
+          .eq('room_pin', activePin)
+          .maybeSingle();
+
+        if (cancelled) return;
+        if (error) {
+          setSyncStatus('error');
+          showToast('Erro ao conectar na sala ao vivo. Usando Modo Local.', 'error');
+          return;
+        }
+
+        if (data?.strategy_data) {
+          isApplyingRemoteRef.current = true;
+          const remote = data.strategy_data;
+          if (remote.params) setParams({ ...DEFAULT_PARAMS, ...remote.params });
+          if (remote.preSessions) setPreSessions({ ...DEFAULT_PRE_SESSIONS, ...remote.preSessions });
+          if (remote.stintOverrides) setStintOverrides(remote.stintOverrides);
+          setTimeout(() => {
+            isApplyingRemoteRef.current = false;
+          }, 50);
+        } else {
+          await supabase.from('race_strategies').upsert(
+            {
+              room_pin: activePin,
+              strategy_data: { params, preSessions, stintOverrides },
+              updated_by: CLIENT_INSTANCE_ID,
+              updated_at: new Date().toISOString(),
+            },
+            { onConflict: 'room_pin' }
+          );
+        }
+      } catch {
+        if (!cancelled) setSyncStatus('error');
+      }
+    }
+
+    initRoom();
+
+    const channel = supabase
+      .channel(`pitwall-room-${activePin}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'race_strategies',
+          filter: `room_pin=eq.${activePin}`,
+        },
+        (payload) => {
+          const record = payload.new;
+          if (!record?.strategy_data || record.updated_by === CLIENT_INSTANCE_ID) return;
+          isApplyingRemoteRef.current = true;
+          const remote = record.strategy_data;
+          if (remote.params) setParams({ ...DEFAULT_PARAMS, ...remote.params });
+          if (remote.preSessions) setPreSessions({ ...DEFAULT_PRE_SESSIONS, ...remote.preSessions });
+          if (remote.stintOverrides) setStintOverrides(remote.stintOverrides);
+          setTimeout(() => {
+            isApplyingRemoteRef.current = false;
+          }, 50);
+        }
+      )
+      .subscribe((status) => {
+        if (cancelled) return;
+        if (status === 'SUBSCRIBED') {
+          setSyncStatus('live');
+        } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+          setSyncStatus('error');
+        }
+      });
+
+    return () => {
+      cancelled = true;
+      supabase.removeChannel(channel);
+    };
+  }, [liveRoomEnabled, roomPin]);
+
+  // Debounced push of local edits to Supabase when live room is active
+  useEffect(() => {
+    if (
+      !isSupabaseConfigured ||
+      !supabase ||
+      !liveRoomEnabled ||
+      syncStatus !== 'live' ||
+      isApplyingRemoteRef.current
+    ) {
+      return;
+    }
+
+    const activePin = roomPin.trim().toUpperCase();
+    if (!activePin) return;
+
+    if (syncTimeoutRef.current) clearTimeout(syncTimeoutRef.current);
+    syncTimeoutRef.current = setTimeout(async () => {
+      try {
+        await supabase.from('race_strategies').upsert(
+          {
+            room_pin: activePin,
+            strategy_data: { params, preSessions, stintOverrides },
+            updated_by: CLIENT_INSTANCE_ID,
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: 'room_pin' }
+        );
+      } catch {
+        // Keep local state intact on transient network failure
+      }
+    }, 400);
+
+    return () => {
+      if (syncTimeoutRef.current) clearTimeout(syncTimeoutRef.current);
+    };
+  }, [params, preSessions, stintOverrides, liveRoomEnabled, syncStatus, roomPin]);
 
   const handleParamChange = (key, value) => {
     setParams((prev) => ({ ...prev, [key]: value }));
@@ -1365,6 +1563,98 @@ export default function App() {
     return LMU_CIRCUITS.find((c) => c.id === params.circuitId) || LMU_CIRCUITS[3];
   }, [params.circuitId]);
 
+  const handleShareLink = async () => {
+    try {
+      const payload = JSON.stringify({ params, preSessions, stintOverrides });
+      const compressed = LZString.compressToEncodedURIComponent(payload);
+      const shareUrl = `${window.location.origin}${window.location.pathname}?s=${compressed}`;
+      await navigator.clipboard.writeText(shareUrl);
+      showToast('Link da estratégia copiado!', 'success');
+    } catch {
+      showToast('Não foi possível copiar o link.', 'error');
+    }
+  };
+
+  const handleExportJson = () => {
+    try {
+      const payload = {
+        app: 'FTR PITWALL',
+        version: 1,
+        exportedAt: new Date().toISOString(),
+        params,
+        preSessions,
+        stintOverrides,
+      };
+      const blob = new Blob([JSON.stringify(payload, null, 2)], {
+        type: 'application/json',
+      });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `ftr-pitwall-${selectedCircuit.id}-${new Date()
+        .toISOString()
+        .slice(0, 10)}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      showToast('Backup JSON exportado!', 'success');
+    } catch {
+      showToast('Erro ao exportar JSON.', 'error');
+    }
+  };
+
+  const handleImportJson = (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const parsed = JSON.parse(String(e.target?.result || ''));
+        if (!parsed || typeof parsed !== 'object' || !parsed.params) {
+          showToast('Arquivo JSON inválido.', 'error');
+          return;
+        }
+        setParams({ ...DEFAULT_PARAMS, ...parsed.params });
+        if (parsed.preSessions) {
+          setPreSessions({ ...DEFAULT_PRE_SESSIONS, ...parsed.preSessions });
+        }
+        if (parsed.stintOverrides) {
+          setStintOverrides(parsed.stintOverrides);
+        }
+        showToast('Estratégia importada do JSON!', 'success');
+      } catch {
+        showToast('Não foi possível ler o arquivo JSON.', 'error');
+      }
+    };
+    reader.readAsText(file);
+  };
+
+  const handleConnectLiveRoom = (e) => {
+    e.preventDefault();
+    const cleaned = pinDraft.trim().toUpperCase();
+    if (!cleaned) return;
+    setRoomPin(cleaned);
+    setPinDraft(cleaned);
+    try {
+      localStorage.setItem(ROOM_PIN_STORAGE_KEY, cleaned);
+    } catch {
+      // ignore
+    }
+    if (!isSupabaseConfigured) {
+      setLiveRoomEnabled(false);
+      setSyncStatus('local');
+      setRoomModalOpen(false);
+      showToast('Supabase não configurado (.env). Operando em Modo Local.', 'warning');
+      return;
+    }
+    setLiveRoomEnabled(true);
+    setRoomModalOpen(false);
+    showToast(`Conectando à sala ${cleaned}...`, 'success');
+  };
+
   const handleCopyWhatsApp = async () => {
     const totalRaceMin = parseDurationHHMMToMinutes(params.raceDurationStr);
     const lines = [
@@ -1485,14 +1775,156 @@ export default function App() {
               </div>
             </div>
 
-          <div className="flex items-center gap-2 sm:gap-3">
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Connection Status Pill */}
+            <div
+              className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-semibold ${
+                syncStatus === 'live'
+                  ? 'border-emerald-500/40 bg-emerald-500/15 text-[#22c55e]'
+                  : 'border-amber-500/40 bg-amber-500/10 text-[#eab308]'
+              }`}
+              title={
+                syncStatus === 'live'
+                  ? `Conectado à sala ${roomPin}`
+                  : 'Salvamento local automático (offline fallback)'
+              }
+            >
+              <span
+                className={`h-2 w-2 rounded-full ${
+                  syncStatus === 'live' ? 'bg-[#22c55e] animate-pulse' : 'bg-[#eab308]'
+                }`}
+              />
+              <span>{syncStatus === 'live' ? 'Sincronizado ao Vivo' : 'Modo Local'}</span>
+            </div>
+
+            {/* Live Room (PIN) Trigger */}
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => {
+                  setPinDraft(roomPin);
+                  setRoomModalOpen((prev) => !prev);
+                }}
+                className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-2 text-xs font-semibold transition-colors cursor-pointer ${
+                  syncStatus === 'live'
+                    ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20'
+                    : 'border-[#334155] bg-[#1e293b] text-slate-300 hover:border-slate-500 hover:text-white'
+                }`}
+                title="Configurar Sala Ao Vivo (PIN)"
+              >
+                <Radio className="h-3.5 w-3.5 text-[#eab308]" />
+                <span className="hidden md:inline">Sala Ao Vivo:</span>
+                <span className="font-mono text-[11px] font-bold text-white">{roomPin}</span>
+              </button>
+
+              {roomModalOpen && (
+                <div className="absolute right-0 top-full z-50 mt-2 w-72 rounded-xl border border-[#334155] bg-[#0f172a] p-4 shadow-2xl">
+                  <div className="mb-2 flex items-center justify-between">
+                    <span className="text-xs font-bold uppercase tracking-wider text-slate-200">
+                      Sala Ao Vivo (PIN)
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setRoomModalOpen(false)}
+                      className="text-slate-400 hover:text-white cursor-pointer"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+
+                  <form onSubmit={handleConnectLiveRoom} className="space-y-2.5">
+                    <div>
+                      <label className="mb-1 block text-[10px] font-semibold uppercase text-slate-400">
+                        PIN da Equipe
+                      </label>
+                      <input
+                        type="text"
+                        value={pinDraft}
+                        onChange={(e) => setPinDraft(e.target.value.toUpperCase())}
+                        placeholder="FTR2026"
+                        className="w-full rounded-lg border border-[#334155] bg-[#1e293b] px-2.5 py-1.5 text-xs font-mono font-bold uppercase text-white focus:border-[#eab308] focus:outline-none"
+                      />
+                    </div>
+
+                    {!isSupabaseConfigured && (
+                      <p className="rounded-md border border-amber-500/30 bg-amber-500/10 p-2 text-[10px] leading-relaxed text-amber-200">
+                        Variáveis <code className="font-mono">VITE_SUPABASE_URL</code> e{' '}
+                        <code className="font-mono">VITE_SUPABASE_ANON_KEY</code> não detectadas.
+                        Operando em <strong>Modo Local</strong> com fallback automático.
+                      </p>
+                    )}
+
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="submit"
+                        className="flex-1 rounded-lg bg-[#eab308] px-3 py-1.5 text-xs font-bold text-slate-950 hover:bg-amber-400 transition-colors cursor-pointer"
+                      >
+                        {liveRoomEnabled ? 'Atualizar Sala' : 'Conectar Sala'}
+                      </button>
+                      {liveRoomEnabled && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setLiveRoomEnabled(false);
+                            setSyncStatus('local');
+                            setRoomModalOpen(false);
+                            showToast('Desconectado da sala. Modo Local ativo.', 'warning');
+                          }}
+                          className="rounded-lg border border-[#334155] bg-[#1e293b] px-2.5 py-1.5 text-xs font-semibold text-slate-300 hover:text-white cursor-pointer"
+                        >
+                          Sair
+                        </button>
+                      )}
+                    </div>
+                  </form>
+                </div>
+              )}
+            </div>
+
+            {/* JSON Backup (Export / Import) */}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="application/json,.json"
+              onChange={handleImportJson}
+              className="hidden"
+            />
+            <button
+              type="button"
+              onClick={handleExportJson}
+              title="Exportar backup JSON"
+              className="inline-flex items-center gap-1 rounded-lg border border-[#334155] bg-[#1e293b] px-2.5 py-2 text-xs font-semibold text-slate-300 transition-colors hover:border-slate-500 hover:text-white cursor-pointer"
+            >
+              <Download className="h-3.5 w-3.5 text-slate-400" />
+              <span className="hidden lg:inline">Exportar JSON</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              title="Importar backup JSON"
+              className="inline-flex items-center gap-1 rounded-lg border border-[#334155] bg-[#1e293b] px-2.5 py-2 text-xs font-semibold text-slate-300 transition-colors hover:border-slate-500 hover:text-white cursor-pointer"
+            >
+              <Upload className="h-3.5 w-3.5 text-slate-400" />
+              <span className="hidden lg:inline">Importar JSON</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={handleShareLink}
+              title="Copiar link compartilhável da estratégia"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-500/40 bg-emerald-500/15 px-3 py-2 text-xs font-bold text-[#22c55e] transition-colors hover:border-emerald-400 hover:bg-emerald-500/25 cursor-pointer"
+            >
+              <Share2 className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Compartilhar Link</span>
+            </button>
+
             <button
               type="button"
               onClick={handleReset}
               className="inline-flex items-center gap-1.5 rounded-lg border border-[#334155] bg-[#1e293b] px-3 py-2 text-xs font-semibold text-slate-300 transition-colors hover:border-slate-500 hover:text-white cursor-pointer"
             >
               <RotateCcw className="h-3.5 w-3.5 text-slate-400" />
-              <span>Resetar Estratégia</span>
+              <span className="hidden sm:inline">Resetar Estratégia</span>
             </button>
 
             <button
@@ -1512,8 +1944,8 @@ export default function App() {
               ) : (
                 <>
                   <Copy className="h-3.5 w-3.5" />
-                  <span className="hidden sm:inline">Exportar / Copiar Resumo</span>
-                  <span className="sm:hidden">Copiar Resumo</span>
+                  <span className="hidden sm:inline">Copiar WhatsApp</span>
+                  <span className="sm:hidden">WhatsApp</span>
                 </>
               )}
             </button>
@@ -2599,6 +3031,22 @@ export default function App() {
           </div>
         </section>
       </main>
+
+      {/* TOAST NOTIFICATION */}
+      {toast && (
+        <div className="fixed bottom-4 right-4 z-50 flex items-center gap-2 rounded-xl border border-[#334155] bg-[#0f172a]/95 px-4 py-3 text-xs font-semibold shadow-2xl backdrop-blur-md">
+          <span
+            className={`h-2 w-2 rounded-full ${
+              toast.type === 'error'
+                ? 'bg-red-400'
+                : toast.type === 'warning'
+                ? 'bg-[#eab308]'
+                : 'bg-[#22c55e]'
+            }`}
+          />
+          <span className="text-slate-100">{toast.message}</span>
+        </div>
+      )}
     </div>
   );
 }
