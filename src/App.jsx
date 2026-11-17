@@ -891,43 +891,61 @@ function TireBadgeEditor({ corner, tireId, value, onChange }) {
       </button>
 
       {open && (
-        <div className="absolute right-0 top-full z-50 mt-1.5 w-48 rounded-lg border border-slate-600 bg-slate-900 p-3 shadow-2xl">
-          <div className="mb-2 flex items-center justify-between text-xs font-semibold text-slate-200">
-            <span>Pneu {corner}</span>
-            <span className={`font-mono tabular-nums ${getTireTextColor(numericVal)}`}>
-              {numericVal}%
-            </span>
-          </div>
-          <input
-            type="range"
-            min="0"
-            max="100"
-            value={numericVal}
-            onChange={(e) => onChange(Number(e.target.value))}
-            className="mb-2 w-full accent-amber-500 cursor-pointer"
-          />
-          <div className="flex items-center gap-1.5">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 sm:absolute sm:inset-auto sm:right-0 sm:top-full sm:mt-1.5 sm:block sm:bg-transparent sm:p-0"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setOpen(false);
+          }}
+        >
+          <div className="w-64 sm:w-48 rounded-xl sm:rounded-lg border border-slate-600 bg-slate-900 p-4 sm:p-3 shadow-2xl">
+            <div className="mb-2 flex items-center justify-between text-xs font-semibold text-slate-200">
+              <span>
+                Pneu {corner} {tireId || ''}
+              </span>
+              <div className="flex items-center gap-2">
+                <span className={`font-mono tabular-nums ${getTireTextColor(numericVal)}`}>
+                  {numericVal}%
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setOpen(false)}
+                  className="sm:hidden text-slate-400 hover:text-white"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
             <input
-              type="number"
+              type="range"
               min="0"
               max="100"
               value={numericVal}
-              onChange={(e) => {
-                const v = Math.min(100, Math.max(0, Number(e.target.value) || 0));
-                onChange(v);
-              }}
-              className="w-16 rounded border border-slate-700 bg-slate-800 px-2 py-1 text-xs font-mono text-slate-100 focus:border-amber-500 focus:outline-none"
+              onChange={(e) => onChange(Number(e.target.value))}
+              className="mb-3 sm:mb-2 w-full accent-amber-500 cursor-pointer"
             />
-            <button
-              type="button"
-              onClick={() => {
-                onChange(100);
-                setOpen(false);
-              }}
-              className="flex-1 rounded bg-emerald-500/20 border border-emerald-500/40 px-2 py-1 text-[10px] font-semibold text-emerald-300 hover:bg-emerald-500/30 transition-colors"
-            >
-              NOVO (100%)
-            </button>
+            <div className="flex items-center gap-1.5">
+              <input
+                type="number"
+                min="0"
+                max="100"
+                value={numericVal}
+                onChange={(e) => {
+                  const v = Math.min(100, Math.max(0, Number(e.target.value) || 0));
+                  onChange(v);
+                }}
+                className="w-16 rounded border border-slate-700 bg-slate-800 px-2 py-1 text-xs font-mono text-slate-100 focus:border-amber-500 focus:outline-none"
+              />
+              <button
+                type="button"
+                onClick={() => {
+                  onChange(100);
+                  setOpen(false);
+                }}
+                className="flex-1 rounded bg-emerald-500/20 border border-emerald-500/40 px-2 py-1 text-[10px] font-semibold text-emerald-300 hover:bg-emerald-500/30 transition-colors"
+              >
+                NOVO (100%)
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -1955,7 +1973,13 @@ export default function App() {
               </button>
 
               {roomModalOpen && (
-                <div className="absolute right-0 top-full z-50 mt-2 w-72 rounded-xl border border-[#334155] bg-[#0f172a] p-4 shadow-2xl">
+                <div
+                  className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 sm:absolute sm:inset-auto sm:right-0 sm:top-full sm:mt-2 sm:block sm:bg-transparent sm:p-0"
+                  onClick={(e) => {
+                    if (e.target === e.currentTarget) setRoomModalOpen(false);
+                  }}
+                >
+                  <div className="w-full max-w-xs sm:w-72 rounded-xl border border-[#334155] bg-[#0f172a] p-4 shadow-2xl">
                   <div className="mb-2 flex items-center justify-between">
                     <span className="text-xs font-bold uppercase tracking-wider text-slate-200">
                       Sala Ao Vivo (PIN)
@@ -2014,6 +2038,7 @@ export default function App() {
                       )}
                     </div>
                   </form>
+                  </div>
                 </div>
               )}
             </div>
