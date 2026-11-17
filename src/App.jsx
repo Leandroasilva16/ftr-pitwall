@@ -1000,6 +1000,7 @@ export default function App() {
 
   const [copied, setCopied] = useState(false);
   const [mobileParamsOpen, setMobileParamsOpen] = useState(true);
+  const [mobileFuelOpen, setMobileFuelOpen] = useState(true);
   const [collapsedStints, setCollapsedStints] = useState({});
   const [toast, setToast] = useState(() =>
     initialStateRef.current.loadedFromUrl
@@ -1866,9 +1867,9 @@ export default function App() {
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            {/* Connection Status Pill */}
+            {/* Desktop Connection Status Pill */}
             <div
-              className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-semibold ${syncStatus === 'live'
+              className={`hidden sm:inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-semibold ${syncStatus === 'live'
                 ? 'border-emerald-500/40 bg-emerald-500/15 text-[#22c55e]'
                 : 'border-amber-500/40 bg-amber-500/10 text-[#eab308]'
                 }`}
@@ -1885,7 +1886,7 @@ export default function App() {
               <span>{syncStatus === 'live' ? 'Sincronizado ao Vivo' : 'Modo Local'}</span>
             </div>
 
-            {/* Live Room (PIN) Trigger */}
+            {/* Live Room (PIN) Trigger — Desktop separate, Mobile unified with Status */}
             <div className="relative">
               <button
                 type="button"
@@ -1893,7 +1894,7 @@ export default function App() {
                   setPinDraft(roomPin);
                   setRoomModalOpen((prev) => !prev);
                 }}
-                className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-2 text-xs font-semibold transition-colors cursor-pointer ${syncStatus === 'live'
+                className={`hidden sm:inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-2 text-xs font-semibold transition-colors cursor-pointer ${syncStatus === 'live'
                   ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20'
                   : 'border-[#334155] bg-[#1e293b] text-slate-300 hover:border-slate-500 hover:text-white'
                   }`}
@@ -1902,6 +1903,27 @@ export default function App() {
                 <Radio className="h-3.5 w-3.5 text-[#eab308]" />
                 <span className="hidden md:inline">Sala Ao Vivo:</span>
                 <span className="font-mono text-[11px] font-bold text-white">{roomPin}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setPinDraft(roomPin);
+                  setRoomModalOpen((prev) => !prev);
+                }}
+                className={`inline-flex sm:hidden items-center gap-1.5 rounded-lg border px-2.5 py-2 text-[11px] font-semibold transition-colors cursor-pointer ${syncStatus === 'live'
+                  ? 'border-emerald-500/40 bg-emerald-500/15 text-[#22c55e]'
+                  : 'border-amber-500/40 bg-[#1e293b] text-slate-200'
+                  }`}
+                title="Status e Sala Ao Vivo (PIN)"
+              >
+                <span
+                  className={`h-2 w-2 rounded-full ${syncStatus === 'live' ? 'bg-[#22c55e] animate-pulse' : 'bg-[#eab308]'
+                    }`}
+                />
+                <span>{syncStatus === 'live' ? 'Ao Vivo' : 'Modo Local'}</span>
+                <span className="text-slate-500">•</span>
+                <span className="font-mono font-bold text-white">{roomPin}</span>
               </button>
 
               {roomModalOpen && (
@@ -2411,48 +2433,75 @@ export default function App() {
 
           {/* HIGHLIGHT CARD: FUEL RATIO & AUTONOMY */}
           <div className="rounded-xl border border-amber-500/40 bg-gradient-to-br from-[#1e293b] to-[#0f172a] p-4 shadow-lg">
-            <div className="mb-3 flex items-center justify-between">
+            <button
+              type="button"
+              onClick={() => setMobileFuelOpen((prev) => !prev)}
+              className="flex w-full items-center justify-between text-left lg:cursor-default"
+            >
               <div className="flex items-center gap-2">
                 <Zap className="h-4 w-4 text-[#eab308]" />
                 <h2 className="text-xs font-bold uppercase tracking-wider text-[#eab308]">
                   Fuel Ratio & Autonomia
                 </h2>
               </div>
-              <span className="rounded bg-amber-500/15 px-2 py-0.5 text-[10px] font-semibold text-amber-300 border border-amber-500/30">
-                Limite: {telemetry.limitingFactor}
-              </span>
-            </div>
+              <div className="flex items-center gap-2">
+                <span className="rounded bg-amber-500/15 px-2 py-0.5 text-[10px] font-semibold text-amber-300 border border-amber-500/30">
+                  Limite: {telemetry.limitingFactor}
+                </span>
+                <span className="lg:hidden text-slate-400">
+                  {mobileFuelOpen ? (
+                    <ChevronUp className="h-4 w-4" />
+                  ) : (
+                    <ChevronDown className="h-4 w-4" />
+                  )}
+                </span>
+              </div>
+            </button>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div className="rounded-lg border border-[#334155] bg-[#0f172a]/80 p-3">
-                <div className="text-[11px] text-slate-400">Fuel Ratio</div>
-                <div className="mt-1 text-2xl font-extrabold font-mono tabular-nums text-white">
-                  {telemetry.fuelRatio.toFixed(2)}
-                  <span className="ml-1 text-xs font-normal text-amber-400">L/%</span>
+            {!mobileFuelOpen && (
+              <div className="mt-2 flex items-center justify-between text-xs font-mono tabular-nums lg:hidden">
+                <span className="font-bold text-white">
+                  {telemetry.fuelRatio.toFixed(2)} <span className="text-amber-400 font-normal">L/%</span>
+                </span>
+                <span className="font-bold text-[#22c55e]">
+                  {telemetry.maxStintLaps}v (~{telemetry.maxStintMin.toFixed(1)}m)
+                </span>
+                <span className="text-slate-300">{raceStintCount} stints</span>
+              </div>
+            )}
+
+            <div className={`${mobileFuelOpen ? 'block' : 'hidden'} lg:block mt-3`}>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="rounded-lg border border-[#334155] bg-[#0f172a]/80 p-3">
+                  <div className="text-[11px] text-slate-400">Fuel Ratio</div>
+                  <div className="mt-1 text-2xl font-extrabold font-mono tabular-nums text-white">
+                    {telemetry.fuelRatio.toFixed(2)}
+                    <span className="ml-1 text-xs font-normal text-amber-400">L/%</span>
+                  </div>
+                  <div className="mt-0.5 text-[10px] text-slate-500">
+                    {params.fuelPerLapL}L ÷ {params.virtualEnergyPerLapPct}%
+                  </div>
                 </div>
-                <div className="mt-0.5 text-[10px] text-slate-500">
-                  {params.fuelPerLapL}L ÷ {params.virtualEnergyPerLapPct}%
+
+                <div className="rounded-lg border border-[#334155] bg-[#0f172a]/80 p-3">
+                  <div className="text-[11px] text-slate-400">Autonomia Máx / Stint</div>
+                  <div className="mt-1 text-2xl font-extrabold font-mono tabular-nums text-[#22c55e]">
+                    {telemetry.maxStintLaps}
+                    <span className="ml-1 text-xs font-normal text-emerald-300">voltas</span>
+                  </div>
+                  <div className="mt-0.5 text-[10px] font-mono text-slate-400 tabular-nums">
+                    ~{telemetry.maxStintMin.toFixed(1)} min / stint
+                  </div>
                 </div>
               </div>
 
-              <div className="rounded-lg border border-[#334155] bg-[#0f172a]/80 p-3">
-                <div className="text-[11px] text-slate-400">Autonomia Máx / Stint</div>
-                <div className="mt-1 text-2xl font-extrabold font-mono tabular-nums text-[#22c55e]">
-                  {telemetry.maxStintLaps}
-                  <span className="ml-1 text-xs font-normal text-emerald-300">voltas</span>
-                </div>
-                <div className="mt-0.5 text-[10px] font-mono text-slate-400 tabular-nums">
-                  ~{telemetry.maxStintMin.toFixed(1)} min / stint
-                </div>
+              <div className="mt-3 flex items-center justify-between text-[11px] text-slate-400 border-t border-[#334155]/70 pt-2.5">
+                <span>Tanque: {telemetry.maxLapsByFuel}v</span>
+                <span>•</span>
+                <span>Energia 100%: {telemetry.maxLapsByEnergy}v</span>
+                <span>•</span>
+                <span className="text-slate-200 font-semibold">{raceStintCount} stints</span>
               </div>
-            </div>
-
-            <div className="mt-3 flex items-center justify-between text-[11px] text-slate-400 border-t border-[#334155]/70 pt-2.5">
-              <span>Tanque: {telemetry.maxLapsByFuel}v</span>
-              <span>•</span>
-              <span>Energia 100%: {telemetry.maxLapsByEnergy}v</span>
-              <span>•</span>
-              <span className="text-slate-200 font-semibold">{raceStintCount} stints</span>
             </div>
           </div>
 
