@@ -1017,8 +1017,10 @@ export default function App() {
   );
 
   const [copied, setCopied] = useState(false);
-  const [mobileParamsOpen, setMobileParamsOpen] = useState(false);
-  const [mobileFuelOpen, setMobileFuelOpen] = useState(false);
+  const [mobileParamsOpen, setMobileParamsOpen] = useState(true);
+  const [mobileFuelOpen, setMobileFuelOpen] = useState(true);
+  const [mobilePage, setMobilePage] = useState(0);
+  const mobilePagerRef = useRef(null);
   const [collapsedStints, setCollapsedStints] = useState({});
   const mobileInitCollapsedRef = useRef(false);
   const [toast, setToast] = useState(() =>
@@ -1602,6 +1604,25 @@ export default function App() {
     }
   }, [enrichedSchedule]);
 
+  const goToMobilePage = (pageIdx) => {
+    setMobilePage(pageIdx);
+    if (mobilePagerRef.current) {
+      mobilePagerRef.current.scrollTo({
+        left: pageIdx * mobilePagerRef.current.clientWidth,
+        behavior: 'smooth',
+      });
+    }
+  };
+
+  const handleMobilePagerScroll = () => {
+    const el = mobilePagerRef.current;
+    if (!el || !el.clientWidth) return;
+    const idx = Math.round(el.scrollLeft / el.clientWidth);
+    if (idx !== mobilePage && (idx === 0 || idx === 1)) {
+      setMobilePage(idx);
+    }
+  };
+
   const toggleStintCollapse = (rowId) => {
     setCollapsedStints((prev) => ({ ...prev, [rowId]: !prev[rowId] }));
   };
@@ -2181,8 +2202,723 @@ export default function App() {
         </div>
       </header>
 
-      {/* MAIN 2-COLUMN WORKSPACE */}
-      <main className="mx-auto flex w-full max-w-[1600px] flex-1 flex-col gap-5 p-4 sm:p-6 lg:flex-row">
+      {/* MAIN WORKSPACE */}
+      {/* Mobile 2-Page Swipe Indicator */}
+      <div className="lg:hidden border-b border-[#334155] bg-[#0f172a]/90 px-4 py-2">
+        <div className="mx-auto flex max-w-md items-center gap-2 rounded-lg border border-[#334155] bg-[#1e293b] p-1">
+          <button
+            type="button"
+            onClick={() => goToMobilePage(0)}
+            className={`flex-1 rounded-md py-1.5 text-xs font-bold transition-colors ${
+              mobilePage === 0
+                ? 'bg-[#eab308] text-slate-950'
+                : 'text-slate-300 hover:text-white'
+            }`}
+          >
+            Stints
+          </button>
+          <button
+            type="button"
+            onClick={() => goToMobilePage(1)}
+            className={`flex-1 rounded-md py-1.5 text-xs font-bold transition-colors ${
+              mobilePage === 1
+                ? 'bg-[#eab308] text-slate-950'
+                : 'text-slate-300 hover:text-white'
+            }`}
+          >
+            Parâmetros, Pneus & Calendário →
+          </button>
+        </div>
+      </div>
+
+      {/* MOBILE SWIPEABLE 2-PAGE VIEW (< lg) */}
+      <div
+        ref={mobilePagerRef}
+        onScroll={handleMobilePagerScroll}
+        className="lg:hidden flex flex-1 w-full overflow-x-auto snap-x snap-mandatory scroll-smooth"
+        style={{ scrollbarWidth: 'none' }}
+      >
+        {/* PAGE 1: ONLY STINTS */}
+        <div className="w-full shrink-0 snap-start px-4 py-4">
+          <div className="rounded-xl border border-[#334155] bg-[#1e293b]">
+            <div className="flex flex-wrap items-center justify-between gap-2 rounded-t-xl border-b border-[#334155] bg-slate-800/80 px-4 py-3">
+              <div className="flex items-center gap-2">
+                <Clock className="h-4 w-4 text-[#eab308]" />
+                <h2 className="text-xs font-bold uppercase tracking-wider text-slate-200">
+                  Cronograma de Sessões & Stints
+                </h2>
+              </div>
+              <button
+                type="button"
+                onClick={toggleAllStintsCollapse}
+                className="inline-flex items-center gap-1 rounded-md border border-[#334155] bg-[#0f172a] px-2.5 py-1 text-[11px] font-semibold text-slate-200 transition-colors hover:border-[#eab308]/60 hover:text-[#eab308] cursor-pointer"
+              >
+                {areAllStintsCollapsed ? (
+                  <>
+                    <ChevronDown className="h-3.5 w-3.5" />
+                    <span>Expandir Tudo</span>
+                  </>
+                ) : (
+                  <>
+                    <ChevronUp className="h-3.5 w-3.5" />
+                    <span>Empacotar Tudo</span>
+                  </>
+                )}
+              </button>
+            </div>
+
+            <div className="divide-y divide-[#334155]">
+              {enrichedSchedule.map((row) => {
+                const isCollapsed = Boolean(collapsedStints[row.id]);
+                const nextStintLabel = `Stint ${String((row.stintNum || 0) + 1).padStart(2, '0')}`;
+                return (
+                  <React.Fragment key={`m-page-${row.id}`}>
+                  <div className="p-4 space-y-3 bg-[#1e293b]">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => toggleStintCollapse(row.id)}
+                          title={isCollapsed ? 'Expandir stint' : 'Minimizar stint'}
+                          className="inline-flex h-6 w-6 items-center justify-center rounded border border-[#334155] bg-[#0f172a] text-slate-400 hover:text-[#eab308]"
+                        >
+                          {isCollapsed ? (
+                            <ChevronDown className="h-3.5 w-3.5" />
+                          ) : (
+                            <ChevronUp className="h-3.5 w-3.5" />
+                          )}
+                        </button>
+                        <span
+                          className={`inline-flex h-2.5 w-2.5 rounded-full ${
+                            row.type === 'fp'
+                              ? 'bg-sky-400'
+                              : row.type === 'qualy'
+                              ? 'bg-[#eab308]'
+                              : 'bg-[#22c55e]'
+                          }`}
+                        />
+                        <div>
+                          <span className="text-sm font-bold text-white">{row.label}</span>
+                          {isCollapsed && (
+                            <div className="text-[11px] font-semibold text-amber-300">
+                              {row.driver}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      <div className="text-right font-mono tabular-nums">
+                        <div className="text-xs font-bold text-slate-100">
+                          {formatMinutesToHHMM(row.startMin)} - {formatMinutesToHHMM(row.endMin)}
+                        </div>
+                        <div className="text-[11px] text-slate-400">
+                          {row.durationMin.toFixed(1)} min • {row.laps} voltas
+                        </div>
+                      </div>
+                    </div>
+
+                    {!isCollapsed && (
+                    <>
+                    <div className="flex items-center gap-3">
+                      <DriverAvatar90s driver={row.driver} size={52} />
+                      <div className="flex-1 min-w-0">
+                        <label className="mb-1 block text-[10px] font-semibold uppercase text-slate-400">
+                          Piloto
+                        </label>
+                        <select
+                          value={row.driver}
+                          onChange={(e) => {
+                            if (row.type === 'race') {
+                              updateRaceStint(row.stintNum, 'driver', e.target.value);
+                            } else {
+                              updatePreSession(row.type, 'driver', e.target.value);
+                            }
+                          }}
+                          className="w-full rounded-md border border-[#334155] bg-[#0f172a] px-2.5 py-2 text-xs text-slate-100 focus:border-[#eab308] focus:outline-none"
+                        >
+                          {DRIVERS.map((d) => (
+                            <option key={d} value={d}>
+                              {d}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+
+                    {row.type === 'fp' ? (
+                      <div className="rounded-md border border-[#334155] bg-[#0f172a]/60 px-3 py-2 text-xs text-slate-400">
+                        Free Practice sem desgaste de pneus
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        <div>
+                          <div className="mb-1.5 flex items-center justify-between text-[10px] font-semibold uppercase text-slate-400">
+                            <span>Pneus Início (Toque para alternar)</span>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (row.type === 'race') {
+                                  updateRaceStint(row.stintNum, 'tiresStart', DEFAULT_FULL_TIRES);
+                                } else {
+                                  updatePreSession(row.type, 'tiresStart', DEFAULT_FULL_TIRES);
+                                }
+                              }}
+                              className="inline-flex items-center rounded border border-emerald-500/40 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold text-emerald-300 transition-colors hover:border-emerald-400 hover:bg-emerald-500/20"
+                            >
+                              4 Pneus Novos
+                            </button>
+                          </div>
+                          <div className="grid grid-cols-4 gap-2">
+                            {TIRE_CORNERS.map(({ key }) => {
+                              const tireMeta = row.startTireMeta?.[key];
+                              const setStartVal = (val) => {
+                                if (row.type === 'race') {
+                                  updateRaceStintTire(row.stintNum, 'tiresStart', key, val);
+                                } else {
+                                  updatePreSessionTire(row.type, 'tiresStart', key, val);
+                                }
+                              };
+                              return (
+                                <StartTireToggleButton
+                                  key={`m-p1-start-${key}`}
+                                  corner={key}
+                                  tireMeta={tireMeta}
+                                  onToggle={() => {
+                                    if (tireMeta?.mode === 'new') {
+                                      setStartVal(tireMeta?.canKeep ? 'keep' : 'ND');
+                                    } else if (tireMeta?.mode === 'keep') {
+                                      setStartVal('ND');
+                                    } else {
+                                      setStartVal(100);
+                                    }
+                                  }}
+                                />
+                              );
+                            })}
+                          </div>
+                        </div>
+
+                        <div>
+                          <div className="mb-1.5 flex items-center justify-between text-[10px] font-semibold uppercase text-slate-400">
+                            <span>Pneus Fim — Borracha Restante</span>
+                            {row.tiresEndEnabled && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  if (row.type === 'race') {
+                                    updateRaceStint(row.stintNum, 'tiresEndEnabled', false);
+                                  } else {
+                                    updatePreSession(row.type, 'tiresEndEnabled', false);
+                                  }
+                                }}
+                                className="inline-flex items-center gap-1 rounded border border-slate-600/70 bg-slate-800/80 px-2 py-0.5 text-[10px] font-semibold text-slate-300 transition-colors hover:border-red-500/50 hover:bg-red-500/10 hover:text-red-300"
+                              >
+                                × Desregistrar
+                              </button>
+                            )}
+                          </div>
+                          {!row.tiresEndEnabled ? (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (row.type === 'race') {
+                                  updateRaceStint(row.stintNum, 'tiresEndEnabled', true);
+                                } else {
+                                  updatePreSession(row.type, 'tiresEndEnabled', true);
+                                }
+                              }}
+                              className="w-full rounded-md border border-dashed border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs font-semibold text-amber-300 transition-colors hover:border-amber-400 hover:bg-amber-500/20"
+                            >
+                              + Registrar Desgaste de Fim de Stint
+                            </button>
+                          ) : (
+                            <div className="grid grid-cols-4 gap-2">
+                              {TIRE_CORNERS.map(({ key }) => (
+                                <TireBadgeEditor
+                                  key={`m-p1-end-${key}`}
+                                  corner={key}
+                                  tireId={row.endTireMeta?.[key]?.tireId}
+                                  value={row.tiresEnd[key]}
+                                  onChange={(val) => {
+                                    if (row.type === 'race') {
+                                      updateRaceStintTire(row.stintNum, 'tiresEnd', key, val);
+                                    } else {
+                                      updatePreSessionTire(row.type, 'tiresEnd', key, val);
+                                    }
+                                  }}
+                                />
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                    </>
+                    )}
+                  </div>
+
+                  {!isCollapsed && row.type === 'race' && !row.isLastStint && (
+                    <div className="bg-amber-500/10 px-4 py-2.5 space-y-1.5">
+                      <div className="flex items-center justify-between text-[11px]">
+                        <div className="flex items-center gap-1.5">
+                          <Wrench className="h-3.5 w-3.5 text-[#eab308]" />
+                          <span className="font-bold uppercase tracking-wider text-[#eab308]">
+                            Pitstop ({row.label} → {nextStintLabel})
+                          </span>
+                        </div>
+                        <span className="font-mono text-slate-300">
+                          {formatMinutesToHHMM(row.endMin)}
+                        </span>
+                      </div>
+                      <select
+                        value={row.pitScenario}
+                        onChange={(e) =>
+                          updateRaceStint(row.stintNum, 'pitScenario', e.target.value)
+                        }
+                        className="w-full rounded-md border border-amber-500/35 bg-[#0f172a] px-2.5 py-2 text-xs text-slate-100 focus:border-[#eab308] focus:outline-none"
+                      >
+                        {PIT_SCENARIOS.map((sc) => (
+                          <option key={sc.id} value={sc.id}>
+                            {sc.label} ({getPitTimeSeconds(sc.id, params)}s)
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+                  </React.Fragment>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+
+        {/* PAGE 2 (SWIPE LEFT): PARAMS, FUEL RATIO, TIRE MANAGER & CALENDAR (EXPANDED) */}
+        <div className="w-full shrink-0 snap-start px-4 py-4 space-y-4">
+          <div className="rounded-xl border border-[#334155] bg-[#1e293b] overflow-hidden">
+            <div className="flex items-center gap-2 border-b border-[#334155] bg-slate-800/80 px-4 py-3">
+              <Gauge className="h-4 w-4 text-[#eab308]" />
+              <h2 className="text-xs font-bold uppercase tracking-wider text-slate-200">
+                Parâmetros da Corrida
+              </h2>
+            </div>
+            <div className="p-4 space-y-4">
+              {/* Car & Class Selector */}
+              <div className="rounded-lg border border-[#334155] bg-[#0f172a]/70 p-3 space-y-2.5">
+                <div className="flex items-center gap-2.5">
+                  <ManufacturerLogo brand={selectedCar.brand} size={32} />
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-1.5">
+                      <span
+                        className={`rounded border px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider ${selectedClassMeta.badgeClass}`}
+                      >
+                        {selectedClassMeta.label}
+                      </span>
+                    </div>
+                    <div className="mt-0.5 truncate text-xs font-bold text-white">
+                      {selectedCar.name}
+                    </div>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="mb-1 block text-[10px] font-semibold uppercase text-slate-400">
+                      Categoria
+                    </label>
+                    <select
+                      value={params.carClass || selectedCar.classId}
+                      onChange={(e) => {
+                        const nextClass = e.target.value;
+                        const firstCar = LMU_CARS.find((c) => c.classId === nextClass);
+                        setParams((prev) => ({
+                          ...prev,
+                          carClass: nextClass,
+                          carId: firstCar ? firstCar.id : prev.carId,
+                        }));
+                      }}
+                      className="w-full rounded-md border border-[#334155] bg-[#1e293b] px-2 py-1.5 text-xs font-semibold text-slate-100 focus:border-[#eab308] focus:outline-none"
+                    >
+                      {LMU_CAR_CLASSES.map((cls) => (
+                        <option key={cls.id} value={cls.id}>
+                          {cls.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-[10px] font-semibold uppercase text-slate-400">
+                      Carro
+                    </label>
+                    <select
+                      value={selectedCar.id}
+                      onChange={(e) => handleParamChange('carId', e.target.value)}
+                      className="w-full rounded-md border border-[#334155] bg-[#1e293b] px-2 py-1.5 text-xs font-medium text-slate-100 focus:border-[#eab308] focus:outline-none"
+                    >
+                      {carsInSelectedClass.map((car) => (
+                        <option key={car.id} value={car.id}>
+                          {car.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+                <div>
+                  <label className="mb-1 flex items-center gap-1 text-[10px] font-semibold uppercase text-slate-400">
+                    <MapPin className="h-3 w-3 text-[#eab308]" />
+                    Circuito
+                  </label>
+                  <select
+                    value={selectedCircuit.id}
+                    onChange={(e) => handleParamChange('circuitId', e.target.value)}
+                    className="w-full rounded-md border border-[#334155] bg-[#1e293b] px-2 py-1.5 text-xs font-medium text-slate-100 focus:border-[#eab308] focus:outline-none"
+                  >
+                    {LMU_CIRCUITS.map((circuit) => (
+                      <option key={circuit.id} value={circuit.id}>
+                        {circuit.name} ({circuit.country})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="mb-1 flex items-center gap-1 text-[11px] font-medium text-slate-400">
+                    <Clock className="h-3 w-3 text-[#eab308]" />
+                    Início da Sessão
+                  </label>
+                  <input
+                    type="time"
+                    value={params.sessionStart}
+                    onChange={(e) => handleParamChange('sessionStart', e.target.value)}
+                    className="w-full rounded-lg border border-[#334155] bg-[#0f172a] px-2.5 py-2 text-sm font-mono text-slate-100 focus:border-[#eab308] focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 flex items-center gap-1 text-[11px] font-medium text-slate-400">
+                    <Timer className="h-3 w-3 text-[#eab308]" />
+                    Duração Corrida (00:00)
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="06:00"
+                    value={params.raceDurationStr}
+                    onChange={(e) => handleParamChange('raceDurationStr', e.target.value)}
+                    className="w-full rounded-lg border border-[#334155] bg-[#0f172a] px-2.5 py-2 text-sm font-mono tabular-nums text-slate-100 focus:border-[#eab308] focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 flex items-center gap-1 text-[11px] font-medium text-slate-400">
+                    <Gauge className="h-3 w-3 text-[#22c55e]" />
+                    Tempo de Volta
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="01:45.320"
+                    value={params.lapTimeStr}
+                    onChange={(e) => handleParamChange('lapTimeStr', e.target.value)}
+                    className="w-full rounded-lg border border-[#334155] bg-[#0f172a] px-2.5 py-2 text-sm font-mono tabular-nums text-slate-100 focus:border-[#eab308] focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 flex items-center gap-1 text-[11px] font-medium text-slate-400">
+                    <Fuel className="h-3 w-3 text-[#eab308]" />
+                    Tanque (Litros)
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    step="1"
+                    value={params.tankCapacityL}
+                    onChange={(e) =>
+                      handleParamChange('tankCapacityL', Math.max(1, Number(e.target.value) || 0))
+                    }
+                    className="w-full rounded-lg border border-[#334155] bg-[#0f172a] px-2.5 py-2 text-sm font-mono tabular-nums text-slate-100 focus:border-[#eab308] focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 flex items-center gap-1 text-[11px] font-medium text-slate-400">
+                    <Fuel className="h-3 w-3 text-slate-400" />
+                    Consumo (L/volta)
+                  </label>
+                  <input
+                    type="number"
+                    min="0.1"
+                    step="0.1"
+                    value={params.fuelPerLapL}
+                    onChange={(e) =>
+                      handleParamChange('fuelPerLapL', Math.max(0.1, Number(e.target.value) || 0.1))
+                    }
+                    className="w-full rounded-lg border border-[#334155] bg-[#0f172a] px-2.5 py-2 text-sm font-mono tabular-nums text-slate-100 focus:border-[#eab308] focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 flex items-center gap-1 text-[11px] font-medium text-slate-400">
+                    <Zap className="h-3 w-3 text-[#22c55e]" />
+                    Energia Virt. (%/v)
+                  </label>
+                  <input
+                    type="number"
+                    min="0.1"
+                    step="0.1"
+                    value={params.virtualEnergyPerLapPct}
+                    onChange={(e) =>
+                      handleParamChange(
+                        'virtualEnergyPerLapPct',
+                        Math.max(0.1, Number(e.target.value) || 0.1)
+                      )
+                    }
+                    className="w-full rounded-lg border border-[#334155] bg-[#0f172a] px-2.5 py-2 text-sm font-mono tabular-nums text-slate-100 focus:border-[#eab308] focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-[11px] font-medium text-slate-400">
+                    Free Practice (min)
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={params.fpDurationMin}
+                    onChange={(e) =>
+                      handleParamChange('fpDurationMin', Math.max(0, Number(e.target.value) || 0))
+                    }
+                    className="w-full rounded-lg border border-[#334155] bg-[#0f172a] px-2.5 py-2 text-sm font-mono tabular-nums text-slate-100 focus:border-[#eab308] focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-[11px] font-medium text-slate-400">
+                    Qualy (min)
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={params.qualyDurationMin}
+                    onChange={(e) =>
+                      handleParamChange('qualyDurationMin', Math.max(0, Number(e.target.value) || 0))
+                    }
+                    className="w-full rounded-lg border border-[#334155] bg-[#0f172a] px-2.5 py-2 text-sm font-mono tabular-nums text-slate-100 focus:border-[#eab308] focus:outline-none"
+                  />
+                </div>
+                <div className="col-span-2">
+                  <label className="mb-1 flex items-center justify-between text-[11px] font-medium text-slate-400">
+                    <span className="flex items-center gap-1">
+                      <Disc className="h-3 w-3 text-[#22c55e]" />
+                      Pneus Disponíveis
+                    </span>
+                    <span
+                      className={`font-mono text-[10px] ${
+                        remainingTiresCount < 0 ? 'text-red-400 font-semibold' : 'text-slate-400'
+                      }`}
+                    >
+                      Utilizados: {usedTiresCount} • Restantes: {remainingTiresCount}
+                    </span>
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="1"
+                    value={params.availableTires ?? 24}
+                    onChange={(e) =>
+                      handleParamChange('availableTires', Math.max(0, Number(e.target.value) || 0))
+                    }
+                    className="w-full rounded-lg border border-[#334155] bg-[#0f172a] px-2.5 py-2 text-sm font-mono tabular-nums text-slate-100 focus:border-[#eab308] focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              <div className="border-t border-[#334155] pt-3">
+                <div className="mb-2 flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-300">
+                  <Wrench className="h-3.5 w-3.5 text-[#eab308]" />
+                  <span>Tempos Médios de Pitstop (seg)</span>
+                </div>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-xs text-slate-400">Combustível + 4 Pneus + Piloto</span>
+                    <div className="flex items-center gap-1">
+                      <input
+                        type="number"
+                        min="0"
+                        value={params.pitTime4TiresSec}
+                        onChange={(e) =>
+                          handleParamChange('pitTime4TiresSec', Math.max(0, Number(e.target.value) || 0))
+                        }
+                        className="w-16 rounded-md border border-[#334155] bg-[#0f172a] px-2 py-1 text-right text-xs font-mono tabular-nums text-slate-100 focus:border-[#eab308] focus:outline-none"
+                      />
+                      <span className="text-xs text-slate-500">s</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-xs text-slate-400">Combustível + 2 Pneus + Piloto</span>
+                    <div className="flex items-center gap-1">
+                      <input
+                        type="number"
+                        min="0"
+                        value={params.pitTime2TiresSec}
+                        onChange={(e) =>
+                          handleParamChange('pitTime2TiresSec', Math.max(0, Number(e.target.value) || 0))
+                        }
+                        className="w-16 rounded-md border border-[#334155] bg-[#0f172a] px-2 py-1 text-right text-xs font-mono tabular-nums text-slate-100 focus:border-[#eab308] focus:outline-none"
+                      />
+                      <span className="text-xs text-slate-500">s</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-xs text-slate-400">Apenas Combustível + Piloto</span>
+                    <div className="flex items-center gap-1">
+                      <input
+                        type="number"
+                        min="0"
+                        value={params.pitTimeFuelOnlySec}
+                        onChange={(e) =>
+                          handleParamChange('pitTimeFuelOnlySec', Math.max(0, Number(e.target.value) || 0))
+                        }
+                        className="w-16 rounded-md border border-[#334155] bg-[#0f172a] px-2 py-1 text-right text-xs font-mono tabular-nums text-slate-100 focus:border-[#eab308] focus:outline-none"
+                      />
+                      <span className="text-xs text-slate-500">s</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-xs text-slate-400">Somente Troca de Piloto</span>
+                    <div className="flex items-center gap-1">
+                      <input
+                        type="number"
+                        min="0"
+                        value={params.pitTimeDriverOnlySec}
+                        onChange={(e) =>
+                          handleParamChange('pitTimeDriverOnlySec', Math.max(0, Number(e.target.value) || 0))
+                        }
+                        className="w-16 rounded-md border border-[#334155] bg-[#0f172a] px-2 py-1 text-right text-xs font-mono tabular-nums text-slate-100 focus:border-[#eab308] focus:outline-none"
+                      />
+                      <span className="text-xs text-slate-500">s</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* FUEL RATIO & AUTONOMY (EXPANDED ON PAGE 2) */}
+          <div className="rounded-xl border border-amber-500/40 bg-gradient-to-br from-[#1e293b] to-[#0f172a] p-4 shadow-lg">
+            <div className="mb-3 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Zap className="h-4 w-4 text-[#eab308]" />
+                <h2 className="text-xs font-bold uppercase tracking-wider text-[#eab308]">
+                  Fuel Ratio & Autonomia
+                </h2>
+              </div>
+              <span className="rounded bg-amber-500/15 px-2 py-0.5 text-[10px] font-semibold text-amber-300 border border-amber-500/30">
+                Limite: {telemetry.limitingFactor}
+              </span>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="rounded-lg border border-[#334155] bg-[#0f172a]/80 p-3">
+                <div className="text-[11px] text-slate-400">Fuel Ratio</div>
+                <div className="mt-1 text-2xl font-extrabold font-mono tabular-nums text-white">
+                  {telemetry.fuelRatio.toFixed(2)}
+                  <span className="ml-1 text-xs font-normal text-amber-400">L/%</span>
+                </div>
+                <div className="mt-0.5 text-[10px] text-slate-500">
+                  {params.fuelPerLapL}L ÷ {params.virtualEnergyPerLapPct}%
+                </div>
+              </div>
+              <div className="rounded-lg border border-[#334155] bg-[#0f172a]/80 p-3">
+                <div className="text-[11px] text-slate-400">Autonomia Máx / Stint</div>
+                <div className="mt-1 text-2xl font-extrabold font-mono tabular-nums text-[#22c55e]">
+                  {telemetry.maxStintLaps}
+                  <span className="ml-1 text-xs font-normal text-emerald-300">voltas</span>
+                </div>
+                <div className="mt-0.5 text-[10px] font-mono text-slate-400 tabular-nums">
+                  ~{telemetry.maxStintMin.toFixed(1)} min / stint
+                </div>
+              </div>
+            </div>
+            <div className="mt-3 flex items-center justify-between text-[11px] text-slate-400 border-t border-[#334155]/70 pt-2.5">
+              <span>Tanque: {telemetry.maxLapsByFuel}v</span>
+              <span>•</span>
+              <span>Energia 100%: {telemetry.maxLapsByEnergy}v</span>
+              <span>•</span>
+              <span className="text-slate-200 font-semibold">{raceStintCount} stints</span>
+            </div>
+          </div>
+
+          {/* TIRE MANAGER (EXPANDED ON PAGE 2) */}
+          <div className="rounded-xl border border-[#334155] bg-[#1e293b] p-4">
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <Disc className="h-4 w-4 text-[#22c55e]" />
+                <h2 className="text-xs font-bold uppercase tracking-wider text-slate-200">
+                  Gerenciador de Pneus — Melhores para Reaproveitar
+                </h2>
+              </div>
+            </div>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              {TIRE_CORNERS.map(({ key, label }) => {
+                const rec = tireRecommendations[key];
+                const best = rec?.best;
+                const second = rec?.secondBest;
+                return (
+                  <div
+                    key={`m-p2-tm-${key}`}
+                    className="rounded-lg border border-[#334155] bg-[#0f172a]/90 p-3.5 flex flex-col justify-between"
+                  >
+                    <div>
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-xs font-bold text-slate-200">
+                          {key} <span className="font-normal text-slate-400">({label})</span>
+                        </span>
+                        <span className="rounded bg-emerald-500/15 border border-emerald-500/40 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-[#22c55e]">
+                          SUGERIDO
+                        </span>
+                      </div>
+                      {best ? (
+                        <>
+                          <div className="mt-2.5 flex items-baseline justify-between">
+                            <span
+                              className={`text-2xl font-extrabold font-mono tabular-nums ${getTireTextColor(
+                                best.pct
+                              )}`}
+                            >
+                              {best.pct}%
+                            </span>
+                            <span className="text-xs font-medium text-slate-300">
+                              <span className="font-mono font-bold text-amber-300 mr-1">
+                                {best.tireId}
+                              </span>
+                              ({best.sourceLabel})
+                            </span>
+                          </div>
+                          <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-slate-800">
+                            <div
+                              className={`h-full transition-all ${getTireBarColor(best.pct)}`}
+                              style={{ width: `${best.pct}%` }}
+                            />
+                          </div>
+                        </>
+                      ) : (
+                        <div className="mt-3 flex items-center gap-1.5 text-xs text-slate-500">
+                          <AlertTriangle className="h-3.5 w-3.5" />
+                          <span>Sem dados</span>
+                        </div>
+                      )}
+                    </div>
+                    {second && (
+                      <div className="mt-3 border-t border-[#334155]/70 pt-2 flex items-center justify-between text-[11px] text-slate-400">
+                        <span>2ª melhor opção:</span>
+                        <span className="font-mono tabular-nums text-slate-300">
+                          {second.pct}% ({second.tireId} • {second.sourceLabel})
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {calendarCard}
+        </div>
+      </div>
+
+      {/* DESKTOP 2-COLUMN WORKSPACE (lg+) */}
+      <main className="hidden lg:flex mx-auto w-full max-w-[1600px] flex-1 flex-row gap-5 p-6">
         {/* LEFT SIDEBAR: PARAMETERS & CALENDAR */}
         <aside className="w-full shrink-0 space-y-4 lg:w-[320px] xl:w-[340px]">
           {/* Mobile Collapse Toggle for Parameters */}
@@ -3326,8 +4062,6 @@ export default function App() {
             </div>
           </div>
 
-          {/* MOBILE CALENDAR: AT THE VERY BOTTOM */}
-          <div className="lg:hidden">{calendarCard}</div>
         </section>
       </main>
 
