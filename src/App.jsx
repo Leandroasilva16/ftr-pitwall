@@ -20,8 +20,6 @@ import {
   Sparkles,
   MapPin,
   Share2,
-  Download,
-  Upload,
   Radio,
   X,
 } from 'lucide-react';
@@ -45,6 +43,7 @@ const DRIVERS = [
   'Vitor Justen',
   'Convidado 01',
   'Convidado 02',
+  'ND',
 ];
 
 const TIRE_CORNERS = [
@@ -318,7 +317,7 @@ const LMU_CIRCUITS = [
     shortName: 'Imola',
     country: 'Itália',
     flag: '🇮🇹',
-    svgPath: 'M12 46 L38 42 L50 28 L66 22 L84 16 L104 22 L108 36 L92 48 L72 44 L54 54 L26 56 Z',
+    svgPath: 'M14 48 C22 48, 34 45, 42 38 L50 28 C54 22, 62 24, 68 20 C76 15, 92 14, 102 22 C110 29, 106 42, 94 45 C86 47, 82 40, 76 42 C68 45, 64 55, 52 55 C38 55, 24 54, 14 48 Z',
   },
   {
     id: 'portimao',
@@ -326,7 +325,7 @@ const LMU_CIRCUITS = [
     shortName: 'Portimão',
     country: 'Portugal',
     flag: '🇵🇹',
-    svgPath: 'M16 48 L56 48 L74 36 L68 22 L90 16 L106 28 L94 46 L78 56 L42 54 L22 56 Z',
+    svgPath: 'M16 46 L54 46 C64 46, 72 39, 68 31 C64 23, 74 14, 88 16 C100 18, 108 27, 102 36 C96 44, 86 43, 82 50 C78 56, 62 56, 46 53 C32 51, 20 55, 16 46 Z',
   },
   {
     id: 'interlagos',
@@ -334,7 +333,7 @@ const LMU_CIRCUITS = [
     shortName: 'Interlagos',
     country: 'Brasil',
     flag: '🇧🇷',
-    svgPath: 'M24 52 L14 34 L34 18 L66 16 L98 24 L104 42 L84 48 L68 36 L52 46 L42 56 Z',
+    svgPath: 'M24 52 C14 46, 13 31, 24 22 C35 13, 62 14, 84 19 C100 23, 107 34, 98 42 C90 48, 78 44, 72 37 C66 30, 56 36, 54 44 C52 52, 34 58, 24 52 Z',
   },
   {
     id: 'monza',
@@ -342,7 +341,7 @@ const LMU_CIRCUITS = [
     shortName: 'Monza',
     country: 'Itália',
     flag: '🇮🇹',
-    svgPath: 'M18 50 L18 22 L42 16 L92 16 L106 26 L98 44 L76 50 L44 50 Z',
+    svgPath: 'M18 46 L18 24 C18 16, 26 15, 36 16 L82 16 C96 16, 106 20, 104 30 C102 38, 92 40, 84 44 C76 48, 66 50, 50 50 L26 50 C20 50, 18 48, 18 46 Z',
   },
   {
     id: 'bahrain',
@@ -350,7 +349,7 @@ const LMU_CIRCUITS = [
     shortName: 'Bahrain',
     country: 'Bahrein',
     flag: '🇧🇭',
-    svgPath: 'M20 52 L20 20 L74 16 L96 24 L84 36 L102 44 L86 56 L54 46 L36 54 Z',
+    svgPath: 'M18 50 L18 22 C18 16, 26 16, 36 16 L76 16 C88 16, 94 22, 86 28 C78 34, 78 39, 90 42 C102 45, 100 55, 86 55 C72 55, 64 46, 52 46 C40 46, 34 55, 24 55 C19 55, 18 53, 18 50 Z',
   },
   {
     id: 'barcelona',
@@ -358,7 +357,7 @@ const LMU_CIRCUITS = [
     shortName: 'Barcelona',
     country: 'Espanha',
     flag: '🇪🇸',
-    svgPath: 'M16 46 L52 48 L78 36 L98 20 L106 34 L88 52 L64 56 L38 54 L20 54 Z',
+    svgPath: 'M16 44 L54 44 C64 44, 74 36, 82 26 C88 18, 102 18, 104 28 C106 38, 94 47, 84 51 C72 56, 62 50, 52 53 C40 57, 20 56, 16 44 Z',
   },
   {
     id: 'lemans',
@@ -366,7 +365,7 @@ const LMU_CIRCUITS = [
     shortName: 'Le Mans',
     country: 'França',
     flag: '🇫🇷',
-    svgPath: 'M16 28 L38 18 L92 20 L106 32 L98 52 L66 56 L34 50 L18 42 Z',
+    svgPath: 'M16 30 C16 20, 28 16, 42 18 L86 22 C100 23, 106 30, 102 40 C98 50, 84 54, 68 52 C56 50, 44 46, 34 48 C22 50, 16 42, 16 30 Z',
   },
   {
     id: 'spa',
@@ -374,7 +373,7 @@ const LMU_CIRCUITS = [
     shortName: 'Spa',
     country: 'Bélgica',
     flag: '🇧🇪',
-    svgPath: 'M22 54 L16 36 L34 18 L62 14 L96 22 L106 38 L86 48 L66 42 L48 54 Z',
+    svgPath: 'M24 53 C17 48, 16 36, 24 27 C32 18, 48 14, 64 16 C82 18, 100 24, 104 34 C107 42, 96 48, 84 46 C74 44, 68 38, 60 42 C52 46, 44 55, 32 55 C28 55, 26 54, 24 53 Z',
   },
   {
     id: 'cota',
@@ -382,7 +381,7 @@ const LMU_CIRCUITS = [
     shortName: 'COTA',
     country: 'EUA',
     flag: '🇺🇸',
-    svgPath: 'M14 48 L36 16 L54 30 L74 20 L98 24 L106 42 L84 54 L52 50 L28 54 Z',
+    svgPath: 'M14 48 L34 18 C37 14, 42 18, 45 25 C49 34, 57 32, 62 24 C68 15, 86 16, 98 24 C108 31, 106 44, 94 50 C80 56, 60 50, 44 52 C30 54, 18 54, 14 48 Z',
   },
   {
     id: 'paul-ricard',
@@ -390,7 +389,7 @@ const LMU_CIRCUITS = [
     shortName: 'Paul Ricard',
     country: 'França',
     flag: '🇫🇷',
-    svgPath: 'M16 44 L44 20 L96 18 L104 34 L82 48 L56 44 L36 54 L18 52 Z',
+    svgPath: 'M16 42 C16 30, 28 22, 44 20 L88 18 C100 18, 106 26, 100 35 C94 44, 80 46, 68 43 C58 40, 50 48, 38 52 C26 55, 16 50, 16 42 Z',
   },
   {
     id: 'daytona',
@@ -398,7 +397,7 @@ const LMU_CIRCUITS = [
     shortName: 'Daytona',
     country: 'EUA',
     flag: '🇺🇸',
-    svgPath: 'M20 35 C20 16, 100 16, 100 35 C100 54, 20 54, 20 35 M44 35 L60 44 L76 35',
+    svgPath: 'M18 35 C18 15, 102 15, 102 35 C102 55, 18 55, 18 35 Z M40 35 C46 43, 74 43, 80 35',
   },
   {
     id: 'fuji',
@@ -406,7 +405,7 @@ const LMU_CIRCUITS = [
     shortName: 'Fuji',
     country: 'Japão',
     flag: '🇯🇵',
-    svgPath: 'M16 44 L74 44 L96 28 L88 18 L56 20 L40 30 L24 26 L16 36 Z',
+    svgPath: 'M16 42 L76 42 C90 42, 102 34, 98 24 C94 16, 76 16, 62 22 C50 27, 42 31, 34 26 C26 21, 16 28, 16 42 Z',
   },
   {
     id: 'lusail',
@@ -414,7 +413,7 @@ const LMU_CIRCUITS = [
     shortName: 'Qatar',
     country: 'Catar',
     flag: '🇶🇦',
-    svgPath: 'M18 48 L18 22 L64 16 L96 24 L104 42 L82 54 L54 46 L36 54 Z',
+    svgPath: 'M18 46 L18 24 C18 16, 28 16, 40 16 L76 18 C92 19, 104 28, 102 40 C100 50, 86 55, 72 51 C60 47, 52 44, 42 50 C32 56, 18 54, 18 46 Z',
   },
   {
     id: 'road-atlanta',
@@ -422,7 +421,7 @@ const LMU_CIRCUITS = [
     shortName: 'Road Atlanta',
     country: 'EUA',
     flag: '🇺🇸',
-    svgPath: 'M14 44 L36 22 L66 20 L98 30 L106 44 L78 52 L44 48 L24 54 Z',
+    svgPath: 'M14 42 C20 26, 36 18, 56 18 C74 18, 92 24, 102 34 C108 40, 102 50, 88 51 C72 52, 58 46, 44 48 C30 50, 18 52, 14 42 Z',
   },
   {
     id: 'sebring',
@@ -430,7 +429,7 @@ const LMU_CIRCUITS = [
     shortName: 'Sebring',
     country: 'EUA',
     flag: '🇺🇸',
-    svgPath: 'M16 46 L24 24 L56 18 L86 24 L104 38 L86 52 L50 50 L28 54 Z',
+    svgPath: 'M16 44 L24 24 C27 18, 36 16, 48 18 L82 22 C94 24, 104 32, 100 42 C96 50, 80 52, 64 49 L34 52 C22 53, 14 50, 16 44 Z',
   },
   {
     id: 'silverstone',
@@ -438,7 +437,7 @@ const LMU_CIRCUITS = [
     shortName: 'Silverstone',
     country: 'Reino Unido',
     flag: '🇬🇧',
-    svgPath: 'M22 50 L18 28 L44 16 L84 18 L104 32 L92 50 L62 46 L44 56 Z',
+    svgPath: 'M22 48 C16 38, 18 24, 30 18 C44 12, 68 14, 86 20 C102 25, 106 38, 96 47 C86 55, 72 48, 62 46 C52 44, 44 55, 32 54 C26 53, 24 51, 22 48 Z',
   },
   {
     id: 'long-beach',
@@ -446,7 +445,7 @@ const LMU_CIRCUITS = [
     shortName: 'Long Beach',
     country: 'EUA',
     flag: '🇺🇸',
-    svgPath: 'M16 44 L54 44 L72 30 L102 30 L102 48 L66 52 L34 52 L16 50 Z',
+    svgPath: 'M16 42 L56 42 C64 42, 68 31, 76 29 L98 29 C104 29, 105 38, 102 44 C98 50, 82 52, 64 52 L24 52 C17 52, 16 47, 16 42 Z',
   },
   {
     id: 'laguna-seca',
@@ -454,9 +453,26 @@ const LMU_CIRCUITS = [
     shortName: 'Laguna Seca',
     country: 'EUA',
     flag: '🇺🇸',
-    svgPath: 'M18 46 L32 22 L58 18 L76 34 L98 28 L104 44 L76 54 L42 52 Z',
+    svgPath: 'M18 44 C20 30, 32 18, 48 17 C60 16, 66 26, 74 30 C82 34, 96 26, 102 34 C108 42, 96 53, 80 53 C60 53, 36 53, 22 50 C19 49, 18 47, 18 44 Z',
   },
 ];
+
+function CircuitTrackSvg({ svgPath, className = 'h-12 w-24' }) {
+  return (
+    <svg
+      viewBox="0 0 120 70"
+      className={`${className} drop-shadow-[0_0_5px_rgba(234,179,8,0.35)]`}
+      fill="none"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d={svgPath} stroke="#0f172a" strokeWidth="7" opacity="0.9" />
+      <path d={svgPath} stroke="#334155" strokeWidth="5" opacity="0.85" />
+      <path d={svgPath} stroke="currentColor" strokeWidth="2.6" />
+    </svg>
+  );
+}
 
 const DRIVER_PORTRAIT_PRESETS = {
   'Bruno Aguiar': {
@@ -595,6 +611,29 @@ const DRIVER_PORTRAIT_PRESETS = {
 };
 
 function DriverAvatar90s({ driver, size = 48 }) {
+  if (driver === 'ND') {
+    return (
+      <div
+        className="relative inline-flex shrink-0 items-center justify-center overflow-hidden rounded-md border-2 border-[#475569] bg-[#0f172a] shadow-md"
+        style={{ width: size, height: size }}
+        title="Piloto: ND (Não Definido)"
+      >
+        <svg width={size} height={size} viewBox="0 0 64 64" className="block">
+          <rect width="64" height="64" fill="#0f172a" />
+          <path
+            d="M10 64 C11 50, 19 43, 32 43 C45 43, 53 50, 54 64 Z"
+            fill="#334155"
+          />
+          <circle cx="32" cy="24" r="12" fill="#334155" />
+          <path
+            d="M21 22 C21 15, 26 11, 32 11 C38 11, 43 15, 43 22 L41 26 L23 26 Z"
+            fill="#1e293b"
+          />
+        </svg>
+      </div>
+    );
+  }
+
   const p = DRIVER_PORTRAIT_PRESETS[driver] || DRIVER_PORTRAIT_PRESETS['Convidado 01'];
 
   return (
@@ -755,10 +794,51 @@ function DriverAvatar90s({ driver, size = 48 }) {
   );
 }
 
+function detectCircuitIdFromEvent(ev) {
+  if (!ev) return 'monza';
+  const raw = `${ev.id || ''} ${ev.track || ''}`.toLowerCase();
+  const matched = LMU_CIRCUITS.find(
+    (c) => raw.includes(c.id) || raw.includes(c.shortName.toLowerCase())
+  );
+  return matched ? matched.id : 'monza';
+}
+
+function MiniPirelliTire({ size = 16 }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      className="shrink-0 drop-shadow-sm"
+      aria-hidden="true"
+    >
+      <circle cx="12" cy="12" r="10.5" fill="#0b0f17" stroke="#334155" strokeWidth="1" />
+      <path
+        d="M5.2 6.8 A9 9 0 0 1 18.8 6.8"
+        fill="none"
+        stroke="#eab308"
+        strokeWidth="1.7"
+        strokeLinecap="round"
+      />
+      <path
+        d="M18.8 17.2 A9 9 0 0 1 5.2 17.2"
+        fill="none"
+        stroke="#eab308"
+        strokeWidth="1.7"
+        strokeLinecap="round"
+      />
+      <circle cx="12" cy="12" r="5.2" fill="#1e293b" stroke="#64748b" strokeWidth="1" />
+      <circle cx="12" cy="12" r="1.8" fill="#eab308" />
+    </svg>
+  );
+}
+
+const INITIAL_NEXT_EVENT = buildLmuWeekendCalendar().find((e) => e.status === 'next');
+
 const DEFAULT_PARAMS = {
-  carClass: 'Hypercar',
-  carId: 'ferrari-499p',
-  circuitId: 'monza',
+  carClass: 'LMGT3',
+  carId: 'porsche-911-lmgt3',
+  circuitId: detectCircuitIdFromEvent(INITIAL_NEXT_EVENT),
   sessionStart: '14:00',
   raceDurationStr: '06:00',
   lapTimeStr: '01:45.320',
@@ -1084,6 +1164,7 @@ function loadInitialStrategyState() {
     params: DEFAULT_PARAMS,
     preSessions: DEFAULT_PRE_SESSIONS,
     stintOverrides: DEFAULT_STINT_OVERRIDES,
+    eventSignups: {},
     loadedFromUrl: false,
   };
 
@@ -1099,6 +1180,7 @@ function loadInitialStrategyState() {
             params: { ...DEFAULT_PARAMS, ...(parsed.params || {}) },
             preSessions: { ...DEFAULT_PRE_SESSIONS, ...(parsed.preSessions || {}) },
             stintOverrides: parsed.stintOverrides || DEFAULT_STINT_OVERRIDES,
+            eventSignups: parsed.eventSignups || {},
           };
           localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
           window.history.replaceState({}, '', window.location.pathname);
@@ -1119,6 +1201,7 @@ function loadInitialStrategyState() {
           params: { ...DEFAULT_PARAMS, ...(parsed.params || {}) },
           preSessions: { ...DEFAULT_PRE_SESSIONS, ...(parsed.preSessions || {}) },
           stintOverrides: parsed.stintOverrides || DEFAULT_STINT_OVERRIDES,
+          eventSignups: parsed.eventSignups || {},
           loadedFromUrl: false,
         };
       }
@@ -1141,6 +1224,9 @@ export default function App() {
   const [stintOverrides, setStintOverrides] = useState(
     () => initialStateRef.current.stintOverrides
   );
+  const [eventSignups, setEventSignups] = useState(
+    () => initialStateRef.current.eventSignups || {}
+  );
 
   const [copied, setCopied] = useState(false);
   const [mobileParamsOpen, setMobileParamsOpen] = useState(true);
@@ -1151,7 +1237,13 @@ export default function App() {
   const mobilePagerInitRef = useRef(false);
   const mobileSessionStartRef = useRef(null);
   const mobileAvailableTiresRef = useRef(null);
+  const mobileCalendarRef = useRef(null);
+  const desktopCalendarRef = useRef(null);
   const [selectedTireCornerModal, setSelectedTireCornerModal] = useState(null);
+  const [circuitModalOpen, setCircuitModalOpen] = useState(false);
+  const [calendarEventModal, setCalendarEventModal] = useState(null);
+  const [signupDriverDraft, setSignupDriverDraft] = useState(() => DRIVERS[0]);
+  const [signupClassesDraft, setSignupClassesDraft] = useState(['Hypercar']);
   const [headerEventIdx, setHeaderEventIdx] = useState(0);
   const [collapsedStints, setCollapsedStints] = useState({});
   const mobileInitCollapsedRef = useRef(false);
@@ -1174,7 +1266,6 @@ export default function App() {
   const [syncStatus, setSyncStatus] = useState('local'); // 'local' | 'connecting' | 'live' | 'error'
   const [livePeersCount, setLivePeersCount] = useState(1);
 
-  const fileInputRef = useRef(null);
   const isApplyingRemoteRef = useRef(false);
   const syncTimeoutRef = useRef(null);
   const toastTimeoutRef = useRef(null);
@@ -1196,12 +1287,12 @@ export default function App() {
     try {
       localStorage.setItem(
         STORAGE_KEY,
-        JSON.stringify({ params, preSessions, stintOverrides })
+        JSON.stringify({ params, preSessions, stintOverrides, eventSignups })
       );
     } catch {
       // ignore quota errors
     }
-  }, [params, preSessions, stintOverrides]);
+  }, [params, preSessions, stintOverrides, eventSignups]);
 
   // Supabase Realtime Subscription (when configured and live room enabled)
   useEffect(() => {
@@ -1236,6 +1327,8 @@ export default function App() {
           if (remote.params) setParams({ ...DEFAULT_PARAMS, ...remote.params });
           if (remote.preSessions) setPreSessions({ ...DEFAULT_PRE_SESSIONS, ...remote.preSessions });
           if (remote.stintOverrides) setStintOverrides(remote.stintOverrides);
+          if (remote.eventSignups) setEventSignups(remote.eventSignups);
+          if (remote.eventSignups) setEventSignups(remote.eventSignups);
           setTimeout(() => {
             isApplyingRemoteRef.current = false;
           }, 50);
@@ -1243,7 +1336,7 @@ export default function App() {
           await supabase.from('race_strategies').upsert(
             {
               room_pin: activePin,
-              strategy_data: { params, preSessions, stintOverrides },
+              strategy_data: { params, preSessions, stintOverrides, eventSignups },
               updated_by: CLIENT_INSTANCE_ID,
               updated_at: new Date().toISOString(),
             },
@@ -1281,6 +1374,7 @@ export default function App() {
           if (remote.params) setParams({ ...DEFAULT_PARAMS, ...remote.params });
           if (remote.preSessions) setPreSessions({ ...DEFAULT_PRE_SESSIONS, ...remote.preSessions });
           if (remote.stintOverrides) setStintOverrides(remote.stintOverrides);
+          if (remote.eventSignups) setEventSignups(remote.eventSignups);
           setTimeout(() => {
             isApplyingRemoteRef.current = false;
           }, 50);
@@ -1332,7 +1426,7 @@ export default function App() {
         await supabase.from('race_strategies').upsert(
           {
             room_pin: activePin,
-            strategy_data: { params, preSessions, stintOverrides },
+            strategy_data: { params, preSessions, stintOverrides, eventSignups },
             updated_by: CLIENT_INSTANCE_ID,
             updated_at: new Date().toISOString(),
           },
@@ -1346,7 +1440,7 @@ export default function App() {
     return () => {
       if (syncTimeoutRef.current) clearTimeout(syncTimeoutRef.current);
     };
-  }, [params, preSessions, stintOverrides, liveRoomEnabled, syncStatus, roomPin]);
+  }, [params, preSessions, stintOverrides, eventSignups, liveRoomEnabled, syncStatus, roomPin]);
 
   const handleParamChange = (key, value) => {
     setParams((prev) => ({ ...prev, [key]: value }));
@@ -1632,8 +1726,11 @@ export default function App() {
   }, [tireBankByCorner]);
 
   const canAssignDriver = (targetRowId, nextDriver) => {
+    if (nextDriver === 'ND') return true;
     const nextSet = new Set(
-      schedule.map((s) => (s.id === targetRowId ? nextDriver : s.driver)).filter(Boolean)
+      schedule
+        .map((s) => (s.id === targetRowId ? nextDriver : s.driver))
+        .filter((d) => Boolean(d) && d !== 'ND')
     );
     return nextSet.size <= 6;
   };
@@ -1856,7 +1953,7 @@ export default function App() {
 
   const handleShareLink = async () => {
     try {
-      const payload = JSON.stringify({ params, preSessions, stintOverrides });
+      const payload = JSON.stringify({ params, preSessions, stintOverrides, eventSignups });
       const compressed = LZString.compressToEncodedURIComponent(payload);
       const shareUrl = `${window.location.origin}${window.location.pathname}?s=${compressed}`;
       await navigator.clipboard.writeText(shareUrl);
@@ -1866,61 +1963,62 @@ export default function App() {
     }
   };
 
-  const handleExportJson = () => {
-    try {
-      const payload = {
-        app: 'FTR PITWALL',
-        version: 1,
-        exportedAt: new Date().toISOString(),
-        params,
-        preSessions,
-        stintOverrides,
-      };
-      const blob = new Blob([JSON.stringify(payload, null, 2)], {
-        type: 'application/json',
-      });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `ftr-pitwall-${selectedCircuit.id}-${new Date()
-        .toISOString()
-        .slice(0, 10)}.json`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-      showToast('Backup JSON exportado!', 'success');
-    } catch {
-      showToast('Erro ao exportar JSON.', 'error');
+  const handleGoToCalendar = () => {
+    if (window.innerWidth < 1024) {
+      prevMobilePageRef.current = mobilePage;
+      goToMobilePage(2);
+      setTimeout(() => {
+        mobileCalendarRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 340);
+    } else {
+      desktopCalendarRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
   };
 
-  const handleImportJson = (event) => {
-    const file = event.target.files?.[0];
-    event.target.value = '';
-    if (!file) return;
+  const openCalendarEventModal = (ev) => {
+    setCalendarEventModal(ev);
+    const availableDrivers = DRIVERS.filter((d) => d !== 'ND');
+    const existingList = eventSignups[ev.id] || [];
+    const defaultDriver = availableDrivers[0];
+    const existingForDefault = existingList.find((item) => item.driver === defaultDriver);
+    setSignupDriverDraft(defaultDriver);
+    setSignupClassesDraft(
+      existingForDefault?.classes?.length ? existingForDefault.classes : ['LMGT3']
+    );
+  };
 
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      try {
-        const parsed = JSON.parse(String(e.target?.result || ''));
-        if (!parsed || typeof parsed !== 'object' || !parsed.params) {
-          showToast('Arquivo JSON inválido.', 'error');
-          return;
-        }
-        setParams({ ...DEFAULT_PARAMS, ...parsed.params });
-        if (parsed.preSessions) {
-          setPreSessions({ ...DEFAULT_PRE_SESSIONS, ...parsed.preSessions });
-        }
-        if (parsed.stintOverrides) {
-          setStintOverrides(parsed.stintOverrides);
-        }
-        showToast('Estratégia importada do JSON!', 'success');
-      } catch {
-        showToast('Não foi possível ler o arquivo JSON.', 'error');
-      }
-    };
-    reader.readAsText(file);
+  const toggleSignupClass = (classId) => {
+    setSignupClassesDraft((prev) =>
+      prev.includes(classId) ? prev.filter((c) => c !== classId) : [...prev, classId]
+    );
+  };
+
+  const handleSaveEventSignup = (e) => {
+    e.preventDefault();
+    if (!calendarEventModal || !signupDriverDraft) return;
+    if (signupClassesDraft.length === 0) {
+      showToast('Selecione pelo menos uma categoria viável.', 'warning');
+      return;
+    }
+    setEventSignups((prev) => {
+      const list = prev[calendarEventModal.id] || [];
+      const filtered = list.filter((item) => item.driver !== signupDriverDraft);
+      return {
+        ...prev,
+        [calendarEventModal.id]: [
+          ...filtered,
+          { driver: signupDriverDraft, classes: signupClassesDraft },
+        ],
+      };
+    });
+    showToast(`${signupDriverDraft} pré-cadastrado em ${calendarEventModal.track}!`, 'success');
+  };
+
+  const handleRemoveEventSignup = (eventId, driverName) => {
+    setEventSignups((prev) => ({
+      ...prev,
+      [eventId]: (prev[eventId] || []).filter((item) => item.driver !== driverName),
+    }));
   };
 
   const handleConnectLiveRoom = (e) => {
@@ -2009,22 +2107,23 @@ export default function App() {
     }
   };
 
-  const raceStintCount = schedule.filter((r) => r.type === 'race').length;
-  const totalEstimatedLaps = schedule
-    .filter((r) => r.type === 'race')
-    .reduce((acc, r) => acc + r.laps, 0);
+  const raceStints = useMemo(() => schedule.filter((r) => r.type === 'race'), [schedule]);
+  const raceStintCount = raceStints.length;
+  const totalEstimatedLaps = raceStints.reduce((acc, r) => acc + r.laps, 0);
 
   const raceDriverStats = useMemo(() => {
     const map = new Map();
     schedule
-      .filter((r) => r.type === 'race')
+      .filter((r) => r.type === 'race' && r.driver && r.driver !== 'ND')
       .forEach((r) => {
         const prev = map.get(r.driver) || { driver: r.driver, laps: 0, durationMin: 0 };
         prev.laps += r.laps || 0;
         prev.durationMin += r.durationMin || 0;
         map.set(r.driver, prev);
       });
-    return Array.from(map.values());
+    return Array.from(map.values())
+      .sort((a, b) => b.durationMin - a.durationMin || b.laps - a.laps)
+      .slice(0, 6);
   }, [schedule]);
 
   const usedTiresCount = useMemo(() => {
@@ -2076,37 +2175,81 @@ export default function App() {
         <span className="text-[10px] font-medium text-slate-400">Sáb & Dom</span>
       </div>
 
-      {nextEvent && (
-        <div className="mb-3 rounded-lg border border-amber-500/50 bg-amber-500/10 p-3">
-          <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-[#eab308]">
-            <Sparkles className="h-3 w-3" />
-            <span>Próximo Evento</span>
-          </div>
-          <div className="mt-1 text-sm font-bold text-white">
-            {nextEvent.track} — {nextEvent.dates}
-          </div>
-          <div className="text-[11px] text-amber-200/80">
-            {nextEvent.classes}
-          </div>
-        </div>
-      )}
+      {nextEvent && (() => {
+        const nextSignups = eventSignups[nextEvent.id] || [];
+        const nextFlag =
+          nextEvent.id === 'tba-dec'
+            ? '🏁'
+            : LMU_CIRCUITS.find((c) => c.id === detectCircuitIdFromEvent(nextEvent))?.flag || '🏁';
+        return (
+          <button
+            type="button"
+            onClick={() => openCalendarEventModal(nextEvent)}
+            title="Clique para pré-cadastrar piloto nesta etapa"
+            className="mb-3 w-full text-left rounded-lg border border-amber-500/50 bg-amber-500/10 p-3 cursor-pointer transition-colors hover:bg-amber-500/20 active:scale-[0.99]"
+          >
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-[#eab308]">
+                <Sparkles className="h-3 w-3" />
+                <span>Próximo Evento</span>
+              </div>
+              {nextSignups.length > 0 && (
+                <span className="inline-flex items-center gap-1 rounded bg-emerald-500/15 border border-emerald-500/40 px-1.5 py-0.5 font-mono text-[10px] font-bold text-[#22c55e]">
+                  <Users className="h-2.5 w-2.5" />
+                  ({String(nextSignups.length).padStart(2, '0')})
+                </span>
+              )}
+            </div>
+            <div className="mt-1 flex items-center gap-1.5 text-sm font-bold text-white">
+              <span className="text-base leading-none">{nextFlag}</span>
+              <span>
+                {nextEvent.track}
+                {nextSignups.length > 0 ? ` (${String(nextSignups.length).padStart(2, '0')})` : ''} — {nextEvent.dates}
+              </span>
+            </div>
+            <div className="text-[11px] text-amber-200/80">
+              {nextEvent.classes}
+            </div>
+          </button>
+        );
+      })()}
 
       <div className="max-h-52 space-y-1.5 overflow-y-auto pr-1">
-        {calendarEvents.map((ev) => (
-          <div
-            key={ev.id}
-            className={`flex items-center justify-between rounded-md px-2.5 py-1.5 text-xs ${
-              ev.status === 'next'
-                ? 'bg-amber-500/15 border border-amber-500/30 text-amber-200 font-semibold'
-                : ev.status === 'past'
-                ? 'text-slate-500 line-through'
-                : 'text-slate-300 bg-[#0f172a]/50'
-            }`}
-          >
-            <span className="truncate pr-2">{ev.track}</span>
-            <span className="shrink-0 font-mono text-[11px]">{ev.dates}</span>
-          </div>
-        ))}
+        {calendarEvents.map((ev) => {
+          const signups = eventSignups[ev.id] || [];
+          const evFlag =
+            ev.id === 'tba-dec'
+              ? '🏁'
+              : LMU_CIRCUITS.find((c) => c.id === detectCircuitIdFromEvent(ev))?.flag || '🏁';
+          return (
+            <button
+              type="button"
+              key={ev.id}
+              onClick={() => openCalendarEventModal(ev)}
+              title="Clique para pré-cadastrar piloto nesta etapa"
+              className={`w-full text-left flex items-center justify-between gap-2 rounded-md px-2.5 py-1.5 text-xs cursor-pointer transition-colors ${
+                ev.status === 'next'
+                  ? 'bg-amber-500/15 border border-amber-500/30 text-amber-200 font-semibold hover:bg-amber-500/25'
+                  : ev.status === 'past'
+                  ? 'text-slate-500 line-through hover:bg-slate-800/40'
+                  : 'text-slate-300 bg-[#0f172a]/50 hover:bg-[#0f172a]'
+              }`}
+            >
+              <span className="flex items-center gap-1.5 truncate flex-1 min-w-0">
+                <span className="shrink-0 text-sm leading-none">{evFlag}</span>
+                <span className="truncate">
+                  {ev.track}
+                  {signups.length > 0 && (
+                    <span className="ml-1 font-mono text-[11px] font-bold text-[#22c55e]">
+                      ({String(signups.length).padStart(2, '0')})
+                    </span>
+                  )}
+                </span>
+              </span>
+              <span className="shrink-0 font-mono text-[11px]">{ev.dates}</span>
+            </button>
+          );
+        })}
       </div>
     </div>
   );
@@ -2115,7 +2258,7 @@ export default function App() {
     <div className="min-h-screen bg-[#0f172a] text-slate-100 flex flex-col">
       {/* TOP BAR */}
       <header className="sticky top-0 z-40 border-b border-[#334155] bg-[#0f172a]/95 backdrop-blur-md">
-        <div className="mx-auto flex max-w-[1600px] flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-6">
+        <div className="mx-auto flex max-w-[1600px] flex-wrap xl:flex-nowrap items-center justify-between gap-2 xl:gap-2.5 px-4 py-2.5 sm:px-5">
           <div className="flex w-full lg:w-auto items-center justify-between gap-2">
             <div className="flex items-center gap-3">
               <img
@@ -2137,8 +2280,8 @@ export default function App() {
             </div>
 
             {/* Tiny Car Brand Logo + Class + Short Track on Top-Right (Mobile & < xl) */}
-            <div className="xl:hidden flex flex-col items-end rounded-md border border-[#334155] bg-[#1e293b]/90 px-2 py-1">
-              <div className="flex items-center gap-1.5">
+            <div className="xl:hidden flex flex-col items-center text-center rounded-md border border-[#334155] bg-[#1e293b]/90 px-2 py-1">
+              <div className="flex items-center justify-center gap-1.5">
                 <ManufacturerLogo brand={selectedCar.brand} size={18} />
                 <span
                   className={`rounded border px-1 py-0.5 text-[8px] font-bold uppercase tracking-wider leading-none ${selectedClassMeta.badgeClass}`}
@@ -2146,15 +2289,21 @@ export default function App() {
                   {selectedClassMeta.label}
                 </span>
               </div>
-              <span className="mt-0.5 text-[8.5px] font-semibold text-slate-300 leading-none">
-                {selectedCircuit.shortName}
-              </span>
+              <div className="mt-0.5 flex items-center justify-center gap-1 text-[8.5px] font-semibold text-slate-300 leading-none">
+                <span className="text-[10px] leading-none">{selectedCircuit.flag}</span>
+                <span>{selectedCircuit.shortName}</span>
+              </div>
             </div>
           </div>
 
           {activeHeaderEvent && (
             <div className="w-full sm:w-auto flex justify-center">
-              <div className="relative inline-flex overflow-hidden rounded-lg p-[1.5px] shadow-[0_0_15px_rgba(234,179,8,0.18)]">
+              <button
+                type="button"
+                onClick={handleGoToCalendar}
+                title="Ir para o Calendário LMU"
+                className="relative inline-flex overflow-hidden rounded-lg p-[1.5px] shadow-[0_0_15px_rgba(234,179,8,0.18)] cursor-pointer transition-transform active:scale-[0.98]"
+              >
                 <span
                   aria-hidden="true"
                   className="pointer-events-none absolute inset-[-150%] animate-[spin_3s_linear_infinite] bg-[conic-gradient(from_0deg,transparent_0deg_250deg,#eab308_310deg,#fef08a_335deg,transparent_360deg)]"
@@ -2171,32 +2320,37 @@ export default function App() {
                     </span>
                   </div>
                 </div>
-              </div>
+              </button>
             </div>
           )}
 
-          <div className="hidden xl:flex items-center gap-2.5 rounded-lg border border-[#334155] bg-[#1e293b]/90 px-3 py-1.5">
-            <ManufacturerLogo brand={selectedCar.brand} size={26} />
-            <div>
-              <div className="flex items-center gap-1.5">
-                <span className="text-xs font-bold text-white">{selectedCar.name}</span>
+          <div className="hidden xl:flex items-center justify-center gap-2.5 rounded-lg border border-[#334155] bg-[#1e293b]/90 px-2.5 py-1.5 shrink-0">
+            <div className="flex flex-col items-center justify-center leading-none">
+              <ManufacturerLogo brand={selectedCar.brand} size={24} />
+              <span className="mt-1 text-sm leading-none" title={selectedCircuit.country}>
+                {selectedCircuit.flag}
+              </span>
+            </div>
+            <div className="flex flex-col items-center text-center">
+              <div className="flex items-center justify-center gap-1.5">
+                <span className="text-[11px] font-bold text-white whitespace-nowrap">{selectedCar.name}</span>
                 <span
                   className={`rounded border px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider ${selectedClassMeta.badgeClass}`}
                 >
                   {selectedClassMeta.label}
                 </span>
               </div>
-              <div className="flex items-center gap-1 text-[10px] text-slate-400">
-                <MapPin className="h-2.5 w-2.5 text-[#eab308]" />
-                <span className="truncate max-w-[260px]">{selectedCircuit.name}</span>
+              <div className="mt-0.5 flex items-center justify-center gap-1 text-[10px] text-slate-400">
+                <MapPin className="h-2.5 w-2.5 shrink-0 text-[#eab308]" />
+                <span className="truncate max-w-[180px]">{selectedCircuit.name}</span>
               </div>
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex w-full sm:w-auto flex-wrap sm:flex-nowrap items-center justify-between sm:justify-start gap-1.5 shrink-0">
             {/* Desktop Connection Status Pill */}
             <div
-              className={`hidden sm:inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-semibold ${syncStatus === 'live'
+              className={`hidden sm:inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border px-2 py-1 text-[11px] font-semibold ${syncStatus === 'live'
                 ? 'border-emerald-500/40 bg-emerald-500/15 text-[#22c55e]'
                 : 'border-amber-500/40 bg-amber-500/10 text-[#eab308]'
                 }`}
@@ -2212,7 +2366,7 @@ export default function App() {
               />
               <span>
                 {syncStatus === 'live'
-                  ? `Sincronizado ao Vivo (${livePeersCount})`
+                  ? `Sincronizado ao Vivo (${String(livePeersCount).padStart(2, '0')})`
                   : 'Modo Local'}
               </span>
             </div>
@@ -2241,7 +2395,7 @@ export default function App() {
                     setPinDraft(roomPin);
                     setRoomModalOpen((prev) => !prev);
                   }}
-                  className={`relative inline-flex items-center gap-1.5 rounded-[7px] px-2.5 py-2 text-xs font-bold transition-colors cursor-pointer ${
+                  className={`relative inline-flex items-center gap-1.5 whitespace-nowrap rounded-[7px] px-2 py-1.5 text-xs font-bold transition-colors cursor-pointer ${
                     syncStatus === 'live'
                       ? 'bg-[#0b1f17] text-emerald-300 hover:bg-[#0f291e]'
                       : 'bg-[#1a1608] text-amber-200 hover:bg-[#241e0a]'
@@ -2255,11 +2409,11 @@ export default function App() {
                         : 'text-[#eab308] animate-bounce'
                     }`}
                   />
-                  <span className="hidden md:inline">
-                    {syncStatus === 'live' ? 'Sala Ao Vivo:' : 'Conectar Sala:'}
+                  <span className="hidden 2xl:inline">
+                    {syncStatus === 'live' ? 'Sala:' : 'Conectar:'}
                   </span>
                   <span className="font-mono text-[11px] font-extrabold text-white">
-                    {roomPin || 'Definir PIN'}
+                    {roomPin || 'PIN'}
                   </span>
                 </button>
               </div>
@@ -2301,8 +2455,10 @@ export default function App() {
                     }`}
                   />
                   <span className="flex flex-col items-center leading-tight">
-                    <span className="text-[9px] font-bold uppercase tracking-wider opacity-95">
-                      {syncStatus === 'live' ? `Ao Vivo (${livePeersCount})` : 'Modo Local'}
+                    <span className="whitespace-nowrap text-[9px] font-bold uppercase tracking-wider opacity-95">
+                      {syncStatus === 'live'
+                        ? `Ao Vivo (${String(livePeersCount).padStart(2, '0')})`
+                        : 'Modo Local'}
                     </span>
                     <span className="font-mono text-[10px] font-extrabold text-white">
                       {roomPin || 'Conectar'}
@@ -2382,56 +2538,20 @@ export default function App() {
               )}
             </div>
 
-            {/* JSON Backup (Export / Import) */}
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="application/json,.json"
-              onChange={handleImportJson}
-              className="hidden"
-            />
-            <button
-              type="button"
-              onClick={handleExportJson}
-              title="Exportar backup JSON"
-              className="inline-flex items-center gap-1 rounded-lg border border-[#334155] bg-[#1e293b] px-2 py-2 sm:px-2.5 text-xs font-semibold text-slate-300 transition-colors hover:border-slate-500 hover:text-white cursor-pointer"
-            >
-              <Download className="h-3.5 w-3.5 text-slate-400" />
-              <span className="hidden lg:inline">Exportar JSON</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              title="Importar backup JSON"
-              className="inline-flex items-center gap-1 rounded-lg border border-[#334155] bg-[#1e293b] px-2 py-2 sm:px-2.5 text-xs font-semibold text-slate-300 transition-colors hover:border-slate-500 hover:text-white cursor-pointer"
-            >
-              <Upload className="h-3.5 w-3.5 text-slate-400" />
-              <span className="hidden lg:inline">Importar JSON</span>
-            </button>
-
             <button
               type="button"
               onClick={handleShareLink}
               title="Copiar link compartilhável da estratégia"
-              className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-500/40 bg-emerald-500/15 px-2.5 py-2 sm:px-3 text-xs font-bold text-[#22c55e] transition-colors hover:border-emerald-400 hover:bg-emerald-500/25 cursor-pointer"
+              className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-lg border border-emerald-500/40 bg-emerald-500/15 px-2 py-1.5 sm:px-2.5 text-xs font-bold text-[#22c55e] transition-colors hover:border-emerald-400 hover:bg-emerald-500/25 cursor-pointer"
             >
               <Share2 className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">Compartilhar Link</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={handleReset}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-[#334155] bg-[#1e293b] px-2.5 py-2 sm:px-3 text-xs font-semibold text-slate-300 transition-colors hover:border-slate-500 hover:text-white cursor-pointer"
-            >
-              <RotateCcw className="h-3.5 w-3.5 text-slate-400" />
-              <span className="hidden sm:inline">Resetar Estratégia</span>
+              <span className="hidden sm:inline">Compartilhar</span>
             </button>
 
             <button
               type="button"
               onClick={handleCopyWhatsApp}
-              className={`inline-flex items-center gap-1 rounded-lg border px-2.5 py-2 sm:px-3.5 text-xs font-bold transition-all cursor-pointer ${copied
+              className={`inline-flex items-center gap-1 whitespace-nowrap rounded-lg border px-2 py-1.5 sm:px-2.5 text-xs font-bold transition-all cursor-pointer ${copied
                 ? 'border-emerald-500/60 bg-emerald-500/20 text-[#22c55e]'
                 : 'border-amber-500/50 bg-[#eab308] text-slate-950 hover:bg-amber-400'
                 }`}
@@ -2439,14 +2559,13 @@ export default function App() {
               {copied ? (
                 <>
                   <Check className="h-3.5 w-3.5" />
-                  <span className="hidden sm:inline">Copiado p/ WhatsApp!</span>
+                  <span className="hidden sm:inline">Copiado!</span>
                   <span className="sm:hidden">Copiado!</span>
                 </>
               ) : (
                 <>
                   <Copy className="h-3.5 w-3.5" />
-                  <span className="hidden sm:inline">Copiar WhatsApp</span>
-                  <span className="sm:hidden">WhatsApp</span>
+                  <span>WhatsApp</span>
                 </>
               )}
             </button>
@@ -2506,9 +2625,9 @@ export default function App() {
               >
                 <span className="text-[7px] font-sans uppercase text-slate-400">Horário</span>
                 <span className="font-bold text-white">
-                  {schedule[0] ? formatMinutesToHHMM(schedule[0].startMin) : '--:--'}→
-                  {schedule[schedule.length - 1]
-                    ? formatMinutesToHHMM(schedule[schedule.length - 1].endMin)
+                  {raceStints[0] ? formatMinutesToHHMM(raceStints[0].startMin) : '--:--'}→
+                  {raceStints[raceStints.length - 1]
+                    ? formatMinutesToHHMM(raceStints[raceStints.length - 1].endMin)
                     : '--:--'}
                 </span>
               </div>
@@ -2516,7 +2635,7 @@ export default function App() {
               <div className="flex flex-col items-center leading-tight">
                 <span className="text-[7px] font-sans uppercase text-slate-400">Pilotos</span>
                 <span className="font-bold text-[#eab308]">
-                  {new Set(schedule.map((s) => s.driver)).size}
+                  {new Set(raceStints.map((s) => s.driver).filter((d) => d && d !== 'ND')).size}
                 </span>
               </div>
               <span className="text-slate-700">|</span>
@@ -2565,11 +2684,22 @@ export default function App() {
         {/* PAGE 1 (LEFT - SWIPE RIGHT FROM CENTER): PARAMS */}
         <div className="w-full shrink-0 snap-start px-4 py-4 space-y-4">
           <div className="rounded-xl border border-[#334155] bg-[#1e293b] overflow-hidden">
-            <div className="flex items-center gap-2 border-b border-[#334155] bg-slate-800/80 px-4 py-3">
-              <Gauge className="h-4 w-4 text-[#eab308]" />
-              <h2 className="text-xs font-bold uppercase tracking-wider text-slate-200">
-                Parâmetros da Corrida
-              </h2>
+            <div className="flex items-center justify-between gap-2 border-b border-[#334155] bg-slate-800/80 px-4 py-3">
+              <div className="flex items-center gap-2">
+                <Gauge className="h-4 w-4 text-[#eab308]" />
+                <h2 className="text-xs font-bold uppercase tracking-wider text-slate-200">
+                  Parâmetros da Corrida
+                </h2>
+              </div>
+              <button
+                type="button"
+                onClick={handleReset}
+                title="Resetar Estratégia"
+                className="inline-flex items-center gap-1 rounded-md border border-[#334155] bg-[#0f172a] px-2 py-1 text-[11px] font-semibold text-slate-300 hover:border-slate-500 hover:text-white cursor-pointer"
+              >
+                <RotateCcw className="h-3 w-3 text-slate-400" />
+                <span>Resetar</span>
+              </button>
             </div>
             <div className="p-4 space-y-4">
               {/* Car & Class Selector */}
@@ -2636,37 +2766,23 @@ export default function App() {
                     <MapPin className="h-3 w-3 text-[#eab308]" />
                     Circuito
                   </label>
-                  <select
-                    value={selectedCircuit.id}
-                    onChange={(e) => handleParamChange('circuitId', e.target.value)}
-                    className="w-full rounded-md border border-[#334155] bg-[#1e293b] px-2 py-1.5 text-xs font-medium text-slate-100 focus:border-[#eab308] focus:outline-none"
+                  <button
+                    type="button"
+                    onClick={() => setCircuitModalOpen(true)}
+                    className="w-full flex items-center justify-between gap-3 rounded-lg border border-[#334155] bg-[#1e293b] px-3 py-2 text-left cursor-pointer transition-colors hover:border-amber-500/60 hover:bg-[#1e293b]/90 active:scale-[0.99]"
                   >
-                    {LMU_CIRCUITS.map((circuit) => (
-                      <option key={circuit.id} value={circuit.id}>
-                        {circuit.name} ({circuit.country})
-                      </option>
-                    ))}
-                  </select>
-                  <div className="mt-2 flex items-center justify-between gap-3 rounded-lg border border-[#334155]/80 bg-[#1e293b]/70 px-3 py-2">
                     <div className="min-w-0">
                       <div className="flex items-center gap-1.5 text-xs font-bold text-white">
-                        <span className="text-base leading-none">{selectedCircuit.flag}</span>
+                        <span className="text-lg leading-none">{selectedCircuit.flag}</span>
                         <span>{selectedCircuit.shortName}</span>
                       </div>
-                      <div className="text-[10px] text-slate-400">{selectedCircuit.country}</div>
+                      <div className="mt-0.5 text-[10px] text-slate-400">{selectedCircuit.country}</div>
                     </div>
-                    <svg
-                      viewBox="0 0 120 70"
-                      className="h-11 w-20 shrink-0 text-[#eab308]"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="3"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    >
-                      <path d={selectedCircuit.svgPath} />
-                    </svg>
-                  </div>
+                    <CircuitTrackSvg
+                      svgPath={selectedCircuit.svgPath}
+                      className="h-12 w-24 shrink-0 text-[#eab308]"
+                    />
+                  </button>
                 </div>
               </div>
 
@@ -2803,17 +2919,29 @@ export default function App() {
                       Utilizados: {usedTiresCount} • Restantes: {remainingTiresCount}
                     </span>
                   </label>
-                  <input
-                    ref={mobileAvailableTiresRef}
-                    type="number"
-                    min="0"
-                    step="1"
-                    value={params.availableTires ?? 24}
-                    onChange={(e) =>
-                      handleParamChange('availableTires', Math.max(0, Number(e.target.value) || 0))
-                    }
-                    className="w-full rounded-lg border border-[#334155] bg-[#0f172a] px-2.5 py-2 text-sm font-mono tabular-nums text-slate-100 focus:border-[#eab308] focus:outline-none"
-                  />
+                  <div className="flex items-center gap-2.5">
+                    <input
+                      ref={mobileAvailableTiresRef}
+                      type="number"
+                      min="0"
+                      step="1"
+                      value={params.availableTires ?? 24}
+                      onChange={(e) =>
+                        handleParamChange('availableTires', Math.max(0, Number(e.target.value) || 0))
+                      }
+                      className="w-16 shrink-0 rounded-lg border border-[#334155] bg-[#0f172a] px-2 py-1.5 text-center text-sm font-mono font-bold tabular-nums text-slate-100 focus:border-[#eab308] focus:outline-none"
+                    />
+                    <div className="flex flex-1 flex-wrap items-center gap-1">
+                      {Array.from({ length: Math.min(availableTiresNum, 48) }).map((_, idx) => (
+                        <MiniPirelliTire key={`m-tire-${idx}`} size={15} />
+                      ))}
+                      {availableTiresNum > 48 && (
+                        <span className="font-mono text-[10px] font-bold text-amber-300">
+                          +{availableTiresNum - 48}
+                        </span>
+                      )}
+                    </div>
+                  </div>
                 </div>
               </div>
 
@@ -2919,7 +3047,7 @@ export default function App() {
                 </button>
               </div>
               {raceDriverStats.length > 0 && (
-                <div className="flex flex-wrap items-center gap-1.5">
+                <div className="grid grid-cols-3 gap-1.5">
                   {raceDriverStats.map((d) => {
                     const hrs = Math.floor(d.durationMin / 60);
                     const mins = Math.round(d.durationMin % 60);
@@ -2928,12 +3056,12 @@ export default function App() {
                     return (
                       <div
                         key={`m-drv-${d.driver}`}
-                        className="inline-flex items-center gap-1 rounded-md border border-[#334155] bg-[#0f172a]/90 px-1.5 py-0.5"
+                        className="flex items-center gap-1.5 rounded-md border border-[#334155] bg-[#0f172a]/90 px-1.5 py-1 min-w-0"
                       >
                         <DriverAvatar90s driver={d.driver} size={20} />
-                        <div className="flex flex-col leading-none">
-                          <span className="text-[9px] font-bold text-slate-100">{firstName}</span>
-                          <span className="font-mono text-[8.5px] text-amber-300 tabular-nums">
+                        <div className="flex flex-col leading-none min-w-0">
+                          <span className="truncate text-[9px] font-bold text-slate-100">{firstName}</span>
+                          <span className="truncate font-mono text-[8.5px] text-amber-300 tabular-nums">
                             {d.laps}v • {timeStr}
                           </span>
                         </div>
@@ -3306,7 +3434,7 @@ export default function App() {
             </div>
           </div>
 
-          {calendarCard}
+          <div ref={mobileCalendarRef}>{calendarCard}</div>
         </div>
       </div>
 
@@ -3404,37 +3532,23 @@ export default function App() {
                     <MapPin className="h-3 w-3 text-[#eab308]" />
                     Circuito
                   </label>
-                  <select
-                    value={selectedCircuit.id}
-                    onChange={(e) => handleParamChange('circuitId', e.target.value)}
-                    className="w-full rounded-md border border-[#334155] bg-[#1e293b] px-2 py-1.5 text-xs font-medium text-slate-100 focus:border-[#eab308] focus:outline-none cursor-pointer"
+                  <button
+                    type="button"
+                    onClick={() => setCircuitModalOpen(true)}
+                    className="w-full flex items-center justify-between gap-3 rounded-lg border border-[#334155] bg-[#1e293b] px-3 py-2 text-left cursor-pointer transition-colors hover:border-amber-500/60 hover:bg-[#1e293b]/90 active:scale-[0.99]"
                   >
-                    {LMU_CIRCUITS.map((circuit) => (
-                      <option key={circuit.id} value={circuit.id}>
-                        {circuit.name} ({circuit.country})
-                      </option>
-                    ))}
-                  </select>
-                  <div className="mt-2 flex items-center justify-between gap-3 rounded-lg border border-[#334155]/80 bg-[#1e293b]/70 px-3 py-2">
                     <div className="min-w-0">
                       <div className="flex items-center gap-1.5 text-xs font-bold text-white">
-                        <span className="text-base leading-none">{selectedCircuit.flag}</span>
+                        <span className="text-lg leading-none">{selectedCircuit.flag}</span>
                         <span>{selectedCircuit.shortName}</span>
                       </div>
-                      <div className="text-[10px] text-slate-400">{selectedCircuit.country}</div>
+                      <div className="mt-0.5 text-[10px] text-slate-400">{selectedCircuit.country}</div>
                     </div>
-                    <svg
-                      viewBox="0 0 120 70"
-                      className="h-11 w-20 shrink-0 text-[#eab308]"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="3"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    >
-                      <path d={selectedCircuit.svgPath} />
-                    </svg>
-                  </div>
+                    <CircuitTrackSvg
+                      svgPath={selectedCircuit.svgPath}
+                      className="h-12 w-24 shrink-0 text-[#eab308]"
+                    />
+                  </button>
                 </div>
               </div>
 
@@ -3578,16 +3692,28 @@ export default function App() {
                       Utilizados: {usedTiresCount} • Restantes: {remainingTiresCount}
                     </span>
                   </label>
-                  <input
-                    type="number"
-                    min="0"
-                    step="1"
-                    value={params.availableTires ?? 24}
-                    onChange={(e) =>
-                      handleParamChange('availableTires', Math.max(0, Number(e.target.value) || 0))
-                    }
-                    className="w-full rounded-lg border border-[#334155] bg-[#0f172a] px-2.5 py-2 text-sm font-mono tabular-nums text-slate-100 focus:border-[#eab308] focus:outline-none"
-                  />
+                  <div className="flex items-center gap-2.5">
+                    <input
+                      type="number"
+                      min="0"
+                      step="1"
+                      value={params.availableTires ?? 24}
+                      onChange={(e) =>
+                        handleParamChange('availableTires', Math.max(0, Number(e.target.value) || 0))
+                      }
+                      className="w-16 shrink-0 rounded-lg border border-[#334155] bg-[#0f172a] px-2 py-1.5 text-center text-sm font-mono font-bold tabular-nums text-slate-100 focus:border-[#eab308] focus:outline-none"
+                    />
+                    <div className="flex flex-1 flex-wrap items-center gap-1">
+                      {Array.from({ length: Math.min(availableTiresNum, 48) }).map((_, idx) => (
+                        <MiniPirelliTire key={`d-tire-${idx}`} size={15} />
+                      ))}
+                      {availableTiresNum > 48 && (
+                        <span className="font-mono text-[10px] font-bold text-amber-300">
+                          +{availableTiresNum - 48}
+                        </span>
+                      )}
+                    </div>
+                  </div>
                 </div>
               </div>
 
@@ -3675,6 +3801,17 @@ export default function App() {
                   </div>
                 </div>
               </div>
+
+              <div className="border-t border-[#334155] pt-3">
+                <button
+                  type="button"
+                  onClick={handleReset}
+                  className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg border border-[#334155] bg-[#0f172a] px-3 py-2 text-xs font-semibold text-slate-300 transition-colors hover:border-slate-500 hover:text-white cursor-pointer"
+                >
+                  <RotateCcw className="h-3.5 w-3.5 text-slate-400" />
+                  <span>Resetar Estratégia</span>
+                </button>
+              </div>
             </div>
           </div>
 
@@ -3753,7 +3890,7 @@ export default function App() {
           </div>
 
           {/* BOTTOM CARD: LMU CALENDAR Q3/Q4 2026 (Desktop Sidebar) */}
-          <div className="hidden lg:block">{calendarCard}</div>
+          <div ref={desktopCalendarRef} className="hidden lg:block">{calendarCard}</div>
         </aside>
 
         {/* RIGHT MAIN AREA: STINTS TABLE & TIRE MANAGER */}
@@ -3775,9 +3912,9 @@ export default function App() {
             <div className="rounded-xl border border-[#334155] bg-[#1e293b] px-4 py-3">
               <div className="text-[11px] text-slate-400">Início → Término</div>
               <div className="mt-0.5 text-base font-bold font-mono tabular-nums text-white sm:text-lg">
-                {schedule[0] ? formatMinutesToHHMM(schedule[0].startMin) : '--:--'} →{' '}
-                {schedule[schedule.length - 1]
-                  ? formatMinutesToHHMM(schedule[schedule.length - 1].endMin)
+                {raceStints[0] ? formatMinutesToHHMM(raceStints[0].startMin) : '--:--'} →{' '}
+                {raceStints[raceStints.length - 1]
+                  ? formatMinutesToHHMM(raceStints[raceStints.length - 1].endMin)
                   : '--:--'}
               </div>
             </div>
@@ -3785,7 +3922,7 @@ export default function App() {
               <div className="text-[11px] text-slate-400">Pilotos Ativos</div>
               <div className="mt-0.5 flex items-center gap-1.5 text-xl font-bold font-mono tabular-nums text-[#eab308]">
                 <Users className="h-4 w-4" />
-                <span>{new Set(schedule.map((s) => s.driver)).size}</span>
+                <span>{new Set(raceStints.map((s) => s.driver).filter((d) => d && d !== 'ND')).size}</span>
               </div>
             </div>
             <div
@@ -4589,6 +4726,238 @@ export default function App() {
                     </div>
                   ))
                 )}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* CIRCUIT PICKER MODAL */}
+      {circuitModalOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm"
+          onClick={() => setCircuitModalOpen(false)}
+        >
+          <div
+            className="w-full max-w-2xl rounded-2xl border border-[#334155] bg-[#0f172a] shadow-2xl overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b border-[#334155] bg-[#1e293b] px-4 py-3">
+              <div className="flex items-center gap-2">
+                <MapPin className="h-4 w-4 text-[#eab308]" />
+                <div>
+                  <h3 className="text-sm font-bold text-white">Selecionar Circuito</h3>
+                  <p className="text-[11px] text-slate-400">
+                    Escolha a pista pelo país e traçado
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setCircuitModalOpen(false)}
+                className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-[#334155] bg-[#0f172a] text-slate-400 hover:text-white cursor-pointer"
+                title="Fechar"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="max-h-[70vh] overflow-y-auto p-4 grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+              {LMU_CIRCUITS.map((circuit) => {
+                const isSelected = circuit.id === selectedCircuit.id;
+                return (
+                  <button
+                    type="button"
+                    key={circuit.id}
+                    onClick={() => {
+                      handleParamChange('circuitId', circuit.id);
+                      setCircuitModalOpen(false);
+                    }}
+                    className={`flex flex-col justify-between rounded-xl border p-3 text-left transition-all cursor-pointer ${
+                      isSelected
+                        ? 'border-amber-500 bg-amber-500/15 shadow-[0_0_12px_rgba(234,179,8,0.2)]'
+                        : 'border-[#334155] bg-[#1e293b]/80 hover:border-amber-500/50 hover:bg-[#1e293b]'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between gap-1.5">
+                      <span className="text-lg leading-none">{circuit.flag}</span>
+                      {isSelected && (
+                        <span className="rounded bg-amber-500/20 border border-amber-500/50 px-1.5 py-0.5 text-[9px] font-bold uppercase text-amber-300">
+                          Atual
+                        </span>
+                      )}
+                    </div>
+                    <CircuitTrackSvg
+                      svgPath={circuit.svgPath}
+                      className={`my-2 h-12 w-full ${
+                        isSelected ? 'text-[#eab308]' : 'text-slate-300'
+                      }`}
+                    />
+                    <div>
+                      <div className="text-xs font-bold text-white leading-tight">
+                        {circuit.shortName}
+                      </div>
+                      <div className="text-[10px] text-slate-400">{circuit.country}</div>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* CALENDAR EVENT DRIVER SIGNUP MODAL */}
+      {calendarEventModal && (() => {
+        const signups = eventSignups[calendarEventModal.id] || [];
+        const availableDrivers = DRIVERS.filter((d) => d !== 'ND');
+        return (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm"
+            onClick={() => setCalendarEventModal(null)}
+          >
+            <div
+              className="w-full max-w-md rounded-2xl border border-[#334155] bg-[#0f172a] shadow-2xl overflow-hidden"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between border-b border-[#334155] bg-[#1e293b] px-4 py-3">
+                <div className="flex items-center gap-2 min-w-0">
+                  <Calendar className="h-4 w-4 shrink-0 text-[#eab308]" />
+                  <div className="min-w-0">
+                    <h3 className="truncate text-sm font-bold text-white">
+                      {calendarEventModal.track}
+                    </h3>
+                    <p className="text-[11px] text-slate-400">
+                      {calendarEventModal.dates} • {calendarEventModal.classes}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setCalendarEventModal(null)}
+                  className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-[#334155] bg-[#0f172a] text-slate-400 hover:text-white cursor-pointer"
+                  title="Fechar"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+
+              <div className="max-h-[72vh] overflow-y-auto p-4 space-y-4">
+                <form onSubmit={handleSaveEventSignup} className="space-y-3 rounded-xl border border-[#334155] bg-[#1e293b]/70 p-3">
+                  <div>
+                    <label className="mb-1 block text-[10px] font-semibold uppercase text-slate-400">
+                      Pré-cadastro de Piloto
+                    </label>
+                    <select
+                      value={signupDriverDraft}
+                      onChange={(e) => {
+                        const nextDrv = e.target.value;
+                        setSignupDriverDraft(nextDrv);
+                        const found = signups.find((s) => s.driver === nextDrv);
+                        if (found?.classes?.length) setSignupClassesDraft(found.classes);
+                      }}
+                      className="w-full rounded-lg border border-[#334155] bg-[#0f172a] px-2.5 py-2 text-xs font-semibold text-white focus:border-[#eab308] focus:outline-none"
+                    >
+                      {availableDrivers.map((d) => (
+                        <option key={d} value={d}>
+                          {d}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="mb-1.5 block text-[10px] font-semibold uppercase text-slate-400">
+                      Categorias viáveis (marque uma ou mais)
+                    </label>
+                    <div className="flex flex-wrap gap-2">
+                      {LMU_CAR_CLASSES.map((cls) => {
+                        const checked = signupClassesDraft.includes(cls.id);
+                        return (
+                          <button
+                            type="button"
+                            key={cls.id}
+                            onClick={() => toggleSignupClass(cls.id)}
+                            className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-bold transition-colors cursor-pointer ${
+                              checked
+                                ? 'border-amber-500 bg-amber-500/20 text-amber-200'
+                                : 'border-[#334155] bg-[#0f172a] text-slate-400 hover:text-slate-200'
+                            }`}
+                          >
+                            <span
+                              className={`inline-flex h-3.5 w-3.5 items-center justify-center rounded border text-[9px] ${
+                                checked
+                                  ? 'border-amber-400 bg-amber-400 text-slate-950'
+                                  : 'border-slate-500'
+                              }`}
+                            >
+                              {checked ? '✓' : ''}
+                            </span>
+                            {cls.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  <button
+                    type="submit"
+                    className="w-full rounded-lg bg-[#eab308] px-3 py-2 text-xs font-bold text-slate-950 hover:bg-amber-400 transition-colors cursor-pointer"
+                  >
+                    Confirmar Pré-cadastro
+                  </button>
+                </form>
+
+                <div>
+                  <div className="mb-2 flex items-center justify-between text-[11px] font-bold uppercase tracking-wider text-slate-300">
+                    <span>Pilotos Pré-cadastrados ({signups.length})</span>
+                  </div>
+                  {signups.length === 0 ? (
+                    <div className="rounded-lg border border-dashed border-[#334155] py-4 text-center text-xs text-slate-500">
+                      Nenhum piloto pré-cadastrado nesta etapa ainda.
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {signups.map((item) => (
+                        <div
+                          key={item.driver}
+                          className="flex items-center justify-between gap-2 rounded-xl border border-[#334155] bg-[#1e293b]/80 px-3 py-2"
+                        >
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <DriverAvatar90s driver={item.driver} size={32} />
+                            <div className="min-w-0">
+                              <div className="truncate text-xs font-bold text-white">
+                                {item.driver}
+                              </div>
+                              <div className="mt-0.5 flex flex-wrap gap-1">
+                                {(item.classes || []).map((cid) => {
+                                  const meta = LMU_CAR_CLASSES.find((c) => c.id === cid);
+                                  return (
+                                    <span
+                                      key={cid}
+                                      className={`rounded border px-1.5 py-0.5 text-[9px] font-bold uppercase ${
+                                        meta?.badgeClass || 'border-slate-600 text-slate-300'
+                                      }`}
+                                    >
+                                      {meta?.label || cid}
+                                    </span>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveEventSignup(calendarEventModal.id, item.driver)}
+                            className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded border border-[#334155] bg-[#0f172a] text-slate-400 hover:text-red-400 cursor-pointer"
+                            title="Remover pré-cadastro"
+                          >
+                            <X className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           </div>
