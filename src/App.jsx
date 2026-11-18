@@ -1838,7 +1838,7 @@ export default function App() {
     if (upcomingEvents.length <= 1) return;
     const timer = setInterval(() => {
       setHeaderEventIdx((prev) => (prev + 1) % upcomingEvents.length);
-    }, 5000);
+    }, 10000);
     return () => clearInterval(timer);
   }, [upcomingEvents.length]);
 
@@ -1903,9 +1903,11 @@ export default function App() {
         <div className="mx-auto flex max-w-[1600px] flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-6">
           <div className="flex w-full lg:w-auto items-center justify-between gap-2">
             <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-amber-500/40 bg-amber-500/10 text-[#eab308]">
-                <Flag className="h-5 w-5" />
-              </div>
+              <img
+                src="/ftr-logo.jpg"
+                alt="Faster Team Racing"
+                className="h-11 w-11 shrink-0 rounded-lg object-cover border border-amber-500/40 bg-black"
+              />
               <div>
                 <div className="flex flex-wrap items-center gap-2">
                   <h1 className="text-lg font-extrabold tracking-tight text-white sm:text-xl">
@@ -1915,7 +1917,7 @@ export default function App() {
                     LMU Protótipo
                   </span>
                 </div>
-                <p className="text-xs text-slate-400">Endurance Strategist • Engenharia de Corrida</p>
+                <p className="text-xs text-slate-400">Engenharia de Corrida</p>
               </div>
             </div>
 
@@ -2016,7 +2018,7 @@ export default function App() {
                   setPinDraft(roomPin);
                   setRoomModalOpen((prev) => !prev);
                 }}
-                className={`inline-flex sm:hidden items-center gap-1.5 rounded-lg border px-2 py-1 text-left transition-colors cursor-pointer ${syncStatus === 'live'
+                className={`inline-flex sm:hidden items-center justify-center gap-1.5 rounded-lg border px-2 py-1 text-center transition-colors cursor-pointer ${syncStatus === 'live'
                   ? 'border-emerald-500/40 bg-emerald-500/15 text-[#22c55e]'
                   : 'border-amber-500/40 bg-[#1e293b] text-slate-200'
                   }`}
@@ -2026,7 +2028,7 @@ export default function App() {
                   className={`h-2 w-2 shrink-0 rounded-full ${syncStatus === 'live' ? 'bg-[#22c55e] animate-pulse' : 'bg-[#eab308]'
                     }`}
                 />
-                <span className="flex flex-col leading-tight">
+                <span className="flex flex-col items-center leading-tight">
                   <span className="text-[9px] font-semibold uppercase tracking-wider opacity-90">
                     {syncStatus === 'live' ? 'Ao Vivo' : 'Modo Local'}
                   </span>
@@ -2175,7 +2177,11 @@ export default function App() {
             </button>
 
             {/* Mobile-only best tire reuse summary on its own row below */}
-            <div className="w-full sm:hidden flex items-center justify-between gap-2 rounded-lg border border-emerald-500/35 bg-[#1e293b] px-2.5 py-1.5 text-[10px] font-mono">
+            <div
+              onClick={() => goToMobilePage(2)}
+              title="Ver conjunto detalhado de pneus usados"
+              className="w-full sm:hidden flex items-center justify-between gap-2 rounded-lg border border-emerald-500/35 bg-[#1e293b] px-2.5 py-1.5 text-[10px] font-mono cursor-pointer transition-colors hover:border-emerald-400/60 active:scale-[0.99]"
+            >
               <div className="flex items-center gap-1.5 shrink-0 text-[#22c55e] font-sans font-bold uppercase tracking-wider text-[9px]">
                 <Disc className="h-3.5 w-3.5" />
                 <span>Melhores Pneus Usados</span>
@@ -2200,7 +2206,11 @@ export default function App() {
             </div>
 
             {/* Mobile-only 1-line race summary strip */}
-            <div className="w-full sm:hidden flex items-center justify-between gap-0.5 rounded-lg border border-[#334155] bg-[#1e293b]/90 px-1.5 py-1.5 text-[9.5px] font-mono tabular-nums">
+            <div
+              onClick={() => goToMobilePage(0)}
+              title="Ir para Parâmetros da Corrida"
+              className="w-full sm:hidden flex items-center justify-between gap-0.5 rounded-lg border border-[#334155] bg-[#1e293b]/90 px-1.5 py-1.5 text-[9.5px] font-mono tabular-nums cursor-pointer transition-colors hover:border-amber-500/50 active:scale-[0.99]"
+            >
               <div className="flex flex-col items-center leading-tight">
                 <span className="text-[7px] font-sans uppercase text-slate-400">Stints</span>
                 <span className="font-bold text-white">{raceStintCount}</span>
@@ -2597,13 +2607,25 @@ export default function App() {
               </button>
             </div>
 
-            <div className="divide-y divide-[#334155]">
+            <div className="space-y-2.5 p-2.5 bg-[#0f172a]/70">
               {enrichedSchedule.map((row) => {
                 const isCollapsed = Boolean(collapsedStints[row.id]);
                 const nextStintLabel = `Stint ${String((row.stintNum || 0) + 1).padStart(2, '0')}`;
+                const cardColorClass =
+                  row.type === 'fp'
+                    ? 'border-sky-500/35 border-l-sky-400 bg-gradient-to-br from-sky-950/60 via-[#1e293b] to-[#172033]'
+                    : row.type === 'qualy'
+                    ? 'border-amber-500/40 border-l-[#eab308] bg-gradient-to-br from-amber-950/45 via-[#1e293b] to-[#172033]'
+                    : 'border-emerald-500/35 border-l-[#22c55e] bg-gradient-to-br from-emerald-950/45 via-[#1e293b] to-[#172033]';
+                const labelBadgeClass =
+                  row.type === 'fp'
+                    ? 'bg-sky-500/20 text-sky-300 border-sky-500/40'
+                    : row.type === 'qualy'
+                    ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
+                    : 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40';
                 return (
                   <React.Fragment key={`m-page-${row.id}`}>
-                  <div className="p-4 space-y-3 bg-[#1e293b]">
+                  <div className={`rounded-xl border border-l-4 p-3.5 space-y-3 shadow-md transition-colors ${cardColorClass}`}>
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <button
@@ -2621,14 +2643,14 @@ export default function App() {
                         <span
                           className={`inline-flex h-2.5 w-2.5 rounded-full ${
                             row.type === 'fp'
-                              ? 'bg-sky-400'
+                              ? 'bg-sky-400 shadow-[0_0_8px_rgba(56,189,248,0.7)]'
                               : row.type === 'qualy'
-                              ? 'bg-[#eab308]'
-                              : 'bg-[#22c55e]'
+                              ? 'bg-[#eab308] shadow-[0_0_8px_rgba(234,179,8,0.7)]'
+                              : 'bg-[#22c55e] shadow-[0_0_8px_rgba(34,197,94,0.7)]'
                           }`}
                         />
                         <div>
-                          <span className="text-sm font-bold text-white">{row.label}</span>
+                          <span className={`inline-block rounded-md border px-2 py-0.5 text-xs font-extrabold tracking-wide ${labelBadgeClass}`}>{row.label}</span>
                           {isCollapsed && (
                             <div className="text-[11px] font-semibold text-amber-300">
                               {row.driver}
@@ -3470,17 +3492,25 @@ export default function App() {
                 </thead>
                 <tbody className="divide-y divide-[#334155]/60">
                   {enrichedSchedule.map((row) => {
-                    const isPre = row.type !== 'race';
                     const isCollapsed = Boolean(collapsedStints[row.id]);
                     const nextStintLabel = `Stint ${String((row.stintNum || 0) + 1).padStart(2, '0')}`;
+                    const rowAccentClass =
+                      row.type === 'fp'
+                        ? 'border-l-4 border-l-sky-400 bg-sky-950/20 hover:bg-sky-950/35'
+                        : row.type === 'qualy'
+                        ? 'border-l-4 border-l-[#eab308] bg-amber-950/20 hover:bg-amber-950/35'
+                        : 'border-l-4 border-l-[#22c55e] bg-emerald-950/15 hover:bg-emerald-950/30';
+                    const labelBadgeClass =
+                      row.type === 'fp'
+                        ? 'bg-sky-500/20 text-sky-300 border-sky-500/40'
+                        : row.type === 'qualy'
+                        ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
+                        : 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40';
                     return (
                       <React.Fragment key={row.id}>
                         {isCollapsed ? (
                           <tr
-                            className={`transition-colors ${isPre
-                              ? 'bg-slate-900/40 hover:bg-slate-900/70'
-                              : 'hover:bg-slate-800/70'
-                              }`}
+                            className={`transition-colors ${rowAccentClass}`}
                           >
                             <td colSpan={6} className="px-3 py-2">
                               <div className="flex flex-wrap items-center justify-between gap-2">
@@ -3501,7 +3531,7 @@ export default function App() {
                                         : 'bg-[#22c55e]'
                                       }`}
                                   />
-                                  <span className="font-bold text-slate-100">{row.label}</span>
+                                  <span className={`rounded border px-1.5 py-0.5 text-[11px] font-bold ${labelBadgeClass}`}>{row.label}</span>
                                   <span className="font-mono tabular-nums text-[11px] text-slate-400">
                                     {formatMinutesToHHMM(row.startMin)} - {formatMinutesToHHMM(row.endMin)}
                                   </span>
@@ -3523,10 +3553,7 @@ export default function App() {
                         ) : (
                           <>
                             <tr
-                              className={`transition-colors ${isPre
-                                ? 'bg-slate-900/40 hover:bg-slate-900/70'
-                                : 'hover:bg-slate-800/70'
-                                }`}
+                              className={`transition-colors ${rowAccentClass}`}
                             >
                               {/* STINT + HORÁRIO */}
                               <td className="px-3 py-2.5 whitespace-nowrap">
@@ -3547,7 +3574,7 @@ export default function App() {
                                         : 'bg-[#22c55e]'
                                       }`}
                                   />
-                                  <span className="font-bold text-slate-100">{row.label}</span>
+                                  <span className={`rounded border px-1.5 py-0.5 text-[11px] font-bold ${labelBadgeClass}`}>{row.label}</span>
                                 </div>
                                 <div className="mt-0.5 pl-9 font-mono tabular-nums text-[11px] text-slate-400">
                                   {formatMinutesToHHMM(row.startMin)} - {formatMinutesToHHMM(row.endMin)}
@@ -3786,13 +3813,25 @@ export default function App() {
             </div>
 
             {/* MOBILE CARDS (< md) */}
-            <div className="divide-y divide-[#334155] md:hidden">
+            <div className="space-y-2.5 p-2.5 bg-[#0f172a]/70 md:hidden">
               {enrichedSchedule.map((row) => {
                 const isCollapsed = Boolean(collapsedStints[row.id]);
                 const nextStintLabel = `Stint ${String((row.stintNum || 0) + 1).padStart(2, '0')}`;
+                const cardColorClass =
+                  row.type === 'fp'
+                    ? 'border-sky-500/35 border-l-sky-400 bg-gradient-to-br from-sky-950/60 via-[#1e293b] to-[#172033]'
+                    : row.type === 'qualy'
+                    ? 'border-amber-500/40 border-l-[#eab308] bg-gradient-to-br from-amber-950/45 via-[#1e293b] to-[#172033]'
+                    : 'border-emerald-500/35 border-l-[#22c55e] bg-gradient-to-br from-emerald-950/45 via-[#1e293b] to-[#172033]';
+                const labelBadgeClass =
+                  row.type === 'fp'
+                    ? 'bg-sky-500/20 text-sky-300 border-sky-500/40'
+                    : row.type === 'qualy'
+                    ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
+                    : 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40';
                 return (
                   <React.Fragment key={row.id}>
-                    <div className="p-4 space-y-3 bg-[#1e293b]">
+                    <div className={`rounded-xl border border-l-4 p-3.5 space-y-3 shadow-md transition-colors ${cardColorClass}`}>
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
                           <button
@@ -3809,14 +3848,14 @@ export default function App() {
                           </button>
                           <span
                             className={`inline-flex h-2.5 w-2.5 rounded-full ${row.type === 'fp'
-                              ? 'bg-sky-400'
+                              ? 'bg-sky-400 shadow-[0_0_8px_rgba(56,189,248,0.7)]'
                               : row.type === 'qualy'
-                                ? 'bg-[#eab308]'
-                                : 'bg-[#22c55e]'
+                                ? 'bg-[#eab308] shadow-[0_0_8px_rgba(234,179,8,0.7)]'
+                                : 'bg-[#22c55e] shadow-[0_0_8px_rgba(34,197,94,0.7)]'
                               }`}
                           />
                           <div>
-                            <span className="text-sm font-bold text-white">{row.label}</span>
+                            <span className={`inline-block rounded-md border px-2 py-0.5 text-xs font-extrabold tracking-wide ${labelBadgeClass}`}>{row.label}</span>
                             {isCollapsed && (
                               <div className="text-[11px] font-semibold text-amber-300">
                                 {row.driver}
