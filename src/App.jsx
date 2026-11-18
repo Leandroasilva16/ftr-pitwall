@@ -312,24 +312,150 @@ function ManufacturerLogo({ brand, size = 28 }) {
 }
 
 const LMU_CIRCUITS = [
-  { id: 'imola', name: 'Autodromo Internazionale Enzo e Dino Ferrari (Imola)', country: 'Itália' },
-  { id: 'portimao', name: 'Autódromo Internacional do Algarve (Portimão)', country: 'Portugal' },
-  { id: 'interlagos', name: 'Autódromo José Carlos Pace (Interlagos)', country: 'Brasil' },
-  { id: 'monza', name: 'Autodromo Nazionale Monza', country: 'Itália' },
-  { id: 'bahrain', name: 'Bahrain International Circuit', country: 'Bahrein' },
-  { id: 'barcelona', name: 'Circuit de Barcelona-Catalunya', country: 'Espanha' },
-  { id: 'lemans', name: 'Circuit de la Sarthe (Le Mans)', country: 'França' },
-  { id: 'spa', name: 'Circuit de Spa-Francorchamps', country: 'Bélgica' },
-  { id: 'cota', name: 'Circuit of the Americas (COTA)', country: 'EUA' },
-  { id: 'paul-ricard', name: 'Circuit Paul Ricard', country: 'França' },
-  { id: 'daytona', name: 'Daytona International Speedway', country: 'EUA' },
-  { id: 'fuji', name: 'Fuji Speedway', country: 'Japão' },
-  { id: 'lusail', name: 'Lusail International Circuit (Qatar)', country: 'Catar' },
-  { id: 'road-atlanta', name: 'Michelin Raceway Road Atlanta', country: 'EUA' },
-  { id: 'sebring', name: 'Sebring International Raceway', country: 'EUA' },
-  { id: 'silverstone', name: 'Silverstone Circuit', country: 'Reino Unido' },
-  { id: 'long-beach', name: 'Streets of Long Beach', country: 'EUA' },
-  { id: 'laguna-seca', name: 'WeatherTech Raceway Laguna Seca', country: 'EUA' },
+  {
+    id: 'imola',
+    name: 'Autodromo Internazionale Enzo e Dino Ferrari (Imola)',
+    shortName: 'Imola',
+    country: 'Itália',
+    flag: '🇮🇹',
+    svgPath: 'M12 46 L38 42 L50 28 L66 22 L84 16 L104 22 L108 36 L92 48 L72 44 L54 54 L26 56 Z',
+  },
+  {
+    id: 'portimao',
+    name: 'Autódromo Internacional do Algarve (Portimão)',
+    shortName: 'Portimão',
+    country: 'Portugal',
+    flag: '🇵🇹',
+    svgPath: 'M16 48 L56 48 L74 36 L68 22 L90 16 L106 28 L94 46 L78 56 L42 54 L22 56 Z',
+  },
+  {
+    id: 'interlagos',
+    name: 'Autódromo José Carlos Pace (Interlagos)',
+    shortName: 'Interlagos',
+    country: 'Brasil',
+    flag: '🇧🇷',
+    svgPath: 'M24 52 L14 34 L34 18 L66 16 L98 24 L104 42 L84 48 L68 36 L52 46 L42 56 Z',
+  },
+  {
+    id: 'monza',
+    name: 'Autodromo Nazionale Monza',
+    shortName: 'Monza',
+    country: 'Itália',
+    flag: '🇮🇹',
+    svgPath: 'M18 50 L18 22 L42 16 L92 16 L106 26 L98 44 L76 50 L44 50 Z',
+  },
+  {
+    id: 'bahrain',
+    name: 'Bahrain International Circuit',
+    shortName: 'Bahrain',
+    country: 'Bahrein',
+    flag: '🇧🇭',
+    svgPath: 'M20 52 L20 20 L74 16 L96 24 L84 36 L102 44 L86 56 L54 46 L36 54 Z',
+  },
+  {
+    id: 'barcelona',
+    name: 'Circuit de Barcelona-Catalunya',
+    shortName: 'Barcelona',
+    country: 'Espanha',
+    flag: '🇪🇸',
+    svgPath: 'M16 46 L52 48 L78 36 L98 20 L106 34 L88 52 L64 56 L38 54 L20 54 Z',
+  },
+  {
+    id: 'lemans',
+    name: 'Circuit de la Sarthe (Le Mans)',
+    shortName: 'Le Mans',
+    country: 'França',
+    flag: '🇫🇷',
+    svgPath: 'M16 28 L38 18 L92 20 L106 32 L98 52 L66 56 L34 50 L18 42 Z',
+  },
+  {
+    id: 'spa',
+    name: 'Circuit de Spa-Francorchamps',
+    shortName: 'Spa',
+    country: 'Bélgica',
+    flag: '🇧🇪',
+    svgPath: 'M22 54 L16 36 L34 18 L62 14 L96 22 L106 38 L86 48 L66 42 L48 54 Z',
+  },
+  {
+    id: 'cota',
+    name: 'Circuit of the Americas (COTA)',
+    shortName: 'COTA',
+    country: 'EUA',
+    flag: '🇺🇸',
+    svgPath: 'M14 48 L36 16 L54 30 L74 20 L98 24 L106 42 L84 54 L52 50 L28 54 Z',
+  },
+  {
+    id: 'paul-ricard',
+    name: 'Circuit Paul Ricard',
+    shortName: 'Paul Ricard',
+    country: 'França',
+    flag: '🇫🇷',
+    svgPath: 'M16 44 L44 20 L96 18 L104 34 L82 48 L56 44 L36 54 L18 52 Z',
+  },
+  {
+    id: 'daytona',
+    name: 'Daytona International Speedway',
+    shortName: 'Daytona',
+    country: 'EUA',
+    flag: '🇺🇸',
+    svgPath: 'M20 35 C20 16, 100 16, 100 35 C100 54, 20 54, 20 35 M44 35 L60 44 L76 35',
+  },
+  {
+    id: 'fuji',
+    name: 'Fuji Speedway',
+    shortName: 'Fuji',
+    country: 'Japão',
+    flag: '🇯🇵',
+    svgPath: 'M16 44 L74 44 L96 28 L88 18 L56 20 L40 30 L24 26 L16 36 Z',
+  },
+  {
+    id: 'lusail',
+    name: 'Lusail International Circuit (Qatar)',
+    shortName: 'Qatar',
+    country: 'Catar',
+    flag: '🇶🇦',
+    svgPath: 'M18 48 L18 22 L64 16 L96 24 L104 42 L82 54 L54 46 L36 54 Z',
+  },
+  {
+    id: 'road-atlanta',
+    name: 'Michelin Raceway Road Atlanta',
+    shortName: 'Road Atlanta',
+    country: 'EUA',
+    flag: '🇺🇸',
+    svgPath: 'M14 44 L36 22 L66 20 L98 30 L106 44 L78 52 L44 48 L24 54 Z',
+  },
+  {
+    id: 'sebring',
+    name: 'Sebring International Raceway',
+    shortName: 'Sebring',
+    country: 'EUA',
+    flag: '🇺🇸',
+    svgPath: 'M16 46 L24 24 L56 18 L86 24 L104 38 L86 52 L50 50 L28 54 Z',
+  },
+  {
+    id: 'silverstone',
+    name: 'Silverstone Circuit',
+    shortName: 'Silverstone',
+    country: 'Reino Unido',
+    flag: '🇬🇧',
+    svgPath: 'M22 50 L18 28 L44 16 L84 18 L104 32 L92 50 L62 46 L44 56 Z',
+  },
+  {
+    id: 'long-beach',
+    name: 'Streets of Long Beach',
+    shortName: 'Long Beach',
+    country: 'EUA',
+    flag: '🇺🇸',
+    svgPath: 'M16 44 L54 44 L72 30 L102 30 L102 48 L66 52 L34 52 L16 50 Z',
+  },
+  {
+    id: 'laguna-seca',
+    name: 'WeatherTech Raceway Laguna Seca',
+    shortName: 'Laguna Seca',
+    country: 'EUA',
+    flag: '🇺🇸',
+    svgPath: 'M18 46 L32 22 L58 18 L76 34 L98 28 L104 44 L76 54 L42 52 Z',
+  },
 ];
 
 const DRIVER_PORTRAIT_PRESETS = {
@@ -1023,6 +1149,8 @@ export default function App() {
   const prevMobilePageRef = useRef(1);
   const mobilePagerRef = useRef(null);
   const mobilePagerInitRef = useRef(false);
+  const mobileSessionStartRef = useRef(null);
+  const mobileAvailableTiresRef = useRef(null);
   const [selectedTireCornerModal, setSelectedTireCornerModal] = useState(null);
   const [headerEventIdx, setHeaderEventIdx] = useState(0);
   const [collapsedStints, setCollapsedStints] = useState({});
@@ -1291,7 +1419,7 @@ export default function App() {
 
     while (remainingRaceMin > 0.05 && stintNum <= maxStintsGuard) {
       const override = stintOverrides[stintNum] || {};
-      const defaultDriver = DRIVERS[(stintNum - 1) % DRIVERS.length];
+      const defaultDriver = DRIVERS[(stintNum - 1) % Math.min(6, DRIVERS.length)];
       const driver = override.driver || defaultDriver;
       const pitScenario = override.pitScenario || '4_tires_fuel';
       const tiresStart = override.tiresStart || DEFAULT_FULL_TIRES;
@@ -1485,7 +1613,25 @@ export default function App() {
     return result;
   }, [tireBankByCorner]);
 
+  const canAssignDriver = (targetRowId, nextDriver) => {
+    const nextSet = new Set(
+      schedule.map((s) => (s.id === targetRowId ? nextDriver : s.driver)).filter(Boolean)
+    );
+    return nextSet.size <= 6;
+  };
+
+  const notifyMaxDriversLimit = () => {
+    setToast({
+      message: 'Limite do simulador: máximo de 6 pilotos diferentes por sessão.',
+      type: 'warning',
+    });
+  };
+
   const updatePreSession = (sessionKey, field, value) => {
+    if (field === 'driver' && !canAssignDriver(sessionKey, value)) {
+      notifyMaxDriversLimit();
+      return;
+    }
     setPreSessions((prev) => ({
       ...prev,
       [sessionKey]: {
@@ -1513,6 +1659,10 @@ export default function App() {
   };
 
   const updateRaceStint = (stintNum, field, value) => {
+    if (field === 'driver' && !canAssignDriver(`stint-${stintNum}`, value)) {
+      notifyMaxDriversLimit();
+      return;
+    }
     setStintOverrides((prev) => {
       const current = prev[stintNum] || {
         driver: DRIVERS[(stintNum - 1) % DRIVERS.length],
@@ -1627,6 +1777,27 @@ export default function App() {
       prevMobilePageRef.current = mobilePage;
       goToMobilePage(targetPage);
     }
+  };
+
+  const goToMobileParamField = (fieldRef) => {
+    prevMobilePageRef.current = mobilePage;
+    goToMobilePage(0);
+    setTimeout(() => {
+      const el = fieldRef?.current;
+      if (!el) return;
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      el.focus();
+      if (typeof el.showPicker === 'function') {
+        try {
+          el.showPicker();
+        } catch {
+          // Ignore if browser blocks programmatic showPicker
+        }
+      }
+      if (typeof el.select === 'function' && el.type === 'number') {
+        el.select();
+      }
+    }, 320);
   };
 
   const handleMobilePagerScroll = () => {
@@ -1825,6 +1996,19 @@ export default function App() {
     .filter((r) => r.type === 'race')
     .reduce((acc, r) => acc + r.laps, 0);
 
+  const raceDriverStats = useMemo(() => {
+    const map = new Map();
+    schedule
+      .filter((r) => r.type === 'race')
+      .forEach((r) => {
+        const prev = map.get(r.driver) || { driver: r.driver, laps: 0, durationMin: 0 };
+        prev.laps += r.laps || 0;
+        prev.durationMin += r.durationMin || 0;
+        map.set(r.driver, prev);
+      });
+    return Array.from(map.values());
+  }, [schedule]);
+
   const usedTiresCount = useMemo(() => {
     return (
       tireBankByCorner.FL.length +
@@ -1934,13 +2118,18 @@ export default function App() {
               </div>
             </div>
 
-            {/* Tiny Car Brand Logo + Class on Top-Right (Mobile & < xl) */}
-            <div className="xl:hidden flex items-center gap-1.5 rounded-md border border-[#334155] bg-[#1e293b]/90 px-2 py-1">
-              <ManufacturerLogo brand={selectedCar.brand} size={18} />
-              <span
-                className={`rounded border px-1 py-0.5 text-[8px] font-bold uppercase tracking-wider leading-none ${selectedClassMeta.badgeClass}`}
-              >
-                {selectedClassMeta.label}
+            {/* Tiny Car Brand Logo + Class + Short Track on Top-Right (Mobile & < xl) */}
+            <div className="xl:hidden flex flex-col items-end rounded-md border border-[#334155] bg-[#1e293b]/90 px-2 py-1">
+              <div className="flex items-center gap-1.5">
+                <ManufacturerLogo brand={selectedCar.brand} size={18} />
+                <span
+                  className={`rounded border px-1 py-0.5 text-[8px] font-bold uppercase tracking-wider leading-none ${selectedClassMeta.badgeClass}`}
+                >
+                  {selectedClassMeta.label}
+                </span>
+              </div>
+              <span className="mt-0.5 text-[8.5px] font-semibold text-slate-300 leading-none">
+                {selectedCircuit.shortName}
               </span>
             </div>
           </div>
@@ -2234,7 +2423,14 @@ export default function App() {
                 <span className="font-bold text-[#22c55e]">{totalEstimatedLaps}</span>
               </div>
               <span className="text-slate-700">|</span>
-              <div className="flex flex-col items-center leading-tight">
+              <div
+                onClick={(e) => {
+                  e.stopPropagation();
+                  goToMobileParamField(mobileSessionStartRef);
+                }}
+                title="Ajustar horário da sessão"
+                className="flex flex-col items-center leading-tight rounded px-1 py-0.5 hover:bg-amber-500/15 active:scale-95"
+              >
                 <span className="text-[7px] font-sans uppercase text-slate-400">Horário</span>
                 <span className="font-bold text-white">
                   {schedule[0] ? formatMinutesToHHMM(schedule[0].startMin) : '--:--'}→
@@ -2251,7 +2447,14 @@ export default function App() {
                 </span>
               </div>
               <span className="text-slate-700">|</span>
-              <div className="flex flex-col items-center leading-tight">
+              <div
+                onClick={(e) => {
+                  e.stopPropagation();
+                  goToMobileParamField(mobileAvailableTiresRef);
+                }}
+                title="Ajustar pneus disponíveis"
+                className="flex flex-col items-center leading-tight rounded px-1 py-0.5 hover:bg-emerald-500/15 active:scale-95"
+              >
                 <span className="text-[7px] font-sans uppercase text-slate-400">Pneus</span>
                 <span
                   className={`font-bold ${
@@ -2371,6 +2574,26 @@ export default function App() {
                       </option>
                     ))}
                   </select>
+                  <div className="mt-2 flex items-center justify-between gap-3 rounded-lg border border-[#334155]/80 bg-[#1e293b]/70 px-3 py-2">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-1.5 text-xs font-bold text-white">
+                        <span className="text-base leading-none">{selectedCircuit.flag}</span>
+                        <span>{selectedCircuit.shortName}</span>
+                      </div>
+                      <div className="text-[10px] text-slate-400">{selectedCircuit.country}</div>
+                    </div>
+                    <svg
+                      viewBox="0 0 120 70"
+                      className="h-11 w-20 shrink-0 text-[#eab308]"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="3"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <path d={selectedCircuit.svgPath} />
+                    </svg>
+                  </div>
                 </div>
               </div>
 
@@ -2381,6 +2604,7 @@ export default function App() {
                     Início da Sessão
                   </label>
                   <input
+                    ref={mobileSessionStartRef}
                     type="time"
                     value={params.sessionStart}
                     onChange={(e) => handleParamChange('sessionStart', e.target.value)}
@@ -2507,6 +2731,7 @@ export default function App() {
                     </span>
                   </label>
                   <input
+                    ref={mobileAvailableTiresRef}
                     type="number"
                     min="0"
                     step="1"
@@ -2594,30 +2819,56 @@ export default function App() {
         {/* PAGE 2 (CENTER - DEFAULT): STINTS */}
         <div className="w-full shrink-0 snap-start px-4 py-4">
           <div className="rounded-xl border border-[#334155] bg-[#1e293b]">
-            <div className="flex flex-wrap items-center justify-between gap-2 rounded-t-xl border-b border-[#334155] bg-slate-800/80 px-4 py-3">
-              <div className="flex items-center gap-2">
-                <Clock className="h-4 w-4 text-[#eab308]" />
-                <h2 className="text-xs font-bold uppercase tracking-wider text-slate-200">
-                  Cronograma de Sessões & Stints
-                </h2>
+            <div className="flex flex-col gap-2 rounded-t-xl border-b border-[#334155] bg-slate-800/80 px-3 py-2.5">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <Clock className="h-4 w-4 shrink-0 text-[#eab308]" />
+                  <h2 className="truncate text-xs font-bold uppercase tracking-wider text-slate-200">
+                    Cronograma & Stints
+                  </h2>
+                </div>
+                <button
+                  type="button"
+                  onClick={toggleAllStintsCollapse}
+                  className="inline-flex shrink-0 items-center gap-1 rounded-md border border-[#334155] bg-[#0f172a] px-2 py-1 text-[10px] font-semibold text-slate-200 transition-colors hover:border-[#eab308]/60 hover:text-[#eab308] cursor-pointer"
+                >
+                  {areAllStintsCollapsed ? (
+                    <>
+                      <ChevronDown className="h-3 w-3" />
+                      <span>Expandir Tudo</span>
+                    </>
+                  ) : (
+                    <>
+                      <ChevronUp className="h-3 w-3" />
+                      <span>Empacotar Tudo</span>
+                    </>
+                  )}
+                </button>
               </div>
-              <button
-                type="button"
-                onClick={toggleAllStintsCollapse}
-                className="inline-flex items-center gap-1 rounded-md border border-[#334155] bg-[#0f172a] px-2.5 py-1 text-[11px] font-semibold text-slate-200 transition-colors hover:border-[#eab308]/60 hover:text-[#eab308] cursor-pointer"
-              >
-                {areAllStintsCollapsed ? (
-                  <>
-                    <ChevronDown className="h-3.5 w-3.5" />
-                    <span>Expandir Tudo</span>
-                  </>
-                ) : (
-                  <>
-                    <ChevronUp className="h-3.5 w-3.5" />
-                    <span>Empacotar Tudo</span>
-                  </>
-                )}
-              </button>
+              {raceDriverStats.length > 0 && (
+                <div className="flex flex-wrap items-center gap-1.5">
+                  {raceDriverStats.map((d) => {
+                    const hrs = Math.floor(d.durationMin / 60);
+                    const mins = Math.round(d.durationMin % 60);
+                    const timeStr = hrs > 0 ? `${hrs}h${String(mins).padStart(2, '0')}` : `${mins}m`;
+                    const firstName = d.driver.split(' ')[0];
+                    return (
+                      <div
+                        key={`m-drv-${d.driver}`}
+                        className="inline-flex items-center gap-1 rounded-md border border-[#334155] bg-[#0f172a]/90 px-1.5 py-0.5"
+                      >
+                        <DriverAvatar90s driver={d.driver} size={20} />
+                        <div className="flex flex-col leading-none">
+                          <span className="text-[9px] font-bold text-slate-100">{firstName}</span>
+                          <span className="font-mono text-[8.5px] text-amber-300 tabular-nums">
+                            {d.laps}v • {timeStr}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
 
             <div className="space-y-2.5 p-2.5 bg-[#0f172a]/70">
@@ -2700,11 +2951,14 @@ export default function App() {
                           }}
                           className="w-full rounded-md border border-[#334155] bg-[#0f172a] px-2.5 py-2 text-xs text-slate-100 focus:border-[#eab308] focus:outline-none"
                         >
-                          {DRIVERS.map((d) => (
-                            <option key={d} value={d}>
-                              {d}
-                            </option>
-                          ))}
+                          {DRIVERS.map((d) => {
+                            const allowed = canAssignDriver(row.id, d);
+                            return (
+                              <option key={d} value={d} disabled={!allowed}>
+                                {d}{!allowed ? ' (limite 6)' : ''}
+                              </option>
+                            );
+                          })}
                         </select>
                       </div>
                     </div>
@@ -3088,6 +3342,26 @@ export default function App() {
                       </option>
                     ))}
                   </select>
+                  <div className="mt-2 flex items-center justify-between gap-3 rounded-lg border border-[#334155]/80 bg-[#1e293b]/70 px-3 py-2">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-1.5 text-xs font-bold text-white">
+                        <span className="text-base leading-none">{selectedCircuit.flag}</span>
+                        <span>{selectedCircuit.shortName}</span>
+                      </div>
+                      <div className="text-[10px] text-slate-400">{selectedCircuit.country}</div>
+                    </div>
+                    <svg
+                      viewBox="0 0 120 70"
+                      className="h-11 w-20 shrink-0 text-[#eab308]"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="3"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <path d={selectedCircuit.svgPath} />
+                    </svg>
+                  </div>
                 </div>
               </div>
 
@@ -3661,11 +3935,14 @@ export default function App() {
                                     }}
                                     className="w-full max-w-[140px] rounded-md border border-[#334155] bg-[#0f172a] px-2 py-1 text-xs font-medium text-slate-100 focus:border-[#eab308] focus:outline-none cursor-pointer"
                                   >
-                                    {DRIVERS.map((d) => (
-                                      <option key={d} value={d}>
-                                        {d}
-                                      </option>
-                                    ))}
+                                    {DRIVERS.map((d) => {
+                                      const allowed = canAssignDriver(row.id, d);
+                                      return (
+                                        <option key={d} value={d} disabled={!allowed}>
+                                          {d}{!allowed ? ' (limite 6)' : ''}
+                                        </option>
+                                      );
+                                    })}
                                   </select>
                                 </div>
                               </td>
@@ -3908,11 +4185,14 @@ export default function App() {
                                 }}
                                 className="w-full rounded-md border border-[#334155] bg-[#0f172a] px-2.5 py-2 text-xs text-slate-100 focus:border-[#eab308] focus:outline-none"
                               >
-                                {DRIVERS.map((d) => (
-                                  <option key={d} value={d}>
-                                    {d}
-                                  </option>
-                                ))}
+                                {DRIVERS.map((d) => {
+                                  const allowed = canAssignDriver(row.id, d);
+                                  return (
+                                    <option key={d} value={d} disabled={!allowed}>
+                                      {d}{!allowed ? ' (limite 6)' : ''}
+                                    </option>
+                                  );
+                                })}
                               </select>
                             </div>
                           </div>
