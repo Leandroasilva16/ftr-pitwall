@@ -1020,8 +1020,10 @@ export default function App() {
   const [mobileParamsOpen, setMobileParamsOpen] = useState(true);
   const [mobileFuelOpen, setMobileFuelOpen] = useState(true);
   const [mobilePage, setMobilePage] = useState(1);
+  const prevMobilePageRef = useRef(1);
   const mobilePagerRef = useRef(null);
   const mobilePagerInitRef = useRef(false);
+  const [selectedTireCornerModal, setSelectedTireCornerModal] = useState(null);
   const [headerEventIdx, setHeaderEventIdx] = useState(0);
   const [collapsedStints, setCollapsedStints] = useState({});
   const mobileInitCollapsedRef = useRef(false);
@@ -1476,6 +1478,7 @@ export default function App() {
         label,
         best,
         secondBest,
+        all: candidates,
       };
     });
 
@@ -1613,6 +1616,16 @@ export default function App() {
         left: pageIdx * mobilePagerRef.current.clientWidth,
         behavior: 'smooth',
       });
+    }
+  };
+
+  const toggleMobilePage = (targetPage) => {
+    if (mobilePage === targetPage) {
+      const fallback = prevMobilePageRef.current !== targetPage ? prevMobilePageRef.current : 1;
+      goToMobilePage(fallback);
+    } else {
+      prevMobilePageRef.current = mobilePage;
+      goToMobilePage(targetPage);
     }
   };
 
@@ -2178,8 +2191,8 @@ export default function App() {
 
             {/* Mobile-only best tire reuse summary on its own row below */}
             <div
-              onClick={() => goToMobilePage(2)}
-              title="Ver conjunto detalhado de pneus usados"
+              onClick={() => toggleMobilePage(2)}
+              title={mobilePage === 2 ? 'Voltar para a tela anterior' : 'Ver conjunto detalhado de pneus usados'}
               className="w-full sm:hidden flex items-center justify-between gap-2 rounded-lg border border-emerald-500/35 bg-[#1e293b] px-2.5 py-1.5 text-[10px] font-mono cursor-pointer transition-colors hover:border-emerald-400/60 active:scale-[0.99]"
             >
               <div className="flex items-center gap-1.5 shrink-0 text-[#22c55e] font-sans font-bold uppercase tracking-wider text-[9px]">
@@ -2207,8 +2220,8 @@ export default function App() {
 
             {/* Mobile-only 1-line race summary strip */}
             <div
-              onClick={() => goToMobilePage(0)}
-              title="Ir para Parâmetros da Corrida"
+              onClick={() => toggleMobilePage(0)}
+              title={mobilePage === 0 ? 'Voltar para a tela anterior' : 'Ir para Parâmetros da Corrida'}
               className="w-full sm:hidden flex items-center justify-between gap-0.5 rounded-lg border border-[#334155] bg-[#1e293b]/90 px-1.5 py-1.5 text-[9.5px] font-mono tabular-nums cursor-pointer transition-colors hover:border-amber-500/50 active:scale-[0.99]"
             >
               <div className="flex flex-col items-center leading-tight">
@@ -2295,12 +2308,12 @@ export default function App() {
                         {selectedClassMeta.label}
                       </span>
                     </div>
-                    <div className="mt-0.5 truncate text-xs font-bold text-white">
+                    <div className="mt-0.5 text-xs font-bold leading-snug text-white">
                       {selectedCar.name}
                     </div>
                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-[100px_1fr] gap-2">
                   <div>
                     <label className="mb-1 block text-[10px] font-semibold uppercase text-slate-400">
                       Categoria
@@ -2861,9 +2874,12 @@ export default function App() {
                 const best = rec?.best;
                 const second = rec?.secondBest;
                 return (
-                  <div
+                  <button
+                    type="button"
                     key={`m-p2-tm-${key}`}
-                    className="rounded-lg border border-[#334155] bg-[#0f172a]/90 p-3.5 flex flex-col justify-between"
+                    onClick={() => setSelectedTireCornerModal(key)}
+                    title={`Ver todos os pneus usados em ${key} (${label})`}
+                    className="w-full text-left rounded-lg border border-[#334155] bg-[#0f172a]/90 p-3.5 flex flex-col justify-between cursor-pointer transition-colors hover:border-emerald-500/50 hover:bg-[#0f172a] active:scale-[0.99]"
                   >
                     <div>
                       <div className="flex items-center justify-between gap-2">
@@ -2913,7 +2929,7 @@ export default function App() {
                         </span>
                       </div>
                     )}
-                  </div>
+                  </button>
                 );
               })}
             </div>
@@ -3006,13 +3022,13 @@ export default function App() {
                         {selectedClassMeta.label}
                       </span>
                     </div>
-                    <div className="mt-0.5 truncate text-xs font-bold text-white">
+                    <div className="mt-0.5 text-xs font-bold leading-snug text-white">
                       {selectedCar.name}
                     </div>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-[100px_1fr] gap-2">
                   <div>
                     <label className="mb-1 block text-[10px] font-semibold uppercase text-slate-400">
                       Categoria
@@ -4068,9 +4084,12 @@ export default function App() {
                 const second = rec?.secondBest;
 
                 return (
-                  <div
+                  <button
+                    type="button"
                     key={key}
-                    className="rounded-lg border border-[#334155] bg-[#0f172a]/90 p-3.5 flex flex-col justify-between"
+                    onClick={() => setSelectedTireCornerModal(key)}
+                    title={`Ver todos os pneus usados em ${key} (${label})`}
+                    className="w-full text-left rounded-lg border border-[#334155] bg-[#0f172a]/90 p-3.5 flex flex-col justify-between cursor-pointer transition-colors hover:border-emerald-500/50 hover:bg-[#0f172a] active:scale-[0.99]"
                   >
                     <div>
                       <div className="flex items-center justify-between gap-2">
@@ -4123,7 +4142,7 @@ export default function App() {
                         </span>
                       </div>
                     )}
-                  </div>
+                  </button>
                 );
               })}
             </div>
@@ -4131,6 +4150,97 @@ export default function App() {
 
         </section>
       </main>
+
+      {/* TIRE CORNER RANKING MODAL */}
+      {selectedTireCornerModal && (() => {
+        const rec = tireRecommendations[selectedTireCornerModal];
+        const items = rec?.all || [];
+        return (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
+            onClick={() => setSelectedTireCornerModal(null)}
+          >
+            <div
+              className="w-full max-w-md rounded-2xl border border-[#334155] bg-[#0f172a] shadow-2xl overflow-hidden"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between border-b border-[#334155] bg-[#1e293b] px-4 py-3">
+                <div className="flex items-center gap-2">
+                  <Disc className="h-4 w-4 text-[#22c55e]" />
+                  <div>
+                    <h3 className="text-sm font-bold text-white">
+                      Pneus Usados — {rec?.key} ({rec?.label})
+                    </h3>
+                    <p className="text-[11px] text-slate-400">
+                      Ordenados do melhor para o pior desgaste
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setSelectedTireCornerModal(null)}
+                  className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-[#334155] bg-[#0f172a] text-slate-400 hover:text-white cursor-pointer"
+                  title="Fechar"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+
+              <div className="max-h-[65vh] overflow-y-auto p-4 space-y-2.5">
+                {items.length === 0 ? (
+                  <div className="flex items-center justify-center gap-2 py-8 text-xs text-slate-400">
+                    <AlertTriangle className="h-4 w-4 text-amber-400" />
+                    <span>Nenhum pneu usado registrado para este lado.</span>
+                  </div>
+                ) : (
+                  items.map((item, idx) => (
+                    <div
+                      key={item.id}
+                      className={`rounded-xl border p-3 ${
+                        idx === 0
+                          ? 'border-emerald-500/45 bg-emerald-950/25'
+                          : 'border-[#334155] bg-[#1e293b]/80'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2">
+                          <span className="inline-flex h-5 min-w-[24px] items-center justify-center rounded bg-[#0f172a] border border-[#334155] px-1.5 font-mono text-[11px] font-bold text-slate-300">
+                            {idx + 1}º
+                          </span>
+                          <span className="font-mono text-xs font-bold text-amber-300">
+                            {item.tireId}
+                          </span>
+                          <span className="text-xs text-slate-300">
+                            ({item.sourceLabel})
+                          </span>
+                          {idx === 0 && (
+                            <span className="rounded bg-emerald-500/15 border border-emerald-500/40 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-[#22c55e]">
+                              MELHOR
+                            </span>
+                          )}
+                        </div>
+                        <span
+                          className={`font-mono text-base font-extrabold tabular-nums ${getTireTextColor(
+                            item.pct
+                          )}`}
+                        >
+                          {item.pct}%
+                        </span>
+                      </div>
+                      <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-slate-800">
+                        <div
+                          className={`h-full transition-all ${getTireBarColor(item.pct)}`}
+                          style={{ width: `${item.pct}%` }}
+                        />
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* TOAST NOTIFICATION */}
       {toast && (
