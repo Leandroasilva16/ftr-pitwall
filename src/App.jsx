@@ -1172,6 +1172,7 @@ export default function App() {
   const [liveRoomEnabled, setLiveRoomEnabled] = useState(false);
   const [roomModalOpen, setRoomModalOpen] = useState(false);
   const [syncStatus, setSyncStatus] = useState('local'); // 'local' | 'connecting' | 'live' | 'error'
+  const [livePeersCount, setLivePeersCount] = useState(1);
 
   const fileInputRef = useRef(null);
   const isApplyingRemoteRef = useRef(false);
@@ -1206,6 +1207,7 @@ export default function App() {
   useEffect(() => {
     if (!isSupabaseConfigured || !supabase || !liveRoomEnabled || !roomPin.trim()) {
       setSyncStatus('local');
+      setLivePeersCount(1);
       return;
     }
 
@@ -1256,7 +1258,13 @@ export default function App() {
     initRoom();
 
     const channel = supabase
-      .channel(`pitwall-room-${activePin}`)
+      .channel(`pitwall-room-${activePin}`, {
+        config: {
+          presence: {
+            key: CLIENT_INSTANCE_ID,
+          },
+        },
+      })
       .on(
         'postgres_changes',
         {
@@ -1278,10 +1286,20 @@ export default function App() {
           }, 50);
         }
       )
-      .subscribe((status) => {
+      .on('presence', { event: 'sync' }, () => {
+        if (cancelled) return;
+        const state = channel.presenceState();
+        setLivePeersCount(Math.max(1, Object.keys(state).length));
+      })
+      .subscribe(async (status) => {
         if (cancelled) return;
         if (status === 'SUBSCRIBED') {
           setSyncStatus('live');
+          try {
+            await channel.track({ online_at: new Date().toISOString() });
+          } catch {
+            // Ignore presence track errors
+          }
         } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
           setSyncStatus('error');
         }
@@ -2184,7 +2202,7 @@ export default function App() {
                 }`}
               title={
                 syncStatus === 'live'
-                  ? `Conectado à sala ${roomPin}`
+                  ? `Conectado à sala ${roomPin} (${livePeersCount} conectado${livePeersCount === 1 ? '' : 's'})`
                   : 'Salvamento local automático (offline fallback)'
               }
             >
@@ -2192,51 +2210,102 @@ export default function App() {
                 className={`h-2 w-2 rounded-full ${syncStatus === 'live' ? 'bg-[#22c55e] animate-pulse' : 'bg-[#eab308]'
                   }`}
               />
-              <span>{syncStatus === 'live' ? 'Sincronizado ao Vivo' : 'Modo Local'}</span>
+              <span>
+                {syncStatus === 'live'
+                  ? `Sincronizado ao Vivo (${livePeersCount})`
+                  : 'Modo Local'}
+              </span>
             </div>
 
             {/* Live Room (PIN) Trigger — Desktop separate, Mobile unified with Status */}
             <div className="relative">
-              <button
-                type="button"
-                onClick={() => {
-                  setPinDraft(roomPin);
-                  setRoomModalOpen((prev) => !prev);
-                }}
-                className={`hidden sm:inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-2 text-xs font-semibold transition-colors cursor-pointer ${syncStatus === 'live'
-                  ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20'
-                  : 'border-[#334155] bg-[#1e293b] text-slate-300 hover:border-slate-500 hover:text-white'
-                  }`}
-                title="Configurar Sala Ao Vivo (PIN)"
-              >
-                <Radio className="h-3.5 w-3.5 text-[#eab308]" />
-                <span className="hidden md:inline">Sala Ao Vivo:</span>
-                <span className="font-mono text-[11px] font-bold text-white">{roomPin}</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  setPinDraft(roomPin);
-                  setRoomModalOpen((prev) => !prev);
-                }}
-                className={`inline-flex sm:hidden items-center justify-center gap-1.5 rounded-lg border px-2 py-1 text-center transition-colors cursor-pointer ${syncStatus === 'live'
-                  ? 'border-emerald-500/40 bg-emerald-500/15 text-[#22c55e]'
-                  : 'border-amber-500/40 bg-[#1e293b] text-slate-200'
-                  }`}
-                title="Status e Sala Ao Vivo (PIN)"
+              {/* Desktop animated trigger */}
+              <div
+                className={`hidden sm:inline-flex relative overflow-hidden rounded-lg p-[1.5px] transition-shadow ${
+                  syncStatus === 'live'
+                    ? 'shadow-[0_0_14px_rgba(34,197,94,0.3)]'
+                    : 'shadow-[0_0_18px_rgba(234,179,8,0.4)]'
+                }`}
               >
                 <span
-                  className={`h-2 w-2 shrink-0 rounded-full ${syncStatus === 'live' ? 'bg-[#22c55e] animate-pulse' : 'bg-[#eab308]'
-                    }`}
+                  aria-hidden="true"
+                  className={`pointer-events-none absolute inset-[-150%] animate-[spin_2.6s_linear_infinite] ${
+                    syncStatus === 'live'
+                      ? 'bg-[conic-gradient(from_0deg,transparent_0deg_240deg,#22c55e_305deg,#86efac_335deg,transparent_360deg)]'
+                      : 'bg-[conic-gradient(from_0deg,transparent_0deg_230deg,#eab308_300deg,#fef08a_335deg,transparent_360deg)]'
+                  }`}
                 />
-                <span className="flex flex-col items-center leading-tight">
-                  <span className="text-[9px] font-semibold uppercase tracking-wider opacity-90">
-                    {syncStatus === 'live' ? 'Ao Vivo' : 'Modo Local'}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPinDraft(roomPin);
+                    setRoomModalOpen((prev) => !prev);
+                  }}
+                  className={`relative inline-flex items-center gap-1.5 rounded-[7px] px-2.5 py-2 text-xs font-bold transition-colors cursor-pointer ${
+                    syncStatus === 'live'
+                      ? 'bg-[#0b1f17] text-emerald-300 hover:bg-[#0f291e]'
+                      : 'bg-[#1a1608] text-amber-200 hover:bg-[#241e0a]'
+                  }`}
+                  title="Configurar Sala Ao Vivo (PIN)"
+                >
+                  <Radio
+                    className={`h-3.5 w-3.5 ${
+                      syncStatus === 'live'
+                        ? 'text-[#22c55e] animate-pulse'
+                        : 'text-[#eab308] animate-bounce'
+                    }`}
+                  />
+                  <span className="hidden md:inline">
+                    {syncStatus === 'live' ? 'Sala Ao Vivo:' : 'Conectar Sala:'}
                   </span>
-                  <span className="font-mono text-[10px] font-bold text-white">{roomPin}</span>
-                </span>
-              </button>
+                  <span className="font-mono text-[11px] font-extrabold text-white">{roomPin}</span>
+                </button>
+              </div>
+
+              {/* Mobile animated unified trigger */}
+              <div
+                className={`inline-flex sm:hidden relative overflow-hidden rounded-lg p-[1.5px] transition-shadow ${
+                  syncStatus === 'live'
+                    ? 'shadow-[0_0_14px_rgba(34,197,94,0.3)]'
+                    : 'shadow-[0_0_18px_rgba(234,179,8,0.42)]'
+                }`}
+              >
+                <span
+                  aria-hidden="true"
+                  className={`pointer-events-none absolute inset-[-150%] animate-[spin_2.6s_linear_infinite] ${
+                    syncStatus === 'live'
+                      ? 'bg-[conic-gradient(from_0deg,transparent_0deg_240deg,#22c55e_305deg,#86efac_335deg,transparent_360deg)]'
+                      : 'bg-[conic-gradient(from_0deg,transparent_0deg_230deg,#eab308_300deg,#fef08a_335deg,transparent_360deg)]'
+                  }`}
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPinDraft(roomPin);
+                    setRoomModalOpen((prev) => !prev);
+                  }}
+                  className={`relative inline-flex items-center justify-center gap-1.5 rounded-[7px] px-2.5 py-1 text-center transition-colors cursor-pointer ${
+                    syncStatus === 'live'
+                      ? 'bg-[#0b1f17] text-[#22c55e]'
+                      : 'bg-[#1a1608] text-amber-200'
+                  }`}
+                  title="Status e Sala Ao Vivo (PIN)"
+                >
+                  <span
+                    className={`h-2 w-2 shrink-0 rounded-full ${
+                      syncStatus === 'live'
+                        ? 'bg-[#22c55e] animate-pulse'
+                        : 'bg-[#eab308] animate-ping'
+                    }`}
+                  />
+                  <span className="flex flex-col items-center leading-tight">
+                    <span className="text-[9px] font-bold uppercase tracking-wider opacity-95">
+                      {syncStatus === 'live' ? `Ao Vivo (${livePeersCount})` : 'Modo Local'}
+                    </span>
+                    <span className="font-mono text-[10px] font-extrabold text-white">{roomPin}</span>
+                  </span>
+                </button>
+              </div>
 
               {roomModalOpen && (
                 <div
