@@ -1163,9 +1163,9 @@ export default function App() {
 
   const [roomPin, setRoomPin] = useState(() => {
     try {
-      return localStorage.getItem(ROOM_PIN_STORAGE_KEY) || 'FTR2026';
+      return localStorage.getItem(ROOM_PIN_STORAGE_KEY) || '';
     } catch {
-      return 'FTR2026';
+      return '';
     }
   });
   const [pinDraft, setPinDraft] = useState(roomPin);
@@ -2258,7 +2258,9 @@ export default function App() {
                   <span className="hidden md:inline">
                     {syncStatus === 'live' ? 'Sala Ao Vivo:' : 'Conectar Sala:'}
                   </span>
-                  <span className="font-mono text-[11px] font-extrabold text-white">{roomPin}</span>
+                  <span className="font-mono text-[11px] font-extrabold text-white">
+                    {roomPin || 'Definir PIN'}
+                  </span>
                 </button>
               </div>
 
@@ -2302,7 +2304,9 @@ export default function App() {
                     <span className="text-[9px] font-bold uppercase tracking-wider opacity-95">
                       {syncStatus === 'live' ? `Ao Vivo (${livePeersCount})` : 'Modo Local'}
                     </span>
-                    <span className="font-mono text-[10px] font-extrabold text-white">{roomPin}</span>
+                    <span className="font-mono text-[10px] font-extrabold text-white">
+                      {roomPin || 'Conectar'}
+                    </span>
                   </span>
                 </button>
               </div>
@@ -2337,7 +2341,7 @@ export default function App() {
                         type="text"
                         value={pinDraft}
                         onChange={(e) => setPinDraft(e.target.value.toUpperCase())}
-                        placeholder="FTR2026"
+                        placeholder="Digite o PIN..."
                         className="w-full rounded-lg border border-[#334155] bg-[#1e293b] px-2.5 py-1.5 text-xs font-mono font-bold uppercase text-white focus:border-[#eab308] focus:outline-none"
                       />
                     </div>
