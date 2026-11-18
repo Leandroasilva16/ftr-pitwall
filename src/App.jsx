@@ -26,6 +26,7 @@ import {
 import { supabase, isSupabaseConfigured } from './lib/supabaseClient';
 
 const STORAGE_KEY = 'ftr_pitwall_strategy_v1';
+const EVENT_SIGNUPS_STORAGE_KEY = 'ftr_pitwall_event_signups_v1';
 const ROOM_PIN_STORAGE_KEY = 'ftr_pitwall_room_pin_v1';
 const CLIENT_INSTANCE_ID =
   typeof crypto !== 'undefined' && crypto.randomUUID
@@ -1019,17 +1020,22 @@ function getPitTimeSeconds(scenarioId, params) {
   }
 }
 
-function StartTireToggleButton({ corner, tireMeta, onToggle }) {
+function StartTireToggleButton({ corner, tireMeta, stintMode = 'race', onToggle }) {
   const mode = tireMeta?.mode || 'new';
-  const tireId = tireMeta?.tireId || '';
+  const tireId = stintMode === 'planning' ? '' : tireMeta?.tireId || '';
   const pct = tireMeta?.pct;
   const sourceLabel = tireMeta?.sourceLabel;
 
   let displayValue = 'NOVO';
-  if (mode === 'keep') {
-    displayValue = pct === 'ND' || pct === null || pct === undefined ? 'MANTER' : `MANT ${pct}%`;
-  } else if (mode === 'used') {
-    displayValue = pct === 'ND' || pct === null || pct === undefined ? 'ND' : `${pct}%`;
+  if (stintMode === 'planning') {
+    if (mode === 'keep') displayValue = 'MANTER';
+    else if (mode === 'used') displayValue = 'USADO';
+  } else {
+    if (mode === 'keep') {
+      displayValue = pct === 'ND' || pct === null || pct === undefined ? 'MANTER' : `MANT ${pct}%`;
+    } else if (mode === 'used') {
+      displayValue = pct === 'ND' || pct === null || pct === undefined ? 'ND' : `${pct}%`;
+    }
   }
 
   const colorClasses =
@@ -1040,13 +1046,15 @@ function StartTireToggleButton({ corner, tireMeta, onToggle }) {
         : 'bg-amber-500/15 text-amber-300 border-amber-500/40 hover:border-amber-400 hover:bg-amber-500/25';
 
   const tooltip =
-    mode === 'new'
-      ? `Pneu ${corner} ${tireId} (NOVO) — Clique para alternar (Manter / Usado)`
-      : mode === 'keep'
-        ? `Pneu ${corner} ${tireId} (MANTIDO de ${sourceLabel || 'stint anterior'} • ${pct === 'ND' ? 'ND' : `${pct}%`
-        }) — Clique para usar outro pneu usado`
-        : `Pneu ${corner} ${tireId} (USADO • ${sourceLabel ? `${displayValue} de ${sourceLabel}` : displayValue
-        }) — Clique para trocar por NOVO`;
+    stintMode === 'planning'
+      ? `Pneu ${corner} (${displayValue}) — Clique para alternar (NOVO / MANTER / USADO)`
+      : mode === 'new'
+        ? `Pneu ${corner} ${tireId} (NOVO) — Clique para alternar (Manter / Usado)`
+        : mode === 'keep'
+          ? `Pneu ${corner} ${tireId} (MANTIDO de ${sourceLabel || 'stint anterior'} • ${pct === 'ND' ? 'ND' : `${pct}%`
+          }) — Clique para usar outro pneu usado`
+          : `Pneu ${corner} ${tireId} (USADO • ${sourceLabel ? `${displayValue} de ${sourceLabel}` : displayValue
+          }) — Clique para trocar por NOVO`;
 
   return (
     <button
@@ -1056,7 +1064,7 @@ function StartTireToggleButton({ corner, tireMeta, onToggle }) {
       className={`flex w-full flex-col items-center justify-center rounded-md border px-2 py-1.5 text-xs font-mono font-semibold transition-all cursor-pointer min-w-[58px] ${colorClasses}`}
     >
       <span className="text-[10px] uppercase tracking-wider opacity-90 leading-none">
-        {corner} {tireId}
+        {corner}{tireId ? ` ${tireId}` : ''}
       </span>
       <span className="tabular-nums leading-tight mt-1 text-[11px] font-bold">{displayValue}</span>
     </button>
@@ -1164,6 +1172,9 @@ function loadInitialStrategyState() {
     params: DEFAULT_PARAMS,
     preSessions: DEFAULT_PRE_SESSIONS,
     stintOverrides: DEFAULT_STINT_OVERRIDES,
+    racePreSessions: null,
+    raceStintOverrides: null,
+    completedItems: {},
     eventSignups: {},
     loadedFromUrl: false,
   };
@@ -1201,6 +1212,9 @@ function loadInitialStrategyState() {
           params: { ...DEFAULT_PARAMS, ...(parsed.params || {}) },
           preSessions: { ...DEFAULT_PRE_SESSIONS, ...(parsed.preSessions || {}) },
           stintOverrides: parsed.stintOverrides || DEFAULT_STINT_OVERRIDES,
+          racePreSessions: parsed.racePreSessions || null,
+          raceStintOverrides: parsed.raceStintOverrides || null,
+          completedItems: parsed.completedItems || {},
           eventSignups: parsed.eventSignups || {},
           loadedFromUrl: false,
         };
@@ -1213,6 +1227,73 @@ function loadInitialStrategyState() {
   return fallback;
 }
 
+function StintModeToggleSwitch({ mode, onToggle, compact = false }) {
+  const isRace = mode === 'race';
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      title="Clique para alternar entre Modo Planejamento e Modo Corrida"
+      className={`relative inline-grid grid-cols-2 items-center rounded-full border border-[#334155] bg-[#0f172a] p-0.5 shadow-inner cursor-pointer select-none ${
+        compact ? 'text-[9px]' : 'text-[10px]'
+      }`}
+    >
+      <span
+        aria-hidden="true"
+        className={`pointer-events-none absolute top-0.5 bottom-0.5 w-[calc(50%-2px)] rounded-full border transition-all duration-200 ${
+          isRace
+            ? 'left-[calc(50%+1px)] border-emerald-400/60 bg-emerald-500/20 shadow-[0_0_10px_rgba(34,197,94,0.25)]'
+            : 'left-0.5 border-indigo-400/60 bg-indigo-500/25 shadow-[0_0_10px_rgba(99,102,241,0.25)]'
+        }`}
+      />
+      <span
+        className={`relative z-10 text-center font-bold uppercase tracking-wider transition-colors ${
+          compact ? 'px-2 py-0.5' : 'px-2.5 py-1'
+        } ${!isRace ? 'text-indigo-200' : 'text-slate-400'}`}
+      >
+        Plano
+      </span>
+      <span
+        className={`relative z-10 text-center font-bold uppercase tracking-wider transition-colors ${
+          compact ? 'px-2 py-0.5' : 'px-2.5 py-1'
+        } ${isRace ? 'text-emerald-200' : 'text-slate-400'}`}
+      >
+        Corrida
+      </span>
+    </button>
+  );
+}
+
+function CheckeredStripButton({ done, onToggle, title = 'Marcar como concluído', roundedClass = '' }) {
+  return (
+    <button
+      type="button"
+      onClick={(e) => {
+        e.stopPropagation();
+        onToggle();
+      }}
+      title={done ? 'Concluído (clique para desmarcar)' : title}
+      aria-pressed={done}
+      className={`w-4 shrink-0 self-stretch border-l border-[#334155]/80 transition-all cursor-pointer flex items-center justify-center ${roundedClass} ${
+        done ? 'opacity-95' : 'bg-[#0f172a]/50 hover:bg-slate-700/60'
+      }`}
+      style={
+        done
+          ? {
+              backgroundImage:
+                'linear-gradient(45deg, #f8fafc 25%, transparent 25%), linear-gradient(-45deg, #f8fafc 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #f8fafc 75%), linear-gradient(-45deg, transparent 75%, #f8fafc 75%)',
+              backgroundSize: '8px 8px',
+              backgroundPosition: '0 0, 0 4px, 4px -4px, -4px 0px',
+              backgroundColor: '#0f172a',
+            }
+          : undefined
+      }
+    >
+      {!done && <span className="h-3 w-0.5 rounded-full bg-slate-600/80" />}
+    </button>
+  );
+}
+
 export default function App() {
   const initialStateRef = useRef(null);
   if (!initialStateRef.current) {
@@ -1223,6 +1304,15 @@ export default function App() {
   const [preSessions, setPreSessions] = useState(() => initialStateRef.current.preSessions);
   const [stintOverrides, setStintOverrides] = useState(
     () => initialStateRef.current.stintOverrides
+  );
+  const [racePreSessions, setRacePreSessions] = useState(
+    () => initialStateRef.current.racePreSessions || null
+  );
+  const [raceStintOverrides, setRaceStintOverrides] = useState(
+    () => initialStateRef.current.raceStintOverrides || null
+  );
+  const [completedItems, setCompletedItems] = useState(
+    () => initialStateRef.current.completedItems || {}
   );
   const [eventSignups, setEventSignups] = useState(
     () => initialStateRef.current.eventSignups || {}
@@ -1247,6 +1337,8 @@ export default function App() {
   const [signupClassesDraft, setSignupClassesDraft] = useState(['Hypercar']);
   const [headerEventIdx, setHeaderEventIdx] = useState(0);
   const [collapsedStints, setCollapsedStints] = useState({});
+  const [stintMode, setStintMode] = useState('planning'); // 'planning' | 'race'
+  const [confirmDialog, setConfirmDialog] = useState(null);
   const mobileInitCollapsedRef = useRef(false);
   const [toast, setToast] = useState(() =>
     initialStateRef.current.loadedFromUrl
@@ -1289,12 +1381,25 @@ export default function App() {
     try {
       localStorage.setItem(
         STORAGE_KEY,
-        JSON.stringify({ params, preSessions, stintOverrides, eventSignups })
+        JSON.stringify({
+          params,
+          preSessions,
+          stintOverrides,
+          racePreSessions,
+          raceStintOverrides,
+          completedItems,
+          eventSignups,
+        })
       );
     } catch {
       // ignore quota errors
     }
-  }, [params, preSessions, stintOverrides, eventSignups]);
+    try {
+      localStorage.setItem(EVENT_SIGNUPS_STORAGE_KEY, JSON.stringify(eventSignups));
+    } catch {
+      // ignore quota errors
+    }
+  }, [params, preSessions, stintOverrides, racePreSessions, raceStintOverrides, completedItems, eventSignups]);
 
   // Supabase Realtime Subscription (when configured and live room enabled)
   useEffect(() => {
@@ -1329,7 +1434,9 @@ export default function App() {
           if (remote.params) setParams({ ...DEFAULT_PARAMS, ...remote.params });
           if (remote.preSessions) setPreSessions({ ...DEFAULT_PRE_SESSIONS, ...remote.preSessions });
           if (remote.stintOverrides) setStintOverrides(remote.stintOverrides);
-          if (remote.eventSignups) setEventSignups(remote.eventSignups);
+          if (remote.racePreSessions !== undefined) setRacePreSessions(remote.racePreSessions);
+          if (remote.raceStintOverrides !== undefined) setRaceStintOverrides(remote.raceStintOverrides);
+          if (remote.completedItems) setCompletedItems(remote.completedItems);
           if (remote.eventSignups) setEventSignups(remote.eventSignups);
           setTimeout(() => {
             isApplyingRemoteRef.current = false;
@@ -1338,7 +1445,15 @@ export default function App() {
           await supabase.from('race_strategies').upsert(
             {
               room_pin: activePin,
-              strategy_data: { params, preSessions, stintOverrides, eventSignups },
+              strategy_data: {
+                params,
+                preSessions,
+                stintOverrides,
+                racePreSessions,
+                raceStintOverrides,
+                completedItems,
+                eventSignups,
+              },
               updated_by: CLIENT_INSTANCE_ID,
               updated_at: new Date().toISOString(),
             },
@@ -1376,6 +1491,9 @@ export default function App() {
           if (remote.params) setParams({ ...DEFAULT_PARAMS, ...remote.params });
           if (remote.preSessions) setPreSessions({ ...DEFAULT_PRE_SESSIONS, ...remote.preSessions });
           if (remote.stintOverrides) setStintOverrides(remote.stintOverrides);
+          if (remote.racePreSessions !== undefined) setRacePreSessions(remote.racePreSessions);
+          if (remote.raceStintOverrides !== undefined) setRaceStintOverrides(remote.raceStintOverrides);
+          if (remote.completedItems) setCompletedItems(remote.completedItems);
           if (remote.eventSignups) setEventSignups(remote.eventSignups);
           setTimeout(() => {
             isApplyingRemoteRef.current = false;
@@ -1428,7 +1546,15 @@ export default function App() {
         await supabase.from('race_strategies').upsert(
           {
             room_pin: activePin,
-            strategy_data: { params, preSessions, stintOverrides, eventSignups },
+            strategy_data: {
+              params,
+              preSessions,
+              stintOverrides,
+              racePreSessions,
+              raceStintOverrides,
+              completedItems,
+              eventSignups,
+            },
             updated_by: CLIENT_INSTANCE_ID,
             updated_at: new Date().toISOString(),
           },
@@ -1442,21 +1568,139 @@ export default function App() {
     return () => {
       if (syncTimeoutRef.current) clearTimeout(syncTimeoutRef.current);
     };
-  }, [params, preSessions, stintOverrides, eventSignups, liveRoomEnabled, syncStatus, roomPin]);
+  }, [
+    params,
+    preSessions,
+    stintOverrides,
+    racePreSessions,
+    raceStintOverrides,
+    completedItems,
+    eventSignups,
+    liveRoomEnabled,
+    syncStatus,
+    roomPin,
+  ]);
 
   const handleParamChange = (key, value) => {
     setParams((prev) => ({ ...prev, [key]: value }));
   };
 
-  const handleReset = () => {
-    setParams(DEFAULT_PARAMS);
-    setPreSessions(DEFAULT_PRE_SESSIONS);
-    setStintOverrides(DEFAULT_STINT_OVERRIDES);
-    try {
-      localStorage.removeItem(STORAGE_KEY);
-    } catch {
-      // ignore
+  const buildClearedSessions = () => {
+    const clearedPre = {
+      fp: {
+        driver: 'ND',
+        tiresStart: { ...DEFAULT_FULL_TIRES },
+        tiresEnd: { ...DEFAULT_FULL_TIRES },
+      },
+      qualy: {
+        driver: 'ND',
+        tiresStart: { ...DEFAULT_FULL_TIRES },
+        tiresEnd: { ...DEFAULT_FULL_TIRES },
+        tiresEndEnabled: false,
+      },
+    };
+    const clearedOverrides = {};
+    for (let i = 1; i <= 60; i += 1) {
+      clearedOverrides[i] = {
+        driver: 'ND',
+        pitScenario: '4_tires_fuel',
+        tiresStart: { ...DEFAULT_FULL_TIRES },
+        tiresEnd: { ...DEFAULT_FULL_TIRES },
+        tiresEndEnabled: false,
+      };
     }
+    return { clearedPre, clearedOverrides };
+  };
+
+  const handleReset = () => {
+    setConfirmDialog({
+      title: 'Resetar Parâmetros da Corrida',
+      message:
+        'Deseja mesmo resetar os Parâmetros da Corrida para os valores padrão? Os stints não serão alterados.',
+      confirmLabel: 'Resetar Parâmetros',
+      tone: 'amber',
+      onConfirm: () => {
+        setParams(DEFAULT_PARAMS);
+        showToast('Parâmetros da corrida resetados!', 'success');
+      },
+    });
+  };
+
+  const handleToggleStintMode = () => {
+    const allCollapsed = {};
+    enrichedSchedule.forEach((r) => {
+      allCollapsed[r.id] = true;
+    });
+    if (stintMode === 'planning') {
+      if (!racePreSessions || !raceStintOverrides) {
+        const { clearedPre, clearedOverrides } = buildClearedSessions();
+        if (!racePreSessions) setRacePreSessions(clearedPre);
+        if (!raceStintOverrides) setRaceStintOverrides(clearedOverrides);
+      }
+      setCollapsedStints(allCollapsed);
+      setStintMode('race');
+    } else {
+      setCollapsedStints(allCollapsed);
+      setStintMode('planning');
+    }
+  };
+
+  const handleExportPlanningToRace = () => {
+    setConfirmDialog({
+      title: 'Exportar Planejamento para Corrida',
+      message:
+        'Deseja exportar o Planejamento para o Modo Corrida? Isso substituirá os dados atuais da corrida.',
+      confirmLabel: 'Exportar para Corrida',
+      tone: 'emerald',
+      onConfirm: () => {
+        setRacePreSessions(JSON.parse(JSON.stringify(preSessions)));
+        setRaceStintOverrides(JSON.parse(JSON.stringify(stintOverrides)));
+        const allCollapsed = {};
+        enrichedSchedule.forEach((r) => {
+          allCollapsed[r.id] = true;
+        });
+        setCollapsedStints(allCollapsed);
+        setStintMode('race');
+        showToast('Planejamento exportado para o Modo Corrida!', 'success');
+      },
+    });
+  };
+
+  const handleClearPlanning = () => {
+    setConfirmDialog({
+      title: 'Limpar Dados de Planejamento',
+      message:
+        'Deseja mesmo apagar todos os dados do Planejamento? Os pilotos voltarão para ND e os pneus para NOVO.',
+      confirmLabel: 'Limpar Planejamento',
+      tone: 'red',
+      onConfirm: () => {
+        const { clearedPre, clearedOverrides } = buildClearedSessions();
+        setPreSessions(clearedPre);
+        setStintOverrides(clearedOverrides);
+        showToast('Dados de planejamento limpos!', 'warning');
+      },
+    });
+  };
+
+  const handleClearRace = () => {
+    setConfirmDialog({
+      title: 'Limpar Dados da Corrida',
+      message:
+        'Deseja mesmo apagar todos os dados registrados no Modo Corrida? O Planejamento original será preservado.',
+      confirmLabel: 'Limpar Corrida',
+      tone: 'red',
+      onConfirm: () => {
+        const { clearedPre, clearedOverrides } = buildClearedSessions();
+        setRacePreSessions(clearedPre);
+        setRaceStintOverrides(clearedOverrides);
+        setCompletedItems({});
+        showToast('Dados da corrida limpos!', 'warning');
+      },
+    });
+  };
+
+  const toggleCompletedItem = (key) => {
+    setCompletedItems((prev) => ({ ...prev, [key]: !prev[key] }));
   };
 
   // Calculations: Fuel Ratio & Stint Autonomy
@@ -1484,6 +1728,15 @@ export default function App() {
     };
   }, [params]);
 
+  const activePreSessions =
+    stintMode === 'race'
+      ? racePreSessions || buildClearedSessions().clearedPre
+      : preSessions;
+  const activeStintOverrides =
+    stintMode === 'race'
+      ? raceStintOverrides || buildClearedSessions().clearedOverrides
+      : stintOverrides;
+
   // Build Schedule: Free Practice -> Qualy -> Dynamic Race Stints
   const schedule = useMemo(() => {
     const rows = [];
@@ -1499,7 +1752,7 @@ export default function App() {
       laps: fpLaps,
       startMin: cursorMin,
       endMin: cursorMin + fpDur,
-      driver: preSessions.fp.driver,
+      driver: activePreSessions.fp.driver,
       pitScenario: null,
       pitDurationSec: 0,
       tiresStart: DEFAULT_FULL_TIRES,
@@ -1517,12 +1770,15 @@ export default function App() {
       laps: qualyLaps,
       startMin: cursorMin,
       endMin: cursorMin + qualyDur,
-      driver: preSessions.qualy.driver,
+      driver: activePreSessions.qualy.driver,
+      plannedDriver: preSessions.qualy.driver,
       pitScenario: null,
       pitDurationSec: 0,
-      tiresStart: preSessions.qualy.tiresStart || DEFAULT_FULL_TIRES,
-      tiresEnd: preSessions.qualy.tiresEnd || preSessions.qualy.tires || { FL: 88, FR: 84, RL: 90, RR: 89 },
-      tiresEndEnabled: Boolean(preSessions.qualy.tiresEndEnabled),
+      tiresStart: activePreSessions.qualy.tiresStart || DEFAULT_FULL_TIRES,
+      tiresEnd:
+        activePreSessions.qualy.tiresEnd ||
+        activePreSessions.qualy.tires || { FL: 88, FR: 84, RL: 90, RR: 89 },
+      tiresEndEnabled: Boolean(activePreSessions.qualy.tiresEndEnabled),
     });
     cursorMin += qualyDur;
 
@@ -1532,15 +1788,23 @@ export default function App() {
     const maxStintsGuard = 60;
 
     while (remainingRaceMin > 0.05 && stintNum <= maxStintsGuard) {
-      const override = stintOverrides[stintNum] || {};
+      const override = activeStintOverrides[stintNum] || {};
+      const plannedOverride = stintOverrides[stintNum] || {};
       const defaultDriver = DRIVERS[(stintNum - 1) % Math.min(6, DRIVERS.length)];
       const driver = override.driver || defaultDriver;
+      const plannedDriver = plannedOverride.driver || defaultDriver;
       const pitScenario = override.pitScenario || '4_tires_fuel';
       const tiresStart = override.tiresStart || DEFAULT_FULL_TIRES;
       const tiresEnd = override.tiresEnd || override.tires || { FL: 72, FR: 68, RL: 76, RR: 74 };
       const tiresEndEnabled = Boolean(override.tiresEndEnabled);
 
-      const rawStintMin = Math.min(telemetry.maxStintMin, remainingRaceMin);
+      const hasCustomDuration =
+        override.durationMinOverride !== undefined &&
+        override.durationMinOverride !== null &&
+        !Number.isNaN(Number(override.durationMinOverride));
+      const rawStintMin = hasCustomDuration
+        ? Math.min(remainingRaceMin, Math.max(1, Number(override.durationMinOverride)))
+        : Math.min(telemetry.maxStintMin, remainingRaceMin);
       const stintLaps = Math.max(1, Math.round((rawStintMin * 60) / telemetry.lapTimeSec));
       const startMin = cursorMin;
       const endMin = startMin + rawStintMin;
@@ -1555,10 +1819,12 @@ export default function App() {
         stintNum,
         label: `Stint ${String(stintNum).padStart(2, '0')}`,
         durationMin: rawStintMin,
+        isDurationOverridden: hasCustomDuration,
         laps: stintLaps,
         startMin,
         endMin,
         driver,
+        plannedDriver,
         pitScenario,
         pitDurationSec,
         isLastStint,
@@ -1580,7 +1846,7 @@ export default function App() {
     }
 
     return rows;
-  }, [params, preSessions, stintOverrides, telemetry]);
+  }, [params, preSessions, stintOverrides, activePreSessions, activeStintOverrides, telemetry]);
 
   // Sequential physical tire tracking (#1, #2, #3...) individually across all tires
   const { enrichedSchedule, tireBankByCorner } = useMemo(() => {
@@ -1591,6 +1857,28 @@ export default function App() {
     const enriched = schedule.map((row) => {
       if (row.type === 'fp') {
         return { ...row, startTireMeta: null, endTireMeta: null };
+      }
+
+      if (stintMode === 'planning') {
+        const startTireMeta = {};
+        TIRE_CORNERS.forEach(({ key }) => {
+          const rawStart = row.tiresStart?.[key];
+          const mode =
+            rawStart === 'keep'
+              ? 'keep'
+              : rawStart === 100 || rawStart === 'new'
+              ? 'new'
+              : 'used';
+          startTireMeta[key] = {
+            mode,
+            canKeep: true,
+            tireNum: null,
+            tireId: '',
+            pct: null,
+            sourceLabel: null,
+          };
+        });
+        return { ...row, startTireMeta, endTireMeta: null };
       }
 
       const startTireMeta = {};
@@ -1695,7 +1983,7 @@ export default function App() {
     });
 
     return { enrichedSchedule: enriched, tireBankByCorner: bank };
-  }, [schedule]);
+  }, [schedule, stintMode]);
 
   // Tire Reuse Analyzer: ranks physical tires (#1, #2...) by their latest remaining %
   const tireRecommendations = useMemo(() => {
@@ -1731,6 +2019,7 @@ export default function App() {
     if (nextDriver === 'ND') return true;
     const nextSet = new Set(
       schedule
+        .filter((s) => s.type !== 'fp')
         .map((s) => (s.id === targetRowId ? nextDriver : s.driver))
         .filter((d) => Boolean(d) && d !== 'ND')
     );
@@ -1749,21 +2038,27 @@ export default function App() {
       notifyMaxDriversLimit();
       return;
     }
-    setPreSessions((prev) => ({
-      ...prev,
-      [sessionKey]: {
-        ...prev[sessionKey],
-        [field]: value,
-      },
-    }));
+    const setter = stintMode === 'race' ? setRacePreSessions : setPreSessions;
+    setter((prev) => {
+      const base = prev || preSessions;
+      return {
+        ...base,
+        [sessionKey]: {
+          ...base[sessionKey],
+          [field]: value,
+        },
+      };
+    });
   };
 
   const updatePreSessionTire = (sessionKey, phase, corner, pct) => {
-    setPreSessions((prev) => {
-      const current = prev[sessionKey];
+    const setter = stintMode === 'race' ? setRacePreSessions : setPreSessions;
+    setter((prev) => {
+      const base = prev || preSessions;
+      const current = base[sessionKey];
       const existingPhase = current[phase] || current.tires || DEFAULT_FULL_TIRES;
       return {
-        ...prev,
+        ...base,
         [sessionKey]: {
           ...current,
           [phase]: {
@@ -1776,19 +2071,21 @@ export default function App() {
   };
 
   const updateRaceStint = (stintNum, field, value) => {
-    if (field === 'driver' && !canAssignDriver(`stint-${stintNum}`, value)) {
+    if (field === 'driver' && !canAssignDriver(`stint_${stintNum}`, value)) {
       notifyMaxDriversLimit();
       return;
     }
-    setStintOverrides((prev) => {
-      const current = prev[stintNum] || {
-        driver: DRIVERS[(stintNum - 1) % DRIVERS.length],
+    const setter = stintMode === 'race' ? setRaceStintOverrides : setStintOverrides;
+    setter((prev) => {
+      const base = prev || stintOverrides;
+      const current = base[stintNum] || {
+        driver: DRIVERS[(stintNum - 1) % Math.min(6, DRIVERS.length)],
         pitScenario: '4_tires_fuel',
         tiresStart: DEFAULT_FULL_TIRES,
         tiresEnd: { FL: 72, FR: 68, RL: 76, RR: 74 },
       };
       return {
-        ...prev,
+        ...base,
         [stintNum]: {
           ...current,
           [field]: value,
@@ -1798,9 +2095,11 @@ export default function App() {
   };
 
   const updateRaceStintTire = (stintNum, phase, corner, pct) => {
-    setStintOverrides((prev) => {
-      const current = prev[stintNum] || {
-        driver: DRIVERS[(stintNum - 1) % DRIVERS.length],
+    const setter = stintMode === 'race' ? setRaceStintOverrides : setStintOverrides;
+    setter((prev) => {
+      const base = prev || stintOverrides;
+      const current = base[stintNum] || {
+        driver: DRIVERS[(stintNum - 1) % Math.min(6, DRIVERS.length)],
         pitScenario: '4_tires_fuel',
         tiresStart: DEFAULT_FULL_TIRES,
         tiresEnd: { FL: 72, FR: 68, RL: 76, RR: 74 },
@@ -1809,7 +2108,7 @@ export default function App() {
         current[phase] ||
         (phase === 'tiresStart' ? DEFAULT_FULL_TIRES : current.tires || { FL: 72, FR: 68, RL: 76, RR: 74 });
       return {
-        ...prev,
+        ...base,
         [stintNum]: {
           ...current,
           [phase]: {
@@ -1978,6 +2277,10 @@ export default function App() {
   };
 
   const openCalendarEventModal = (ev) => {
+    if (!ev || ev.status === 'past') {
+      showToast('Etapa já encerrada — não é possível registrar interesse.', 'warning');
+      return;
+    }
     setCalendarEventModal(ev);
     const availableDrivers = DRIVERS.filter((d) => d !== 'ND');
     const existingList = eventSignups[ev.id] || [];
@@ -2227,14 +2530,19 @@ export default function App() {
             <button
               type="button"
               key={ev.id}
+              disabled={ev.status === 'past'}
               onClick={() => openCalendarEventModal(ev)}
-              title="Clique para pré-cadastrar piloto nesta etapa"
-              className={`w-full text-left flex items-center justify-between gap-2 rounded-md px-2.5 py-1.5 text-xs cursor-pointer transition-colors ${
+              title={
+                ev.status === 'past'
+                  ? 'Etapa já encerrada'
+                  : 'Clique para pré-cadastrar piloto nesta etapa'
+              }
+              className={`w-full text-left flex items-center justify-between gap-2 rounded-md px-2.5 py-1.5 text-xs transition-colors ${
                 ev.status === 'next'
-                  ? 'bg-amber-500/15 border border-amber-500/30 text-amber-200 font-semibold hover:bg-amber-500/25'
+                  ? 'bg-amber-500/15 border border-amber-500/30 text-amber-200 font-semibold hover:bg-amber-500/25 cursor-pointer'
                   : ev.status === 'past'
-                  ? 'text-slate-500 line-through hover:bg-slate-800/40'
-                  : 'text-slate-300 bg-[#0f172a]/50 hover:bg-[#0f172a]'
+                  ? 'text-slate-500 line-through opacity-60 cursor-not-allowed'
+                  : 'text-slate-300 bg-[#0f172a]/50 hover:bg-[#0f172a] cursor-pointer'
               }`}
             >
               <span className="flex items-center gap-1.5 truncate flex-1 min-w-0">
@@ -3111,16 +3419,24 @@ export default function App() {
         <div className="w-full shrink-0 snap-start px-4 py-4">
           <div className="rounded-xl border border-[#334155] bg-[#1e293b]">
             <div className="flex flex-col gap-2 rounded-t-xl border-b border-[#334155] bg-slate-800/80 px-3 py-2.5">
-              <div className="flex items-center justify-between gap-2">
+              <div className="grid grid-cols-[auto_1fr_auto] items-center gap-2">
                 <div className="flex items-center gap-1.5 min-w-0">
                   <Clock className="h-4 w-4 shrink-0 text-[#eab308]" />
                   <h2 className="truncate text-xs font-bold uppercase tracking-wider text-slate-200">
-                    Cronograma & Stints
+                    Stints
                   </h2>
                 </div>
-                <button
-                  type="button"
-                  onClick={toggleAllStintsCollapse}
+                <div className="flex justify-center">
+                  <StintModeToggleSwitch
+                    mode={stintMode}
+                    onToggle={handleToggleStintMode}
+                    compact
+                  />
+                </div>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <button
+                    type="button"
+                    onClick={toggleAllStintsCollapse}
                   className="inline-flex shrink-0 items-center gap-1 rounded-md border border-[#334155] bg-[#0f172a] px-2 py-1 text-[10px] font-semibold text-slate-200 transition-colors hover:border-[#eab308]/60 hover:text-[#eab308] cursor-pointer"
                 >
                   {areAllStintsCollapsed ? (
@@ -3135,6 +3451,7 @@ export default function App() {
                     </>
                   )}
                 </button>
+                </div>
               </div>
               {raceDriverStats.length > 0 && (
                 <div className="grid grid-cols-3 gap-1.5">
@@ -3166,35 +3483,66 @@ export default function App() {
               {enrichedSchedule.map((row) => {
                 const isCollapsed = Boolean(collapsedStints[row.id]);
                 const nextStintLabel = `Stint ${String((row.stintNum || 0) + 1).padStart(2, '0')}`;
+                const isStintDone = stintMode === 'race' && Boolean(completedItems[row.id]);
+                const isPitDone = stintMode === 'race' && Boolean(completedItems[`pit_${row.stintNum}`]);
                 const cardColorClass =
-                  row.type === 'fp'
+                  stintMode === 'planning'
+                    ? row.type === 'fp'
+                      ? 'border-sky-500/35 border-l-sky-400 bg-gradient-to-br from-sky-950/55 via-[#1e293b] to-[#172033]'
+                      : row.type === 'qualy'
+                      ? 'border-indigo-500/45 border-l-indigo-400 bg-gradient-to-br from-indigo-950/55 via-[#1e293b] to-[#172033]'
+                      : 'border-cyan-500/40 border-l-cyan-400 bg-gradient-to-br from-cyan-950/45 via-[#1e293b] to-[#172033]'
+                    : row.type === 'fp'
                     ? 'border-sky-500/35 border-l-sky-400 bg-gradient-to-br from-sky-950/60 via-[#1e293b] to-[#172033]'
                     : row.type === 'qualy'
-                    ? 'border-amber-500/40 border-l-[#eab308] bg-gradient-to-br from-amber-950/45 via-[#1e293b] to-[#172033]'
-                    : 'border-emerald-500/35 border-l-[#22c55e] bg-gradient-to-br from-emerald-950/45 via-[#1e293b] to-[#172033]';
+                    ? 'border-amber-500/45 border-l-[#eab308] bg-gradient-to-br from-amber-950/50 via-[#1e293b] to-[#172033]'
+                    : 'border-emerald-500/45 border-l-[#22c55e] bg-gradient-to-br from-emerald-950/50 via-[#1e293b] to-[#172033]';
                 const labelBadgeClass =
-                  row.type === 'fp'
+                  stintMode === 'planning'
+                    ? row.type === 'fp'
+                      ? 'bg-sky-500/20 text-sky-300 border-sky-500/40'
+                      : row.type === 'qualy'
+                      ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/40'
+                      : 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40'
+                    : row.type === 'fp'
                     ? 'bg-sky-500/20 text-sky-300 border-sky-500/40'
                     : row.type === 'qualy'
                     ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
                     : 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40';
                 return (
                   <React.Fragment key={`m-page-${row.id}`}>
-                  <div className={`rounded-xl border border-l-4 p-3.5 space-y-3 shadow-md transition-colors ${cardColorClass}`}>
+                  {row.type === 'fp' ? (
+                    <div className={`flex items-center justify-between gap-2 rounded-lg border border-l-4 px-3.5 py-1.5 text-[10px] ${cardColorClass}`}>
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="inline-block w-6 shrink-0" aria-hidden="true" />
+                        <span className="inline-flex h-2.5 w-2.5 shrink-0 rounded-full bg-sky-400" />
+                        <span className={`rounded border px-2 py-0.5 text-xs font-extrabold tracking-wide whitespace-nowrap ${labelBadgeClass}`}>
+                          {row.label}
+                        </span>
+                      </div>
+                      <span className="font-mono tabular-nums text-slate-300 shrink-0">
+                        {formatMinutesToHHMM(row.startMin)}-{formatMinutesToHHMM(row.endMin)} • {Math.round(row.durationMin)}m ({row.laps}v)
+                      </span>
+                    </div>
+                  ) : (
+                  <div className={`flex items-stretch overflow-hidden rounded-xl border border-l-4 shadow-md transition-all ${cardColorClass} ${isStintDone ? 'opacity-70' : ''}`}>
+                  <div className="flex-1 min-w-0 p-3.5 space-y-3">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() => toggleStintCollapse(row.id)}
-                          title={isCollapsed ? 'Expandir stint' : 'Minimizar stint'}
-                          className="inline-flex h-6 w-6 items-center justify-center rounded border border-[#334155] bg-[#0f172a] text-slate-400 hover:text-[#eab308]"
-                        >
-                          {isCollapsed ? (
-                            <ChevronDown className="h-3.5 w-3.5" />
-                          ) : (
-                            <ChevronUp className="h-3.5 w-3.5" />
-                          )}
-                        </button>
+                        {row.type !== 'fp' && (
+                          <button
+                            type="button"
+                            onClick={() => toggleStintCollapse(row.id)}
+                            title={isCollapsed ? 'Expandir stint' : 'Minimizar stint'}
+                            className="inline-flex h-6 w-6 items-center justify-center rounded border border-[#334155] bg-[#0f172a] text-slate-400 hover:text-[#eab308]"
+                          >
+                            {isCollapsed ? (
+                              <ChevronDown className="h-3.5 w-3.5" />
+                            ) : (
+                              <ChevronUp className="h-3.5 w-3.5" />
+                            )}
+                          </button>
+                        )}
                         <span
                           className={`inline-flex h-2.5 w-2.5 rounded-full ${
                             row.type === 'fp'
@@ -3206,7 +3554,7 @@ export default function App() {
                         />
                         <div>
                           <span className={`inline-block rounded-md border px-2 py-0.5 text-xs font-extrabold tracking-wide ${labelBadgeClass}`}>{row.label}</span>
-                          {isCollapsed && (
+                          {isCollapsed && row.type !== 'fp' && (
                             <div className="text-[11px] font-semibold text-amber-300">
                               {row.driver}
                             </div>
@@ -3223,7 +3571,7 @@ export default function App() {
                       </div>
                     </div>
 
-                    {!isCollapsed && (
+                    {!isCollapsed && row.type !== 'fp' && (
                     <>
                     <div className="flex items-center gap-3">
                       <DriverAvatar90s driver={row.driver} size={52} />
@@ -3254,11 +3602,6 @@ export default function App() {
                       </div>
                     </div>
 
-                    {row.type === 'fp' ? (
-                      <div className="rounded-md border border-[#334155] bg-[#0f172a]/60 px-3 py-2 text-xs text-slate-400">
-                        Free Practice sem desgaste de pneus
-                      </div>
-                    ) : (
                       <div className="space-y-3">
                         <div>
                           <div className="mb-1.5 flex items-center justify-between text-[10px] font-semibold uppercase text-slate-400">
@@ -3292,13 +3635,20 @@ export default function App() {
                                   key={`m-p1-start-${key}`}
                                   corner={key}
                                   tireMeta={tireMeta}
+                                  stintMode={stintMode}
                                   onToggle={() => {
-                                    if (tireMeta?.mode === 'new') {
-                                      setStartVal(tireMeta?.canKeep ? 'keep' : 'ND');
-                                    } else if (tireMeta?.mode === 'keep') {
-                                      setStartVal('ND');
+                                    if (stintMode === 'planning') {
+                                      if (tireMeta?.mode === 'new') setStartVal('keep');
+                                      else if (tireMeta?.mode === 'keep') setStartVal('used');
+                                      else setStartVal(100);
                                     } else {
-                                      setStartVal(100);
+                                      if (tireMeta?.mode === 'new') {
+                                        setStartVal(tireMeta?.canKeep ? 'keep' : 'ND');
+                                      } else if (tireMeta?.mode === 'keep') {
+                                        setStartVal('ND');
+                                      } else {
+                                        setStartVal(100);
+                                      }
                                     }
                                   }}
                                 />
@@ -3307,6 +3657,42 @@ export default function App() {
                           </div>
                         </div>
 
+                        {stintMode === 'race' && row.type === 'race' && (
+                          <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-[#334155] bg-[#0f172a]/60 px-2.5 py-2">
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-[10px] font-semibold uppercase text-slate-400">
+                                Duração:
+                              </span>
+                              <input
+                                type="number"
+                                min="1"
+                                step="1"
+                                value={Math.round(row.durationMin)}
+                                onChange={(e) =>
+                                  updateRaceStint(
+                                    row.stintNum,
+                                    'durationMinOverride',
+                                    Math.max(1, Number(e.target.value) || 1)
+                                  )
+                                }
+                                className="w-14 rounded border border-[#334155] bg-[#1e293b] px-1.5 py-1 text-center font-mono text-xs font-bold text-white focus:border-[#eab308] focus:outline-none"
+                              />
+                              <span className="text-[10px] text-slate-400">min</span>
+                              {row.isDurationOverridden && (
+                                <button
+                                  type="button"
+                                  onClick={() => updateRaceStint(row.stintNum, 'durationMinOverride', null)}
+                                  className="text-[10px] text-amber-300 underline cursor-pointer"
+                                  title="Restaurar duração automática"
+                                >
+                                  auto
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        )}
+
+                        {stintMode === 'race' && (
                         <div>
                           <div className="mb-1.5 flex items-center justify-between text-[10px] font-semibold uppercase text-slate-400">
                             <span>Pneus Fim — Borracha Restante</span>
@@ -3360,22 +3746,36 @@ export default function App() {
                             </div>
                           )}
                         </div>
+                        )}
                       </div>
-                    )}
                     </>
                     )}
                   </div>
+                  {stintMode === 'race' && (
+                    <CheckeredStripButton
+                      done={isStintDone}
+                      onToggle={() => toggleCompletedItem(row.id)}
+                      roundedClass="rounded-r-xl"
+                    />
+                  )}
+                  </div>
+                  )}
 
-                  {!isCollapsed && row.type === 'race' && !row.isLastStint && (
-                    <div className="bg-amber-500/10 px-4 py-2.5 space-y-1.5">
-                      <div className="flex items-center justify-between text-[11px]">
-                        <div className="flex items-center gap-1.5">
-                          <Wrench className="h-3.5 w-3.5 text-[#eab308]" />
-                          <span className="font-bold uppercase tracking-wider text-[#eab308]">
-                            Pitstop ({row.label} → {nextStintLabel})
-                          </span>
-                        </div>
-                        <span className="font-mono text-slate-300">
+                  {row.type === 'race' && !row.isLastStint && (
+                    <div
+                      className={`flex items-stretch overflow-hidden rounded-lg border transition-all ${
+                        stintMode === 'planning'
+                          ? 'border-indigo-500/40 bg-indigo-500/10'
+                          : 'border-amber-500/35 bg-amber-500/10'
+                      } ${isPitDone ? 'opacity-70' : ''}`}
+                    >
+                      <div className="flex flex-1 min-w-0 items-center justify-between gap-2 px-2.5 py-1.5">
+                      <div className="flex items-center gap-1.5 min-w-0 text-[10px]">
+                        <Wrench className={`h-3 w-3 shrink-0 ${stintMode === 'planning' ? 'text-indigo-300' : 'text-[#eab308]'}`} />
+                        <span className={`font-bold uppercase tracking-wider whitespace-nowrap ${stintMode === 'planning' ? 'text-indigo-300' : 'text-[#eab308]'}`}>
+                          Pit {String(row.stintNum).padStart(2, '0')}→{String((row.stintNum || 0) + 1).padStart(2, '0')}
+                        </span>
+                        <span className="font-mono text-slate-300 whitespace-nowrap">
                           {formatMinutesToHHMM(row.endMin)}
                         </span>
                       </div>
@@ -3384,7 +3784,11 @@ export default function App() {
                         onChange={(e) =>
                           updateRaceStint(row.stintNum, 'pitScenario', e.target.value)
                         }
-                        className="w-full rounded-md border border-amber-500/35 bg-[#0f172a] px-2.5 py-2 text-xs text-slate-100 focus:border-[#eab308] focus:outline-none"
+                        className={`min-w-0 max-w-[58%] rounded border bg-[#0f172a] px-2 py-1 text-[11px] text-slate-100 focus:outline-none ${
+                          stintMode === 'planning'
+                            ? 'border-indigo-500/40 focus:border-indigo-400'
+                            : 'border-amber-500/35 focus:border-[#eab308]'
+                        }`}
                       >
                         {PIT_SCENARIOS.map((sc) => (
                           <option key={sc.id} value={sc.id}>
@@ -3392,12 +3796,48 @@ export default function App() {
                           </option>
                         ))}
                       </select>
+                      </div>
+                      {stintMode === 'race' && (
+                        <CheckeredStripButton
+                          done={isPitDone}
+                          onToggle={() => toggleCompletedItem(`pit_${row.stintNum}`)}
+                          roundedClass="rounded-r-lg"
+                        />
+                      )}
                     </div>
                   )}
                   </React.Fragment>
                 );
               })}
             </div>
+            {stintMode === 'planning' ? (
+              <div className="flex flex-col sm:flex-row gap-2 border-t border-[#334155] bg-slate-800/60 p-3">
+                <button
+                  type="button"
+                  onClick={handleClearPlanning}
+                  className="w-full sm:w-auto rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2 text-xs font-bold uppercase tracking-wider text-red-300 transition-colors hover:bg-red-500/20 cursor-pointer"
+                >
+                  Limpar Planejamento
+                </button>
+                <button
+                  type="button"
+                  onClick={handleExportPlanningToRace}
+                  className="w-full flex-1 rounded-lg border border-emerald-500/40 bg-emerald-500/15 px-3 py-2 text-xs font-bold uppercase tracking-wider text-[#22c55e] transition-colors hover:bg-emerald-500/25 cursor-pointer"
+                >
+                  Exportar Planejamento para Corrida
+                </button>
+              </div>
+            ) : (
+              <div className="border-t border-[#334155] bg-slate-800/60 p-3">
+                <button
+                  type="button"
+                  onClick={handleClearRace}
+                  className="w-full rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2 text-xs font-bold uppercase tracking-wider text-red-300 transition-colors hover:bg-red-500/20 cursor-pointer"
+                >
+                  Limpar Dados da Corrida
+                </button>
+              </div>
+            )}
           </div>
         </div>
 
@@ -4041,14 +4481,15 @@ export default function App() {
           {/* STINTS SCHEDULE PANEL */}
           <div className="rounded-xl border border-[#334155] bg-[#1e293b]">
             <div className="flex flex-wrap items-center justify-between gap-2 rounded-t-xl border-b border-[#334155] bg-slate-800/80 px-4 py-3">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2.5">
                 <Clock className="h-4 w-4 text-[#eab308]" />
                 <h2 className="text-xs font-bold uppercase tracking-wider text-slate-200">
-                  Cronograma de Sessões & Stints
+                  Stints
                 </h2>
+                <StintModeToggleSwitch mode={stintMode} onToggle={handleToggleStintMode} />
               </div>
-              <div className="flex items-center gap-3">
-                <span className="hidden sm:inline text-[11px] text-slate-400">
+              <div className="flex items-center gap-2">
+                <span className="hidden xl:inline text-[11px] text-slate-400">
                   Clique nos badges de pneus (<span className="font-mono text-slate-200">FL/FR/RL/RR</span>) para editar
                 </span>
                 <button
@@ -4082,27 +4523,61 @@ export default function App() {
                     <th className="px-2 py-2.5 text-center">Piloto</th>
                     <th className="px-2 py-2.5 text-center">Pneus Início</th>
                     <th className="px-3 py-2.5 text-center">Pneus Fim</th>
+                    {stintMode === 'race' && <th className="w-4 p-0" title="Concluído" />}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#334155]/60">
                   {enrichedSchedule.map((row) => {
                     const isCollapsed = Boolean(collapsedStints[row.id]);
                     const nextStintLabel = `Stint ${String((row.stintNum || 0) + 1).padStart(2, '0')}`;
+                    const isStintDone = stintMode === 'race' && Boolean(completedItems[row.id]);
+                    const isPitDone = stintMode === 'race' && Boolean(completedItems[`pit_${row.stintNum}`]);
                     const rowAccentClass =
-                      row.type === 'fp'
+                      stintMode === 'planning'
+                        ? row.type === 'fp'
+                          ? 'border-l-4 border-l-sky-400 bg-sky-950/20 hover:bg-sky-950/35'
+                          : row.type === 'qualy'
+                          ? 'border-l-4 border-l-indigo-400 bg-indigo-950/25 hover:bg-indigo-950/40'
+                          : 'border-l-4 border-l-cyan-400 bg-cyan-950/20 hover:bg-cyan-950/35'
+                        : row.type === 'fp'
                         ? 'border-l-4 border-l-sky-400 bg-sky-950/20 hover:bg-sky-950/35'
                         : row.type === 'qualy'
                         ? 'border-l-4 border-l-[#eab308] bg-amber-950/20 hover:bg-amber-950/35'
                         : 'border-l-4 border-l-[#22c55e] bg-emerald-950/15 hover:bg-emerald-950/30';
                     const labelBadgeClass =
-                      row.type === 'fp'
+                      stintMode === 'planning'
+                        ? row.type === 'fp'
+                          ? 'bg-sky-500/20 text-sky-300 border-sky-500/40'
+                          : row.type === 'qualy'
+                          ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/40'
+                          : 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40'
+                        : row.type === 'fp'
                         ? 'bg-sky-500/20 text-sky-300 border-sky-500/40'
                         : row.type === 'qualy'
                         ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
                         : 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40';
                     return (
                       <React.Fragment key={row.id}>
-                        {isCollapsed ? (
+                        {row.type === 'fp' ? (
+                          <tr className={`transition-colors ${rowAccentClass}`}>
+                            <td colSpan={stintMode === 'race' ? 7 : 6} className="px-3 py-1.5">
+                              <div className="flex flex-wrap items-center gap-2 text-[11px]">
+                                <span className="inline-block w-5 shrink-0" aria-hidden="true" />
+                                <span className="inline-flex h-2 w-2 rounded-full bg-sky-400" />
+                                <span className={`rounded border px-1.5 py-0.5 text-[11px] font-bold ${labelBadgeClass}`}>
+                                  {row.label}
+                                </span>
+                                <span className="font-mono tabular-nums text-[11px] text-slate-400">
+                                  {formatMinutesToHHMM(row.startMin)}-{formatMinutesToHHMM(row.endMin)}
+                                </span>
+                                <span className="text-slate-600">•</span>
+                                <span className="font-mono text-[11px] text-slate-300">
+                                  {Math.round(row.durationMin)} min ({row.laps}v)
+                                </span>
+                              </div>
+                            </td>
+                          </tr>
+                        ) : isCollapsed ? (
                           <tr
                             className={`transition-colors ${rowAccentClass}`}
                           >
@@ -4214,6 +4689,36 @@ export default function App() {
                                     />
                                     <span className="text-slate-400">min</span>
                                   </div>
+                                ) : stintMode === 'race' ? (
+                                  <div className="inline-flex items-center gap-1">
+                                    <input
+                                      type="number"
+                                      min="1"
+                                      step="1"
+                                      value={Math.round(row.durationMin)}
+                                      onChange={(e) =>
+                                        updateRaceStint(
+                                          row.stintNum,
+                                          'durationMinOverride',
+                                          Math.max(1, Number(e.target.value) || 1)
+                                        )
+                                      }
+                                      className="w-14 rounded border border-[#334155] bg-[#0f172a] px-1.5 py-1 text-center text-xs text-slate-100 focus:border-[#eab308] focus:outline-none"
+                                    />
+                                    <span className="text-slate-400">min</span>
+                                    {row.isDurationOverridden && (
+                                      <button
+                                        type="button"
+                                        onClick={() =>
+                                          updateRaceStint(row.stintNum, 'durationMinOverride', null)
+                                        }
+                                        className="text-[10px] text-amber-300 underline cursor-pointer"
+                                        title="Restaurar duração automática"
+                                      >
+                                        auto
+                                      </button>
+                                    )}
+                                  </div>
                                 ) : (
                                   <span className="text-slate-200">{row.durationMin.toFixed(1)} min</span>
                                 )}
@@ -4226,6 +4731,11 @@ export default function App() {
 
                               {/* PILOTO */}
                               <td className="px-2 py-2.5 text-center">
+                                {row.type === 'fp' ? (
+                                  <span className="inline-flex items-center rounded border border-[#334155] bg-[#0f172a]/60 px-2.5 py-1 text-[11px] text-slate-400">
+                                    Sessão Livre
+                                  </span>
+                                ) : (
                                 <div className="mx-auto flex flex-col items-center gap-1.5">
                                   <DriverAvatar90s driver={row.driver} size={48} />
                                   <select
@@ -4249,6 +4759,7 @@ export default function App() {
                                     })}
                                   </select>
                                 </div>
+                                )}
                               </td>
 
                               {/* PNEUS INÍCIO */}
@@ -4289,13 +4800,20 @@ export default function App() {
                                             key={`start-${key}`}
                                             corner={key}
                                             tireMeta={tireMeta}
+                                            stintMode={stintMode}
                                             onToggle={() => {
-                                              if (tireMeta?.mode === 'new') {
-                                                setStartVal(tireMeta?.canKeep ? 'keep' : 'ND');
-                                              } else if (tireMeta?.mode === 'keep') {
-                                                setStartVal('ND');
+                                              if (stintMode === 'planning') {
+                                                if (tireMeta?.mode === 'new') setStartVal('keep');
+                                                else if (tireMeta?.mode === 'keep') setStartVal('used');
+                                                else setStartVal(100);
                                               } else {
-                                                setStartVal(100);
+                                                if (tireMeta?.mode === 'new') {
+                                                  setStartVal(tireMeta?.canKeep ? 'keep' : 'ND');
+                                                } else if (tireMeta?.mode === 'keep') {
+                                                  setStartVal('ND');
+                                                } else {
+                                                  setStartVal(100);
+                                                }
                                               }
                                             }}
                                           />
@@ -4308,7 +4826,13 @@ export default function App() {
 
                               {/* PNEUS FIM */}
                               <td className="px-3 py-2.5 whitespace-nowrap">
-                                {row.type === 'fp' ? (
+                                {stintMode === 'planning' ? (
+                                  <div className="flex justify-center">
+                                    <span className="inline-flex items-center rounded border border-[#334155] bg-[#0f172a]/60 px-2.5 py-1 text-[10px] text-slate-500">
+                                      Modo Planejamento
+                                    </span>
+                                  </div>
+                                ) : row.type === 'fp' ? (
                                   <div className="flex justify-center">
                                     <span className="inline-flex items-center rounded border border-[#334155] bg-[#0f172a]/60 px-2.5 py-1 text-[11px] text-slate-400">
                                       Sem desgaste
@@ -4365,14 +4889,30 @@ export default function App() {
                                   </div>
                                 )}
                               </td>
+                              {stintMode === 'race' && (
+                                <td className="w-4 p-0">
+                                  <div className="flex h-full min-h-[44px] items-stretch">
+                                    <CheckeredStripButton
+                                      done={isStintDone}
+                                      onToggle={() => toggleCompletedItem(row.id)}
+                                    />
+                                  </div>
+                                </td>
+                              )}
                             </tr>
 
                             {row.type === 'race' && !row.isLastStint && (
-                              <tr className="bg-amber-500/5 border-y border-amber-500/20">
+                              <tr
+                                className={`border-y ${
+                                  stintMode === 'planning'
+                                    ? 'bg-indigo-500/5 border-indigo-500/25'
+                                    : 'bg-amber-500/5 border-amber-500/20'
+                                } ${isPitDone ? 'opacity-70' : ''}`}
+                              >
                                 <td colSpan={4} className="px-3 py-1.5">
                                   <div className="flex items-center gap-2 text-[11px]">
-                                    <Wrench className="h-3.5 w-3.5 text-[#eab308]" />
-                                    <span className="font-bold uppercase tracking-wider text-[#eab308]">
+                                    <Wrench className={`h-3.5 w-3.5 ${stintMode === 'planning' ? 'text-indigo-300' : 'text-[#eab308]'}`} />
+                                    <span className={`font-bold uppercase tracking-wider ${stintMode === 'planning' ? 'text-indigo-300' : 'text-[#eab308]'}`}>
                                       Pitstop
                                     </span>
                                     <span className="text-slate-400">
@@ -4398,6 +4938,16 @@ export default function App() {
                                     ))}
                                   </select>
                                 </td>
+                                {stintMode === 'race' && (
+                                  <td className="w-4 p-0">
+                                    <div className="flex h-full min-h-[32px] items-stretch">
+                                      <CheckeredStripButton
+                                        done={isPitDone}
+                                        onToggle={() => toggleCompletedItem(`pit_${row.stintNum}`)}
+                                      />
+                                    </div>
+                                  </td>
+                                )}
                               </tr>
                             )}
                           </>
@@ -4408,41 +4958,100 @@ export default function App() {
                 </tbody>
               </table>
             </div>
+            {stintMode === 'planning' ? (
+              <div className="hidden md:flex justify-between gap-3 border-t border-[#334155] bg-slate-800/60 px-4 py-3">
+                <button
+                  type="button"
+                  onClick={handleClearPlanning}
+                  className="rounded-lg border border-red-500/40 bg-red-500/10 px-4 py-2 text-xs font-bold uppercase tracking-wider text-red-300 transition-colors hover:bg-red-500/20 cursor-pointer"
+                >
+                  Limpar Planejamento
+                </button>
+                <button
+                  type="button"
+                  onClick={handleExportPlanningToRace}
+                  className="rounded-lg border border-emerald-500/40 bg-emerald-500/15 px-4 py-2 text-xs font-bold uppercase tracking-wider text-[#22c55e] transition-colors hover:bg-emerald-500/25 cursor-pointer"
+                >
+                  Exportar Planejamento para Corrida
+                </button>
+              </div>
+            ) : (
+              <div className="hidden md:flex justify-end border-t border-[#334155] bg-slate-800/60 px-4 py-3">
+                <button
+                  type="button"
+                  onClick={handleClearRace}
+                  className="rounded-lg border border-red-500/40 bg-red-500/10 px-4 py-2 text-xs font-bold uppercase tracking-wider text-red-300 transition-colors hover:bg-red-500/20 cursor-pointer"
+                >
+                  Limpar Dados da Corrida
+                </button>
+              </div>
+            )}
 
             {/* MOBILE CARDS (< md) */}
             <div className="space-y-2.5 p-2.5 bg-[#0f172a]/70 md:hidden">
               {enrichedSchedule.map((row) => {
                 const isCollapsed = Boolean(collapsedStints[row.id]);
                 const nextStintLabel = `Stint ${String((row.stintNum || 0) + 1).padStart(2, '0')}`;
+                const isStintDone = stintMode === 'race' && Boolean(completedItems[row.id]);
+                const isPitDone = stintMode === 'race' && Boolean(completedItems[`pit_${row.stintNum}`]);
                 const cardColorClass =
-                  row.type === 'fp'
+                  stintMode === 'planning'
+                    ? row.type === 'fp'
+                      ? 'border-sky-500/35 border-l-sky-400 bg-gradient-to-br from-sky-950/55 via-[#1e293b] to-[#172033]'
+                      : row.type === 'qualy'
+                      ? 'border-indigo-500/45 border-l-indigo-400 bg-gradient-to-br from-indigo-950/55 via-[#1e293b] to-[#172033]'
+                      : 'border-cyan-500/40 border-l-cyan-400 bg-gradient-to-br from-cyan-950/45 via-[#1e293b] to-[#172033]'
+                    : row.type === 'fp'
                     ? 'border-sky-500/35 border-l-sky-400 bg-gradient-to-br from-sky-950/60 via-[#1e293b] to-[#172033]'
                     : row.type === 'qualy'
-                    ? 'border-amber-500/40 border-l-[#eab308] bg-gradient-to-br from-amber-950/45 via-[#1e293b] to-[#172033]'
-                    : 'border-emerald-500/35 border-l-[#22c55e] bg-gradient-to-br from-emerald-950/45 via-[#1e293b] to-[#172033]';
+                    ? 'border-amber-500/45 border-l-[#eab308] bg-gradient-to-br from-amber-950/50 via-[#1e293b] to-[#172033]'
+                    : 'border-emerald-500/45 border-l-[#22c55e] bg-gradient-to-br from-emerald-950/50 via-[#1e293b] to-[#172033]';
                 const labelBadgeClass =
-                  row.type === 'fp'
+                  stintMode === 'planning'
+                    ? row.type === 'fp'
+                      ? 'bg-sky-500/20 text-sky-300 border-sky-500/40'
+                      : row.type === 'qualy'
+                      ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/40'
+                      : 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40'
+                    : row.type === 'fp'
                     ? 'bg-sky-500/20 text-sky-300 border-sky-500/40'
                     : row.type === 'qualy'
                     ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
                     : 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40';
                 return (
                   <React.Fragment key={row.id}>
-                    <div className={`rounded-xl border border-l-4 p-3.5 space-y-3 shadow-md transition-colors ${cardColorClass}`}>
+                    {row.type === 'fp' ? (
+                      <div className={`flex items-center justify-between gap-2 rounded-lg border border-l-4 px-3.5 py-1.5 text-[10px] ${cardColorClass}`}>
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className="inline-block w-6 shrink-0" aria-hidden="true" />
+                          <span className="inline-flex h-2.5 w-2.5 shrink-0 rounded-full bg-sky-400" />
+                          <span className={`rounded border px-2 py-0.5 text-xs font-extrabold tracking-wide whitespace-nowrap ${labelBadgeClass}`}>
+                            {row.label}
+                          </span>
+                        </div>
+                        <span className="font-mono tabular-nums text-slate-300 shrink-0">
+                          {formatMinutesToHHMM(row.startMin)}-{formatMinutesToHHMM(row.endMin)} • {Math.round(row.durationMin)}m ({row.laps}v)
+                        </span>
+                      </div>
+                    ) : (
+                    <div className={`flex items-stretch overflow-hidden rounded-xl border border-l-4 shadow-md transition-all ${cardColorClass} ${isStintDone ? 'opacity-70' : ''}`}>
+                    <div className="flex-1 min-w-0 p-3.5 space-y-3">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
-                          <button
-                            type="button"
-                            onClick={() => toggleStintCollapse(row.id)}
-                            title={isCollapsed ? 'Expandir stint' : 'Minimizar stint'}
-                            className="inline-flex h-6 w-6 items-center justify-center rounded border border-[#334155] bg-[#0f172a] text-slate-400 hover:text-[#eab308]"
-                          >
-                            {isCollapsed ? (
-                              <ChevronDown className="h-3.5 w-3.5" />
-                            ) : (
-                              <ChevronUp className="h-3.5 w-3.5" />
-                            )}
-                          </button>
+                          {row.type !== 'fp' && (
+                            <button
+                              type="button"
+                              onClick={() => toggleStintCollapse(row.id)}
+                              title={isCollapsed ? 'Expandir stint' : 'Minimizar stint'}
+                              className="inline-flex h-6 w-6 items-center justify-center rounded border border-[#334155] bg-[#0f172a] text-slate-400 hover:text-[#eab308]"
+                            >
+                              {isCollapsed ? (
+                                <ChevronDown className="h-3.5 w-3.5" />
+                              ) : (
+                                <ChevronUp className="h-3.5 w-3.5" />
+                              )}
+                            </button>
+                          )}
                           <span
                             className={`inline-flex h-2.5 w-2.5 rounded-full ${row.type === 'fp'
                               ? 'bg-sky-400 shadow-[0_0_8px_rgba(56,189,248,0.7)]'
@@ -4453,7 +5062,7 @@ export default function App() {
                           />
                           <div>
                             <span className={`inline-block rounded-md border px-2 py-0.5 text-xs font-extrabold tracking-wide ${labelBadgeClass}`}>{row.label}</span>
-                            {isCollapsed && (
+                            {isCollapsed && row.type !== 'fp' && (
                               <div className="text-[11px] font-semibold text-amber-300">
                                 {row.driver}
                               </div>
@@ -4470,7 +5079,7 @@ export default function App() {
                         </div>
                       </div>
 
-                      {!isCollapsed && (
+                      {!isCollapsed && row.type !== 'fp' && (
                         <>
                           <div className="flex items-center gap-3">
                             <DriverAvatar90s driver={row.driver} size={52} />
@@ -4501,11 +5110,6 @@ export default function App() {
                             </div>
                           </div>
 
-                          {row.type === 'fp' ? (
-                            <div className="rounded-md border border-[#334155] bg-[#0f172a]/60 px-3 py-2 text-xs text-slate-400">
-                              Free Practice sem desgaste de pneus
-                            </div>
-                          ) : (
                             <div className="space-y-3">
                               <div>
                                 <div className="mb-1.5 flex items-center justify-between text-[10px] font-semibold uppercase text-slate-400">
@@ -4539,13 +5143,20 @@ export default function App() {
                                         key={`m-start-${key}`}
                                         corner={key}
                                         tireMeta={tireMeta}
+                                        stintMode={stintMode}
                                         onToggle={() => {
-                                          if (tireMeta?.mode === 'new') {
-                                            setStartVal(tireMeta?.canKeep ? 'keep' : 'ND');
-                                          } else if (tireMeta?.mode === 'keep') {
-                                            setStartVal('ND');
+                                          if (stintMode === 'planning') {
+                                            if (tireMeta?.mode === 'new') setStartVal('keep');
+                                            else if (tireMeta?.mode === 'keep') setStartVal('used');
+                                            else setStartVal(100);
                                           } else {
-                                            setStartVal(100);
+                                            if (tireMeta?.mode === 'new') {
+                                              setStartVal(tireMeta?.canKeep ? 'keep' : 'ND');
+                                            } else if (tireMeta?.mode === 'keep') {
+                                              setStartVal('ND');
+                                            } else {
+                                              setStartVal(100);
+                                            }
                                           }
                                         }}
                                       />
@@ -4554,6 +5165,7 @@ export default function App() {
                                 </div>
                               </div>
 
+                              {stintMode === 'race' && (
                               <div>
                                 <div className="mb-1.5 flex items-center justify-between text-[10px] font-semibold uppercase text-slate-400">
                                   <span>Pneus Fim — Borracha Restante</span>
@@ -4607,22 +5219,36 @@ export default function App() {
                                   </div>
                                 )}
                               </div>
+                              )}
                             </div>
-                          )}
                         </>
                       )}
                     </div>
+                    {stintMode === 'race' && (
+                      <CheckeredStripButton
+                        done={isStintDone}
+                        onToggle={() => toggleCompletedItem(row.id)}
+                        roundedClass="rounded-r-xl"
+                      />
+                    )}
+                    </div>
+                    )}
 
-                    {!isCollapsed && row.type === 'race' && !row.isLastStint && (
-                      <div className="bg-amber-500/10 px-4 py-2.5 space-y-1.5">
-                        <div className="flex items-center justify-between text-[11px]">
-                          <div className="flex items-center gap-1.5">
-                            <Wrench className="h-3.5 w-3.5 text-[#eab308]" />
-                            <span className="font-bold uppercase tracking-wider text-[#eab308]">
-                              Pitstop ({row.label} → {nextStintLabel})
-                            </span>
-                          </div>
-                          <span className="font-mono text-slate-300">
+                    {row.type === 'race' && !row.isLastStint && (
+                      <div
+                        className={`flex items-stretch overflow-hidden rounded-lg border transition-all ${
+                          stintMode === 'planning'
+                            ? 'border-indigo-500/40 bg-indigo-500/10'
+                            : 'border-amber-500/35 bg-amber-500/10'
+                        } ${isPitDone ? 'opacity-70' : ''}`}
+                      >
+                        <div className="flex flex-1 min-w-0 items-center justify-between gap-2 px-2.5 py-1.5">
+                        <div className="flex items-center gap-1.5 min-w-0 text-[10px]">
+                          <Wrench className={`h-3 w-3 shrink-0 ${stintMode === 'planning' ? 'text-indigo-300' : 'text-[#eab308]'}`} />
+                          <span className={`font-bold uppercase tracking-wider whitespace-nowrap ${stintMode === 'planning' ? 'text-indigo-300' : 'text-[#eab308]'}`}>
+                            Pit {String(row.stintNum).padStart(2, '0')}→{String((row.stintNum || 0) + 1).padStart(2, '0')}
+                          </span>
+                          <span className="font-mono text-slate-300 whitespace-nowrap">
                             {formatMinutesToHHMM(row.endMin)}
                           </span>
                         </div>
@@ -4631,7 +5257,11 @@ export default function App() {
                           onChange={(e) =>
                             updateRaceStint(row.stintNum, 'pitScenario', e.target.value)
                           }
-                          className="w-full rounded-md border border-amber-500/35 bg-[#0f172a] px-2.5 py-2 text-xs text-slate-100 focus:border-[#eab308] focus:outline-none"
+                          className={`min-w-0 max-w-[58%] rounded border bg-[#0f172a] px-2 py-1 text-[11px] text-slate-100 focus:outline-none ${
+                            stintMode === 'planning'
+                              ? 'border-indigo-500/40 focus:border-indigo-400'
+                              : 'border-amber-500/35 focus:border-[#eab308]'
+                          }`}
                         >
                           {PIT_SCENARIOS.map((sc) => (
                             <option key={sc.id} value={sc.id}>
@@ -4639,6 +5269,14 @@ export default function App() {
                             </option>
                           ))}
                         </select>
+                        </div>
+                        {stintMode === 'race' && (
+                          <CheckeredStripButton
+                            done={isPitDone}
+                            onToggle={() => toggleCompletedItem(`pit_${row.stintNum}`)}
+                            roundedClass="rounded-r-lg"
+                          />
+                        )}
                       </div>
                     )}
                   </React.Fragment>
@@ -5057,6 +5695,65 @@ export default function App() {
           </div>
         );
       })()}
+
+      {/* CONFIRMATION MODAL */}
+      {confirmDialog && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm"
+          onClick={() => setConfirmDialog(null)}
+        >
+          <div
+            className="w-full max-w-sm rounded-2xl border border-[#334155] bg-[#0f172a] p-5 shadow-2xl space-y-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start gap-3">
+              <div
+                className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border ${
+                  confirmDialog.tone === 'red'
+                    ? 'border-red-500/40 bg-red-500/15 text-red-400'
+                    : confirmDialog.tone === 'emerald'
+                    ? 'border-emerald-500/40 bg-emerald-500/15 text-[#22c55e]'
+                    : 'border-amber-500/40 bg-amber-500/15 text-[#eab308]'
+                }`}
+              >
+                <AlertTriangle className="h-4 w-4" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-white">{confirmDialog.title}</h3>
+                <p className="mt-1 text-xs leading-relaxed text-slate-300">
+                  {confirmDialog.message}
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center justify-end gap-2 pt-1">
+              <button
+                type="button"
+                onClick={() => setConfirmDialog(null)}
+                className="rounded-lg border border-[#334155] bg-[#1e293b] px-3 py-1.5 text-xs font-semibold text-slate-300 hover:text-white cursor-pointer"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const fn = confirmDialog.onConfirm;
+                  setConfirmDialog(null);
+                  fn?.();
+                }}
+                className={`rounded-lg px-3.5 py-1.5 text-xs font-bold transition-colors cursor-pointer ${
+                  confirmDialog.tone === 'red'
+                    ? 'bg-red-500 text-white hover:bg-red-400'
+                    : confirmDialog.tone === 'emerald'
+                    ? 'bg-[#22c55e] text-slate-950 hover:bg-emerald-400'
+                    : 'bg-[#eab308] text-slate-950 hover:bg-amber-400'
+                }`}
+              >
+                {confirmDialog.confirmLabel}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* TOAST NOTIFICATION */}
       {toast && (
