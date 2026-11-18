@@ -1237,6 +1237,7 @@ export default function App() {
   const mobilePagerInitRef = useRef(false);
   const mobileSessionStartRef = useRef(null);
   const mobileAvailableTiresRef = useRef(null);
+  const mobileCarTrackRef = useRef(null);
   const mobileCalendarRef = useRef(null);
   const desktopCalendarRef = useRef(null);
   const [selectedTireCornerModal, setSelectedTireCornerModal] = useState(null);
@@ -1261,10 +1262,11 @@ export default function App() {
     }
   });
   const [pinDraft, setPinDraft] = useState(roomPin);
-  const [liveRoomEnabled, setLiveRoomEnabled] = useState(false);
+  const [liveRoomEnabled, setLiveRoomEnabled] = useState(() => Boolean(roomPin.trim()));
   const [roomModalOpen, setRoomModalOpen] = useState(false);
   const [syncStatus, setSyncStatus] = useState('local'); // 'local' | 'connecting' | 'live' | 'error'
   const [livePeersCount, setLivePeersCount] = useState(1);
+  const isPinLocked = !roomPin.trim() || !liveRoomEnabled;
 
   const isApplyingRemoteRef = useRef(false);
   const syncTimeoutRef = useRef(null);
@@ -2279,21 +2281,35 @@ export default function App() {
               </div>
             </div>
 
-            {/* Tiny Car Brand Logo + Class + Short Track on Top-Right (Mobile & < xl) */}
-            <div className="xl:hidden flex flex-col items-center text-center rounded-md border border-[#334155] bg-[#1e293b]/90 px-2 py-1">
-              <div className="flex items-center justify-center gap-1.5">
+            {/* Car Brand Logo + Flag (left col) | Class + Short Track (right col) on Mobile & < xl */}
+            <button
+              type="button"
+              disabled={isPinLocked}
+              onClick={() => goToMobileParamField(mobileCarTrackRef)}
+              title="Escolher carro ou pista nos Parâmetros"
+              className={`xl:hidden flex items-center justify-center gap-2 rounded-md border border-[#334155] bg-[#1e293b]/90 px-2.5 py-1 transition-colors ${
+                isPinLocked
+                  ? 'opacity-50 pointer-events-none'
+                  : 'cursor-pointer hover:border-amber-500/50 active:scale-[0.98]'
+              }`}
+            >
+              <div className="flex flex-col items-center justify-center leading-none">
                 <ManufacturerLogo brand={selectedCar.brand} size={18} />
+                <span className="mt-1 text-[11px] leading-none">
+                  {isPinLocked ? '🏁' : selectedCircuit.flag}
+                </span>
+              </div>
+              <div className="flex flex-col items-center justify-center text-center leading-none">
                 <span
                   className={`rounded border px-1 py-0.5 text-[8px] font-bold uppercase tracking-wider leading-none ${selectedClassMeta.badgeClass}`}
                 >
-                  {selectedClassMeta.label}
+                  {isPinLocked ? '---' : selectedClassMeta.label}
+                </span>
+                <span className="mt-1 text-[8.5px] font-semibold text-slate-300 leading-none">
+                  {isPinLocked ? '---' : selectedCircuit.shortName}
                 </span>
               </div>
-              <div className="mt-0.5 flex items-center justify-center gap-1 text-[8.5px] font-semibold text-slate-300 leading-none">
-                <span className="text-[10px] leading-none">{selectedCircuit.flag}</span>
-                <span>{selectedCircuit.shortName}</span>
-              </div>
-            </div>
+            </button>
           </div>
 
           {activeHeaderEvent && (
@@ -2522,9 +2538,16 @@ export default function App() {
                           type="button"
                           onClick={() => {
                             setLiveRoomEnabled(false);
+                            setRoomPin('');
+                            setPinDraft('');
+                            try {
+                              localStorage.removeItem(ROOM_PIN_STORAGE_KEY);
+                            } catch {
+                              // ignore
+                            }
                             setSyncStatus('local');
                             setRoomModalOpen(false);
-                            showToast('Desconectado da sala. Modo Local ativo.', 'warning');
+                            showToast('Desconectado da sala. Informe o PIN para acessar.', 'warning');
                           }}
                           className="rounded-lg border border-[#334155] bg-[#1e293b] px-2.5 py-1.5 text-xs font-semibold text-slate-300 hover:text-white cursor-pointer"
                         >
@@ -2540,9 +2563,14 @@ export default function App() {
 
             <button
               type="button"
+              disabled={isPinLocked}
               onClick={handleShareLink}
               title="Copiar link compartilhável da estratégia"
-              className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-lg border border-emerald-500/40 bg-emerald-500/15 px-2 py-1.5 sm:px-2.5 text-xs font-bold text-[#22c55e] transition-colors hover:border-emerald-400 hover:bg-emerald-500/25 cursor-pointer"
+              className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-lg border border-emerald-500/40 bg-emerald-500/15 px-2 py-1.5 sm:px-2.5 text-xs font-bold text-[#22c55e] transition-colors ${
+                isPinLocked
+                  ? 'opacity-40 pointer-events-none'
+                  : 'hover:border-emerald-400 hover:bg-emerald-500/25 cursor-pointer'
+              }`}
             >
               <Share2 className="h-3.5 w-3.5" />
               <span className="hidden sm:inline">Compartilhar</span>
@@ -2550,10 +2578,14 @@ export default function App() {
 
             <button
               type="button"
+              disabled={isPinLocked}
               onClick={handleCopyWhatsApp}
-              className={`inline-flex items-center gap-1 whitespace-nowrap rounded-lg border px-2 py-1.5 sm:px-2.5 text-xs font-bold transition-all cursor-pointer ${copied
-                ? 'border-emerald-500/60 bg-emerald-500/20 text-[#22c55e]'
-                : 'border-amber-500/50 bg-[#eab308] text-slate-950 hover:bg-amber-400'
+              className={`inline-flex items-center gap-1 whitespace-nowrap rounded-lg border px-2 py-1.5 sm:px-2.5 text-xs font-bold transition-all ${
+                isPinLocked
+                  ? 'border-amber-500/30 bg-[#eab308]/40 text-slate-950 opacity-40 pointer-events-none'
+                  : copied
+                  ? 'border-emerald-500/60 bg-emerald-500/20 text-[#22c55e] cursor-pointer'
+                  : 'border-amber-500/50 bg-[#eab308] text-slate-950 hover:bg-amber-400 cursor-pointer'
                 }`}
             >
               {copied ? (
@@ -2572,9 +2604,13 @@ export default function App() {
 
             {/* Mobile-only best tire reuse summary on its own row below */}
             <div
-              onClick={() => toggleMobilePage(2)}
+              onClick={() => !isPinLocked && toggleMobilePage(2)}
               title={mobilePage === 2 ? 'Voltar para a tela anterior' : 'Ver conjunto detalhado de pneus usados'}
-              className="w-full sm:hidden flex items-center justify-between gap-2 rounded-lg border border-emerald-500/35 bg-[#1e293b] px-2.5 py-1.5 text-[10px] font-mono cursor-pointer transition-colors hover:border-emerald-400/60 active:scale-[0.99]"
+              className={`w-full sm:hidden flex items-center justify-between gap-2 rounded-lg border border-emerald-500/35 bg-[#1e293b] px-2.5 py-1.5 text-[10px] font-mono transition-colors ${
+                isPinLocked
+                  ? 'opacity-50 pointer-events-none'
+                  : 'cursor-pointer hover:border-emerald-400/60 active:scale-[0.99]'
+              }`}
             >
               <div className="flex items-center gap-1.5 shrink-0 text-[#22c55e] font-sans font-bold uppercase tracking-wider text-[9px]">
                 <Disc className="h-3.5 w-3.5" />
@@ -2586,7 +2622,7 @@ export default function App() {
                   return (
                     <span key={`mob-rec-${key}`} className="tabular-nums">
                       <span className="text-slate-400">{key}:</span>{' '}
-                      {best ? (
+                      {!isPinLocked && best ? (
                         <span className={`font-bold ${getTireTextColor(best.pct)}`}>
                           {best.tireId} {best.pct}%
                         </span>
@@ -2601,32 +2637,36 @@ export default function App() {
 
             {/* Mobile-only 1-line race summary strip */}
             <div
-              onClick={() => toggleMobilePage(0)}
+              onClick={() => !isPinLocked && toggleMobilePage(0)}
               title={mobilePage === 0 ? 'Voltar para a tela anterior' : 'Ir para Parâmetros da Corrida'}
-              className="w-full sm:hidden flex items-center justify-between gap-0.5 rounded-lg border border-[#334155] bg-[#1e293b]/90 px-1.5 py-1.5 text-[9.5px] font-mono tabular-nums cursor-pointer transition-colors hover:border-amber-500/50 active:scale-[0.99]"
+              className={`w-full sm:hidden flex items-center justify-between gap-0.5 rounded-lg border border-[#334155] bg-[#1e293b]/90 px-1.5 py-1.5 text-[9.5px] font-mono tabular-nums transition-colors ${
+                isPinLocked
+                  ? 'opacity-50 pointer-events-none'
+                  : 'cursor-pointer hover:border-amber-500/50 active:scale-[0.99]'
+              }`}
             >
               <div className="flex flex-col items-center leading-tight">
                 <span className="text-[7px] font-sans uppercase text-slate-400">Stints</span>
-                <span className="font-bold text-white">{raceStintCount}</span>
+                <span className="font-bold text-white">{isPinLocked ? '--' : raceStintCount}</span>
               </div>
               <span className="text-slate-700">|</span>
               <div className="flex flex-col items-center leading-tight">
                 <span className="text-[7px] font-sans uppercase text-slate-400">Voltas</span>
-                <span className="font-bold text-[#22c55e]">{totalEstimatedLaps}</span>
+                <span className="font-bold text-[#22c55e]">{isPinLocked ? '--' : totalEstimatedLaps}</span>
               </div>
               <span className="text-slate-700">|</span>
               <div
                 onClick={(e) => {
                   e.stopPropagation();
-                  goToMobileParamField(mobileSessionStartRef);
+                  if (!isPinLocked) goToMobileParamField(mobileSessionStartRef);
                 }}
                 title="Ajustar horário da sessão"
                 className="flex flex-col items-center leading-tight rounded px-1 py-0.5 hover:bg-amber-500/15 active:scale-95"
               >
                 <span className="text-[7px] font-sans uppercase text-slate-400">Horário</span>
                 <span className="font-bold text-white">
-                  {raceStints[0] ? formatMinutesToHHMM(raceStints[0].startMin) : '--:--'}→
-                  {raceStints[raceStints.length - 1]
+                  {!isPinLocked && raceStints[0] ? formatMinutesToHHMM(raceStints[0].startMin) : '--:--'}→
+                  {!isPinLocked && raceStints[raceStints.length - 1]
                     ? formatMinutesToHHMM(raceStints[raceStints.length - 1].endMin)
                     : '--:--'}
                 </span>
@@ -2635,14 +2675,14 @@ export default function App() {
               <div className="flex flex-col items-center leading-tight">
                 <span className="text-[7px] font-sans uppercase text-slate-400">Pilotos</span>
                 <span className="font-bold text-[#eab308]">
-                  {new Set(raceStints.map((s) => s.driver).filter((d) => d && d !== 'ND')).size}
+                  {isPinLocked ? '--' : new Set(raceStints.map((s) => s.driver).filter((d) => d && d !== 'ND')).size}
                 </span>
               </div>
               <span className="text-slate-700">|</span>
               <div
                 onClick={(e) => {
                   e.stopPropagation();
-                  goToMobileParamField(mobileAvailableTiresRef);
+                  if (!isPinLocked) goToMobileParamField(mobileAvailableTiresRef);
                 }}
                 title="Ajustar pneus disponíveis"
                 className="flex flex-col items-center leading-tight rounded px-1 py-0.5 hover:bg-emerald-500/15 active:scale-95"
@@ -2650,23 +2690,25 @@ export default function App() {
                 <span className="text-[7px] font-sans uppercase text-slate-400">Pneus</span>
                 <span
                   className={`font-bold ${
-                    remainingTiresCount < 0 ? 'text-red-400' : 'text-[#22c55e]'
+                    isPinLocked ? 'text-slate-500' : remainingTiresCount < 0 ? 'text-red-400' : 'text-[#22c55e]'
                   }`}
                 >
-                  {usedTiresCount}/{availableTiresNum}
+                  {isPinLocked ? '--/--' : `${usedTiresCount}/${availableTiresNum}`}
                 </span>
               </div>
               <span className="text-slate-700">|</span>
               <div className="flex flex-col items-center leading-tight">
                 <span className="text-[7px] font-sans uppercase text-slate-400">Ratio</span>
                 <span className="font-bold text-amber-300">
-                  {telemetry.fuelRatio.toFixed(2)}
+                  {isPinLocked ? '--' : telemetry.fuelRatio.toFixed(2)}
                 </span>
               </div>
               <span className="text-slate-700">|</span>
               <div className="flex flex-col items-center leading-tight">
                 <span className="text-[7px] font-sans uppercase text-slate-400">Auton</span>
-                <span className="font-bold text-[#22c55e]">{telemetry.maxStintLaps}v</span>
+                <span className="font-bold text-[#22c55e]">
+                  {isPinLocked ? '--' : `${telemetry.maxStintLaps}v`}
+                </span>
               </div>
             </div>
           </div>
@@ -2674,11 +2716,56 @@ export default function App() {
       </header>
 
       {/* MAIN WORKSPACE */}
+      <div className="relative flex flex-1 flex-col">
+        {isPinLocked && (
+          <div className="fixed inset-0 z-30 flex items-center justify-center bg-[#0f172a]/85 p-4 backdrop-blur-md">
+            <div className="w-full max-w-sm rounded-2xl border border-amber-500/45 bg-[#1e293b] p-6 shadow-2xl">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-amber-500/40 bg-amber-500/15 text-[#eab308]">
+                  <Radio className="h-5 w-5 animate-pulse" />
+                </div>
+                <div>
+                  <h2 className="text-sm font-extrabold uppercase tracking-wider text-white">
+                    Acesso ao Pitwall (PIN)
+                  </h2>
+                  <p className="text-xs text-slate-400">
+                    Informe o PIN da equipe para visualizar e editar o planejamento.
+                  </p>
+                </div>
+              </div>
+
+              <form onSubmit={handleConnectLiveRoom} className="space-y-3 mt-4">
+                <div>
+                  <label className="mb-1 block text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+                    PIN da Equipe
+                  </label>
+                  <input
+                    type="text"
+                    value={pinDraft}
+                    onChange={(e) => setPinDraft(e.target.value.toUpperCase())}
+                    placeholder="Digite o PIN..."
+                    autoFocus
+                    className="w-full rounded-xl border border-[#334155] bg-[#0f172a] px-3 py-2.5 text-sm font-mono font-bold uppercase tracking-widest text-white focus:border-[#eab308] focus:outline-none"
+                  />
+                </div>
+                <button
+                  type="submit"
+                  className="w-full rounded-xl bg-[#eab308] px-4 py-2.5 text-xs font-extrabold uppercase tracking-wider text-slate-950 hover:bg-amber-400 transition-colors cursor-pointer"
+                >
+                  Entrar na Sala
+                </button>
+              </form>
+            </div>
+          </div>
+        )}
+
       {/* MOBILE SWIPEABLE 2-PAGE VIEW (< lg) */}
       <div
         ref={mobilePagerRef}
         onScroll={handleMobilePagerScroll}
-        className="lg:hidden flex flex-1 w-full overflow-x-auto snap-x snap-mandatory scroll-smooth"
+        className={`lg:hidden flex flex-1 w-full overflow-x-auto snap-x snap-mandatory scroll-smooth ${
+          isPinLocked ? 'pointer-events-none select-none opacity-0' : ''
+        }`}
         style={{ scrollbarWidth: 'none' }}
       >
         {/* PAGE 1 (LEFT - SWIPE RIGHT FROM CENTER): PARAMS */}
@@ -2703,7 +2790,10 @@ export default function App() {
             </div>
             <div className="p-4 space-y-4">
               {/* Car & Class Selector */}
-              <div className="rounded-lg border border-[#334155] bg-[#0f172a]/70 p-3 space-y-2.5">
+              <div
+                ref={mobileCarTrackRef}
+                className="rounded-lg border border-[#334155] bg-[#0f172a]/70 p-3 space-y-2.5"
+              >
                 <div className="flex items-center gap-2.5">
                   <ManufacturerLogo brand={selectedCar.brand} size={32} />
                   <div className="min-w-0 flex-1">
@@ -3439,7 +3529,11 @@ export default function App() {
       </div>
 
       {/* DESKTOP 2-COLUMN WORKSPACE (lg+) */}
-      <main className="hidden lg:flex mx-auto w-full max-w-[1600px] flex-1 flex-row gap-5 p-6">
+      <main
+        className={`hidden lg:flex mx-auto w-full max-w-[1600px] flex-1 flex-row gap-5 p-6 ${
+          isPinLocked ? 'pointer-events-none select-none opacity-0' : ''
+        }`}
+      >
         {/* LEFT SIDEBAR: PARAMETERS & CALENDAR */}
         <aside className="w-full shrink-0 space-y-4 lg:w-[320px] xl:w-[340px]">
           {/* Mobile Collapse Toggle for Parameters */}
@@ -4978,6 +5072,7 @@ export default function App() {
           <span className="text-slate-100">{toast.message}</span>
         </div>
       )}
+      </div>
     </div>
   );
 }
