@@ -19,9 +19,10 @@ import {
   ChevronUp,
   Sparkles,
   MapPin,
-  Share2,
   Radio,
   X,
+  Droplets,
+  Sun,
 } from 'lucide-react';
 import { supabase, isSupabaseConfigured } from './lib/supabaseClient';
 
@@ -38,6 +39,7 @@ const DRIVERS = [
   'Erich Terezzino',
   'Iuri Soares',
   'Leandro Agiani',
+  'Marcelo Da Silva',
   'Mauricio Chara',
   'Paulo Afonso',
   'Rafael Barison',
@@ -528,6 +530,19 @@ const DRIVER_PORTRAIT_PRESETS = {
     prescription: true,
     helmet: false,
     bgTop: '#1e3a8a',
+    bgBot: '#0f172a',
+  },
+  'Marcelo Da Silva': {
+    suit: '#0f766e',
+    suitDark: '#115e59',
+    stripe: '#eab308',
+    hair: '#1c1917',
+    hairHi: '#44403c',
+    skin: '#e0ac69',
+    skinDark: '#b37b3b',
+    shades: false,
+    helmet: false,
+    bgTop: '#134e4a',
     bgBot: '#0f172a',
   },
   'Mauricio Chara': {
@@ -1025,9 +1040,12 @@ function StartTireToggleButton({ corner, tireMeta, stintMode = 'race', onToggle 
   const tireId = stintMode === 'planning' ? '' : tireMeta?.tireId || '';
   const pct = tireMeta?.pct;
   const sourceLabel = tireMeta?.sourceLabel;
+  const isWet = mode === 'wet' || (mode === 'keep' && Boolean(tireMeta?.isWet));
 
-  let displayValue = 'NOVO';
-  if (stintMode === 'planning') {
+  let displayValue = 'SECO';
+  if (mode === 'wet') {
+    displayValue = 'CHUVA';
+  } else if (stintMode === 'planning') {
     if (mode === 'keep') displayValue = 'MANTER';
     else if (mode === 'used') displayValue = 'USADO';
   } else {
@@ -1039,22 +1057,26 @@ function StartTireToggleButton({ corner, tireMeta, stintMode = 'race', onToggle 
   }
 
   const colorClasses =
-    mode === 'new'
+    mode === 'wet'
+      ? 'bg-blue-500/20 text-sky-300 border-blue-400/50 hover:border-sky-300 hover:bg-blue-500/30'
+      : mode === 'new'
       ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/40 hover:border-emerald-400 hover:bg-emerald-500/25'
       : mode === 'keep'
-        ? 'bg-sky-500/15 text-sky-300 border-sky-500/40 hover:border-sky-400 hover:bg-sky-500/25'
+        ? isWet
+          ? 'bg-blue-500/5 text-sky-300/75 border-blue-400/25 opacity-60 hover:opacity-90 hover:border-sky-300/60'
+          : 'bg-emerald-500/5 text-emerald-400/75 border-emerald-500/25 opacity-60 hover:opacity-90 hover:border-emerald-400/60'
         : 'bg-amber-500/15 text-amber-300 border-amber-500/40 hover:border-amber-400 hover:bg-amber-500/25';
 
   const tooltip =
-    stintMode === 'planning'
-      ? `Pneu ${corner} (${displayValue}) — Clique para alternar (NOVO / MANTER / USADO)`
+    mode === 'wet'
+      ? `Pneu ${corner} (CHUVA — sem limite, não contabilizado no banco)`
+      : stintMode === 'planning'
+      ? `Pneu ${corner} (${displayValue}) — Clique para alternar (SECO / MANTER / USADO / CHUVA)`
       : mode === 'new'
-        ? `Pneu ${corner} ${tireId} (NOVO) — Clique para alternar (Manter / Usado)`
+        ? `Pneu ${corner} ${tireId} (SECO) — Clique para alternar (Manter / Usado / Chuva)`
         : mode === 'keep'
-          ? `Pneu ${corner} ${tireId} (MANTIDO de ${sourceLabel || 'stint anterior'} • ${pct === 'ND' ? 'ND' : `${pct}%`
-          }) — Clique para usar outro pneu usado`
-          : `Pneu ${corner} ${tireId} (USADO • ${sourceLabel ? `${displayValue} de ${sourceLabel}` : displayValue
-          }) — Clique para trocar por NOVO`;
+          ? `Pneu ${corner} ${tireId} (MANTIDO ${isWet ? 'CHUVA' : 'SECO'} de ${sourceLabel || 'stint anterior'}${pct && pct !== 'ND' ? ` • ${pct}%` : ''}) — Clique para alternar`
+          : `Pneu ${corner} ${tireId} (USADO SECO • ${sourceLabel ? `${displayValue} de ${sourceLabel}` : displayValue}) — Clique para alternar para CHUVA`;
 
   return (
     <button
@@ -1066,7 +1088,14 @@ function StartTireToggleButton({ corner, tireMeta, stintMode = 'race', onToggle 
       <span className="text-[10px] uppercase tracking-wider opacity-90 leading-none">
         {corner}{tireId ? ` ${tireId}` : ''}
       </span>
-      <span className="tabular-nums leading-tight mt-1 text-[11px] font-bold">{displayValue}</span>
+      <span className="inline-flex items-center gap-1 tabular-nums leading-tight mt-1 text-[11px] font-bold">
+        {isWet ? (
+          <Droplets className="h-3 w-3 shrink-0 text-sky-300" />
+        ) : (
+          <Sun className="h-3 w-3 shrink-0 text-amber-300" />
+        )}
+        {displayValue}
+      </span>
     </button>
   );
 }
@@ -1339,6 +1368,7 @@ export default function App() {
   const [collapsedStints, setCollapsedStints] = useState({});
   const [stintMode, setStintMode] = useState('planning'); // 'planning' | 'race'
   const [confirmDialog, setConfirmDialog] = useState(null);
+  const [tirePitModalRowId, setTirePitModalRowId] = useState(null);
   const mobileInitCollapsedRef = useRef(false);
   const [toast, setToast] = useState(() =>
     initialStateRef.current.loadedFromUrl
@@ -1853,6 +1883,7 @@ export default function App() {
     let globalTireNum = 1;
     const bank = { FL: [], FR: [], RL: [], RR: [] };
     const prevMounted = { FL: null, FR: null, RL: null, RR: null };
+    const prevPlanIsWet = { FL: false, FR: false, RL: false, RR: false };
 
     const enriched = schedule.map((row) => {
       if (row.type === 'fp') {
@@ -1864,13 +1895,18 @@ export default function App() {
         TIRE_CORNERS.forEach(({ key }) => {
           const rawStart = row.tiresStart?.[key];
           const mode =
-            rawStart === 'keep'
+            rawStart === 'wet'
+              ? 'wet'
+              : rawStart === 'keep'
               ? 'keep'
               : rawStart === 100 || rawStart === 'new'
               ? 'new'
               : 'used';
+          const isWet = mode === 'wet' || (mode === 'keep' && prevPlanIsWet[key]);
+          prevPlanIsWet[key] = isWet;
           startTireMeta[key] = {
             mode,
+            isWet,
             canKeep: true,
             tireNum: null,
             tireId: '',
@@ -1887,12 +1923,35 @@ export default function App() {
       TIRE_CORNERS.forEach(({ key }) => {
         const rawStart = row.tiresStart?.[key];
         const canKeep = Boolean(prevMounted[key]);
+        const isWet = rawStart === 'wet';
         const isKeep = rawStart === 'keep' && canKeep;
         const isNew = rawStart === 100 || rawStart === 'new';
 
-        if (isNew) {
+        if (isWet) {
+          prevMounted[key] = {
+            isWet: true,
+            num: null,
+            id: '',
+            currentPct: row.tiresEndEnabled
+              ? Math.min(100, Math.max(0, Number(row.tiresEnd?.[key]) || 0))
+              : null,
+            lastSource: row.label,
+            hasRecordedWear: Boolean(row.tiresEndEnabled),
+          };
+          startTireMeta[key] = {
+            mode: 'wet',
+            isWet: true,
+            canKeep,
+            tireNum: null,
+            tireId: '',
+            pct: null,
+            sourceLabel: null,
+          };
+          endTireMeta[key] = { tireNum: null, tireId: '💧' };
+        } else if (isNew) {
           const num = globalTireNum++;
           const tire = {
+            isWet: false,
             num,
             id: `#${num}`,
             currentPct: row.tiresEndEnabled
@@ -1905,6 +1964,7 @@ export default function App() {
           prevMounted[key] = tire;
           startTireMeta[key] = {
             mode: 'new',
+            isWet: false,
             canKeep,
             tireNum: num,
             tireId: `#${num}`,
@@ -1924,13 +1984,14 @@ export default function App() {
           prevMounted[key] = chosen;
           startTireMeta[key] = {
             mode: 'keep',
+            isWet: Boolean(chosen.isWet),
             canKeep,
             tireNum: chosen.num,
             tireId: chosen.id,
             pct: startPct,
             sourceLabel,
           };
-          endTireMeta[key] = { tireNum: chosen.num, tireId: chosen.id };
+          endTireMeta[key] = { tireNum: chosen.num, tireId: chosen.isWet ? '💧' : chosen.id };
         } else {
           const recorded = bank[key].filter((t) => t.hasRecordedWear);
           let chosen = null;
@@ -2468,6 +2529,17 @@ export default function App() {
   const isImmediateNextHeaderEvent =
     activeHeaderEvent && nextEvent && activeHeaderEvent.id === nextEvent.id;
 
+  useEffect(() => {
+    if (isPinLocked) return;
+    const containers = document.querySelectorAll('.calendar-events-scroll');
+    containers.forEach((container) => {
+      const target = container.querySelector('[data-next-event="true"]');
+      if (target) {
+        container.scrollTop = Math.max(0, target.offsetTop - container.offsetTop - 4);
+      }
+    });
+  }, [isPinLocked, mobilePage, nextEvent?.id]);
+
   const calendarCard = (
     <div className="rounded-xl border border-[#334155] bg-[#1e293b] p-4">
       <div className="mb-3 flex items-center justify-between gap-2">
@@ -2519,7 +2591,7 @@ export default function App() {
         );
       })()}
 
-      <div className="max-h-52 space-y-1.5 overflow-y-auto pr-1">
+      <div className="calendar-events-scroll max-h-52 space-y-1.5 overflow-y-auto pr-1">
         {calendarEvents.map((ev) => {
           const signups = eventSignups[ev.id] || [];
           const evFlag =
@@ -2530,6 +2602,7 @@ export default function App() {
             <button
               type="button"
               key={ev.id}
+              data-next-event={ev.status === 'next' ? 'true' : undefined}
               disabled={ev.status === 'past'}
               onClick={() => openCalendarEventModal(ev)}
               title={
@@ -2869,20 +2942,9 @@ export default function App() {
               )}
             </div>
 
-            <button
-              type="button"
-              disabled={isPinLocked}
-              onClick={handleShareLink}
-              title="Copiar link compartilhável da estratégia"
-              className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-lg border border-emerald-500/40 bg-emerald-500/15 px-2 py-1.5 sm:px-2.5 text-xs font-bold text-[#22c55e] transition-colors ${
-                isPinLocked
-                  ? 'opacity-40 pointer-events-none'
-                  : 'hover:border-emerald-400 hover:bg-emerald-500/25 cursor-pointer'
-              }`}
-            >
-              <Share2 className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">Compartilhar</span>
-            </button>
+            <div className={`inline-flex ${isPinLocked ? 'opacity-40 pointer-events-none' : ''}`}>
+              <StintModeToggleSwitch mode={stintMode} onToggle={handleToggleStintMode} />
+            </div>
 
             <button
               type="button"
@@ -2914,9 +2976,11 @@ export default function App() {
             <div
               onClick={() => !isPinLocked && toggleMobilePage(2)}
               title={mobilePage === 2 ? 'Voltar para a tela anterior' : 'Ver conjunto detalhado de pneus usados'}
-              className={`w-full sm:hidden flex items-center justify-between gap-2 rounded-lg border border-emerald-500/35 bg-[#1e293b] px-2.5 py-1.5 text-[10px] font-mono transition-colors ${
+              className={`w-full sm:hidden flex items-center justify-between gap-2 rounded-lg border border-emerald-500/35 bg-[#1e293b] px-2.5 py-1.5 text-[10px] font-mono transition-all ${
                 isPinLocked
                   ? 'opacity-50 pointer-events-none'
+                  : stintMode === 'planning'
+                  ? 'opacity-25 cursor-pointer hover:border-emerald-400/60 active:scale-[0.99]'
                   : 'cursor-pointer hover:border-emerald-400/60 active:scale-[0.99]'
               }`}
             >
@@ -3088,15 +3152,24 @@ export default function App() {
               </div>
               <button
                 type="button"
+                disabled={stintMode === 'race'}
                 onClick={handleReset}
                 title="Resetar Estratégia"
-                className="inline-flex items-center gap-1 rounded-md border border-[#334155] bg-[#0f172a] px-2 py-1 text-[11px] font-semibold text-slate-300 hover:border-slate-500 hover:text-white cursor-pointer"
+                className={`inline-flex items-center gap-1 rounded-md border border-[#334155] bg-[#0f172a] px-2 py-1 text-[11px] font-semibold text-slate-300 ${
+                  stintMode === 'race'
+                    ? 'opacity-40 pointer-events-none'
+                    : 'hover:border-slate-500 hover:text-white cursor-pointer'
+                }`}
               >
                 <RotateCcw className="h-3 w-3 text-slate-400" />
                 <span>Resetar</span>
               </button>
             </div>
-            <div className="p-4 space-y-4">
+            <div
+              className={`p-4 space-y-4 transition-opacity ${
+                stintMode === 'race' ? 'opacity-25 pointer-events-none select-none' : ''
+              }`}
+            >
               {/* Car & Class Selector */}
               <div
                 ref={mobileCarTrackRef}
@@ -3413,25 +3486,59 @@ export default function App() {
               </div>
             </div>
           </div>
+
+          {/* FUEL RATIO & AUTONOMY */}
+          <div className="rounded-xl border border-amber-500/40 bg-gradient-to-br from-[#1e293b] to-[#0f172a] p-4 shadow-lg">
+            <div className="mb-3 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Zap className="h-4 w-4 text-[#eab308]" />
+                <h2 className="text-xs font-bold uppercase tracking-wider text-[#eab308]">
+                  Fuel Ratio & Autonomia
+                </h2>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="rounded-lg border border-[#334155] bg-[#0f172a]/80 p-3">
+                <div className="text-[11px] text-slate-400">Fuel Ratio</div>
+                <div className="mt-1 text-2xl font-extrabold font-mono tabular-nums text-white">
+                  {telemetry.fuelRatio.toFixed(2)}
+                  <span className="ml-1 text-xs font-normal text-amber-400">L/%</span>
+                </div>
+                <div className="mt-0.5 text-[10px] text-slate-500">
+                  {params.fuelPerLapL}L ÷ {params.virtualEnergyPerLapPct}%
+                </div>
+              </div>
+              <div className="rounded-lg border border-[#334155] bg-[#0f172a]/80 p-3">
+                <div className="text-[11px] text-slate-400">Autonomia Máx / Stint</div>
+                <div className="mt-1 text-2xl font-extrabold font-mono tabular-nums text-[#22c55e]">
+                  {telemetry.maxStintLaps}
+                  <span className="ml-1 text-xs font-normal text-emerald-300">voltas</span>
+                </div>
+                <div className="mt-0.5 text-[10px] font-mono text-slate-400 tabular-nums">
+                  ~{telemetry.maxStintMin.toFixed(1)} min / stint
+                </div>
+              </div>
+            </div>
+            <div className="mt-3 flex items-center justify-between text-[11px] text-slate-400 border-t border-[#334155]/70 pt-2.5">
+              <span>Tanque: {telemetry.maxLapsByFuel}v</span>
+              <span>•</span>
+              <span>Energia 100%: {telemetry.maxLapsByEnergy}v</span>
+              <span>•</span>
+              <span className="text-slate-200 font-semibold">{raceStintCount} stints</span>
+            </div>
+          </div>
         </div>
 
         {/* PAGE 2 (CENTER - DEFAULT): STINTS */}
         <div className="w-full shrink-0 snap-start px-4 py-4">
           <div className="rounded-xl border border-[#334155] bg-[#1e293b]">
             <div className="flex flex-col gap-2 rounded-t-xl border-b border-[#334155] bg-slate-800/80 px-3 py-2.5">
-              <div className="grid grid-cols-[auto_1fr_auto] items-center gap-2">
+              <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-1.5 min-w-0">
                   <Clock className="h-4 w-4 shrink-0 text-[#eab308]" />
                   <h2 className="truncate text-xs font-bold uppercase tracking-wider text-slate-200">
                     Stints
                   </h2>
-                </div>
-                <div className="flex justify-center">
-                  <StintModeToggleSwitch
-                    mode={stintMode}
-                    onToggle={handleToggleStintMode}
-                    compact
-                  />
                 </div>
                 <div className="flex items-center gap-1.5 shrink-0">
                   <button
@@ -3636,21 +3743,7 @@ export default function App() {
                                   corner={key}
                                   tireMeta={tireMeta}
                                   stintMode={stintMode}
-                                  onToggle={() => {
-                                    if (stintMode === 'planning') {
-                                      if (tireMeta?.mode === 'new') setStartVal('keep');
-                                      else if (tireMeta?.mode === 'keep') setStartVal('used');
-                                      else setStartVal(100);
-                                    } else {
-                                      if (tireMeta?.mode === 'new') {
-                                        setStartVal(tireMeta?.canKeep ? 'keep' : 'ND');
-                                      } else if (tireMeta?.mode === 'keep') {
-                                        setStartVal('ND');
-                                      } else {
-                                        setStartVal(100);
-                                      }
-                                    }
-                                  }}
+                                  onToggle={() => setTirePitModalRowId(row.id)}
                                 />
                               );
                             })}
@@ -3844,7 +3937,11 @@ export default function App() {
         {/* PAGE 3 (SWIPE LEFT FROM CENTER): TIRE MANAGER, FUEL RATIO & CALENDAR */}
         <div className="w-full shrink-0 snap-start px-4 py-4 space-y-4">
           {/* TIRE MANAGER */}
-          <div className="rounded-xl border border-[#334155] bg-[#1e293b] p-4">
+          <div
+            className={`rounded-xl border border-[#334155] bg-[#1e293b] p-4 transition-opacity ${
+              stintMode === 'planning' ? 'opacity-25 pointer-events-none select-none' : ''
+            }`}
+          >
             <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
               <div className="flex items-center gap-2">
                 <Disc className="h-4 w-4 text-[#22c55e]" />
@@ -3920,50 +4017,6 @@ export default function App() {
             </div>
           </div>
 
-          {/* FUEL RATIO & AUTONOMY */}
-          <div className="rounded-xl border border-amber-500/40 bg-gradient-to-br from-[#1e293b] to-[#0f172a] p-4 shadow-lg">
-            <div className="mb-3 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Zap className="h-4 w-4 text-[#eab308]" />
-                <h2 className="text-xs font-bold uppercase tracking-wider text-[#eab308]">
-                  Fuel Ratio & Autonomia
-                </h2>
-              </div>
-              <span className="rounded bg-amber-500/15 px-2 py-0.5 text-[10px] font-semibold text-amber-300 border border-amber-500/30">
-                Limite: {telemetry.limitingFactor}
-              </span>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="rounded-lg border border-[#334155] bg-[#0f172a]/80 p-3">
-                <div className="text-[11px] text-slate-400">Fuel Ratio</div>
-                <div className="mt-1 text-2xl font-extrabold font-mono tabular-nums text-white">
-                  {telemetry.fuelRatio.toFixed(2)}
-                  <span className="ml-1 text-xs font-normal text-amber-400">L/%</span>
-                </div>
-                <div className="mt-0.5 text-[10px] text-slate-500">
-                  {params.fuelPerLapL}L ÷ {params.virtualEnergyPerLapPct}%
-                </div>
-              </div>
-              <div className="rounded-lg border border-[#334155] bg-[#0f172a]/80 p-3">
-                <div className="text-[11px] text-slate-400">Autonomia Máx / Stint</div>
-                <div className="mt-1 text-2xl font-extrabold font-mono tabular-nums text-[#22c55e]">
-                  {telemetry.maxStintLaps}
-                  <span className="ml-1 text-xs font-normal text-emerald-300">voltas</span>
-                </div>
-                <div className="mt-0.5 text-[10px] font-mono text-slate-400 tabular-nums">
-                  ~{telemetry.maxStintMin.toFixed(1)} min / stint
-                </div>
-              </div>
-            </div>
-            <div className="mt-3 flex items-center justify-between text-[11px] text-slate-400 border-t border-[#334155]/70 pt-2.5">
-              <span>Tanque: {telemetry.maxLapsByFuel}v</span>
-              <span>•</span>
-              <span>Energia 100%: {telemetry.maxLapsByEnergy}v</span>
-              <span>•</span>
-              <span className="text-slate-200 font-semibold">{raceStintCount} stints</span>
-            </div>
-          </div>
-
           <div ref={mobileCalendarRef}>{calendarCard}</div>
         </div>
       </div>
@@ -3998,7 +4051,11 @@ export default function App() {
               </span>
             </button>
 
-            <div className={`${mobileParamsOpen ? 'block' : 'hidden'} lg:block p-4 space-y-4`}>
+            <div
+              className={`${mobileParamsOpen ? 'block' : 'hidden'} lg:block p-4 space-y-4 transition-opacity ${
+                stintMode === 'race' ? 'opacity-25 pointer-events-none select-none' : ''
+              }`}
+            >
               {/* Car & Class Selector */}
               <div className="rounded-lg border border-[#334155] bg-[#0f172a]/70 p-3 space-y-2.5">
                 <div className="flex items-center gap-2.5">
@@ -4363,9 +4420,6 @@ export default function App() {
                 </h2>
               </div>
               <div className="flex items-center gap-2">
-                <span className="rounded bg-amber-500/15 px-2 py-0.5 text-[10px] font-semibold text-amber-300 border border-amber-500/30">
-                  Limite: {telemetry.limitingFactor}
-                </span>
                 <span className="lg:hidden text-slate-400">
                   {mobileFuelOpen ? (
                     <ChevronUp className="h-4 w-4" />
@@ -4486,7 +4540,6 @@ export default function App() {
                 <h2 className="text-xs font-bold uppercase tracking-wider text-slate-200">
                   Stints
                 </h2>
-                <StintModeToggleSwitch mode={stintMode} onToggle={handleToggleStintMode} />
               </div>
               <div className="flex items-center gap-2">
                 <span className="hidden xl:inline text-[11px] text-slate-400">
@@ -4801,21 +4854,7 @@ export default function App() {
                                             corner={key}
                                             tireMeta={tireMeta}
                                             stintMode={stintMode}
-                                            onToggle={() => {
-                                              if (stintMode === 'planning') {
-                                                if (tireMeta?.mode === 'new') setStartVal('keep');
-                                                else if (tireMeta?.mode === 'keep') setStartVal('used');
-                                                else setStartVal(100);
-                                              } else {
-                                                if (tireMeta?.mode === 'new') {
-                                                  setStartVal(tireMeta?.canKeep ? 'keep' : 'ND');
-                                                } else if (tireMeta?.mode === 'keep') {
-                                                  setStartVal('ND');
-                                                } else {
-                                                  setStartVal(100);
-                                                }
-                                              }
-                                            }}
+                                            onToggle={() => setTirePitModalRowId(row.id)}
                                           />
                                         );
                                       })}
@@ -5144,21 +5183,7 @@ export default function App() {
                                         corner={key}
                                         tireMeta={tireMeta}
                                         stintMode={stintMode}
-                                        onToggle={() => {
-                                          if (stintMode === 'planning') {
-                                            if (tireMeta?.mode === 'new') setStartVal('keep');
-                                            else if (tireMeta?.mode === 'keep') setStartVal('used');
-                                            else setStartVal(100);
-                                          } else {
-                                            if (tireMeta?.mode === 'new') {
-                                              setStartVal(tireMeta?.canKeep ? 'keep' : 'ND');
-                                            } else if (tireMeta?.mode === 'keep') {
-                                              setStartVal('ND');
-                                            } else {
-                                              setStartVal(100);
-                                            }
-                                          }
-                                        }}
+                                        onToggle={() => setTirePitModalRowId(row.id)}
                                       />
                                     );
                                   })}
@@ -5286,7 +5311,11 @@ export default function App() {
           </div>
 
           {/* BOTTOM PANEL: TIRE MANAGER (BEST TO REUSE) */}
-          <div className="rounded-xl border border-[#334155] bg-[#1e293b] p-4">
+          <div
+            className={`rounded-xl border border-[#334155] bg-[#1e293b] p-4 transition-opacity ${
+              stintMode === 'planning' ? 'opacity-25 pointer-events-none select-none' : ''
+            }`}
+          >
             <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
               <div className="flex items-center gap-2">
                 <Disc className="h-4 w-4 text-[#22c55e]" />
@@ -5690,6 +5719,260 @@ export default function App() {
                     </div>
                   )}
                 </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* PITBOX GT3 TIRE PICKER MODAL */}
+      {tirePitModalRowId && (() => {
+        const modalRow = enrichedSchedule.find((r) => r.id === tirePitModalRowId);
+        if (!modalRow) return null;
+
+        const setCornerVal = (corner, val) => {
+          if (modalRow.type === 'race') {
+            updateRaceStintTire(modalRow.stintNum, 'tiresStart', corner, val);
+          } else {
+            updatePreSessionTire(modalRow.type, 'tiresStart', corner, val);
+          }
+        };
+
+        const setAllCorners = (val) => {
+          const nextMap = { FL: val, FR: val, RL: val, RR: val };
+          if (modalRow.type === 'race') {
+            updateRaceStint(modalRow.stintNum, 'tiresStart', nextMap);
+          } else {
+            updatePreSession(modalRow.type, 'tiresStart', nextMap);
+          }
+        };
+
+        const renderCornerControls = (cornerKey, alignRight) => {
+          const meta = modalRow.startTireMeta?.[cornerKey];
+          const mode = meta?.mode || 'new';
+          const isKeep = mode === 'keep';
+          const isWet = mode === 'wet' || (isKeep && Boolean(meta?.isWet));
+          const canKeep = stintMode === 'planning' || Boolean(meta?.canKeep);
+
+          const tirePillColor =
+            mode === 'wet'
+              ? 'border-blue-400 bg-blue-500/25 text-sky-200 shadow-[0_0_12px_rgba(56,189,248,0.3)]'
+              : mode === 'new'
+              ? 'border-emerald-400 bg-emerald-500/20 text-emerald-300 shadow-[0_0_12px_rgba(34,197,94,0.25)]'
+              : mode === 'keep'
+              ? isWet
+                ? 'border-blue-400/35 bg-blue-500/10 text-sky-300/80 opacity-65'
+                : 'border-emerald-500/35 bg-emerald-500/10 text-emerald-300/80 opacity-65'
+              : 'border-amber-400 bg-amber-500/20 text-amber-300 shadow-[0_0_12px_rgba(234,179,8,0.25)]';
+
+          const options = [
+            { id: 'new', val: 100, label: 'Seco', icon: 'sun' },
+            ...(canKeep ? [{ id: 'keep', val: 'keep', label: 'Manter', icon: isWet ? 'drop' : 'sun' }] : []),
+            { id: 'used', val: stintMode === 'planning' ? 'used' : 'ND', label: 'Usado', icon: 'sun' },
+            { id: 'wet', val: 'wet', label: 'Chuva', icon: 'drop' },
+          ];
+
+          return (
+            <div className={`flex flex-col gap-1.5 ${alignRight ? 'items-end' : 'items-start'}`}>
+              {/* Animated Tire Visual (slides inward when MANTER / installed, outward when in pitbox) */}
+              <div className="flex items-center gap-1.5">
+                <div
+                  className={`flex h-12 w-8 flex-col items-center justify-center rounded-md border-2 font-mono text-[9px] font-extrabold transition-all duration-300 ease-out ${tirePillColor} ${
+                    isKeep
+                      ? alignRight
+                        ? 'translate-x-5 scale-90'
+                        : '-translate-x-5 scale-90'
+                      : 'translate-x-0 scale-100'
+                  }`}
+                  title={isKeep ? `${cornerKey}: Instalado no carro (Manter)` : `${cornerKey}: No box para troca`}
+                >
+                  <span className="leading-none opacity-80">{cornerKey}</span>
+                  <span className="mt-1">
+                    {isWet ? (
+                      <Droplets className="h-3.5 w-3.5 text-sky-300" />
+                    ) : (
+                      <Sun className="h-3.5 w-3.5 text-amber-300" />
+                    )}
+                  </span>
+                </div>
+              </div>
+
+              {/* 4 quick choice buttons */}
+              <div className="grid grid-cols-2 gap-1">
+                {options.map((opt) => {
+                  const active = mode === opt.id;
+                  return (
+                    <button
+                      key={opt.id}
+                      type="button"
+                      onClick={() => setCornerVal(cornerKey, opt.val)}
+                      className={`inline-flex items-center justify-center gap-0.5 rounded border px-1.5 py-0.5 text-[9px] font-bold transition-colors cursor-pointer ${
+                        active
+                          ? opt.id === 'wet'
+                            ? 'border-blue-400 bg-blue-500/30 text-sky-200'
+                            : opt.id === 'new'
+                            ? 'border-emerald-400 bg-emerald-500/25 text-emerald-200'
+                            : opt.id === 'keep'
+                            ? 'border-slate-400 bg-slate-600/40 text-white'
+                            : 'border-amber-400 bg-amber-500/25 text-amber-200'
+                          : 'border-[#334155] bg-[#0f172a] text-slate-400 hover:text-slate-200'
+                      }`}
+                    >
+                      {opt.icon === 'drop' ? (
+                        <Droplets className="h-2.5 w-2.5 text-sky-300" />
+                      ) : (
+                        <Sun className="h-2.5 w-2.5 text-amber-300" />
+                      )}
+                      <span>{opt.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        };
+
+        return (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm"
+            onClick={() => setTirePitModalRowId(null)}
+          >
+            <div
+              className="w-full max-w-md rounded-2xl border border-[#334155] bg-[#0f172a] shadow-2xl overflow-hidden"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between border-b border-[#334155] bg-[#1e293b] px-4 py-3">
+                <div className="flex items-center gap-2">
+                  <Disc className="h-4 w-4 text-[#22c55e]" />
+                  <div>
+                    <h3 className="text-sm font-bold text-white">
+                      Box — {modalRow.label}
+                    </h3>
+                    <p className="text-[11px] text-slate-400">
+                      Selecione os pneus por canto (Manter = instalado no carro)
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setTirePitModalRowId(null)}
+                  className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-[#334155] bg-[#0f172a] text-slate-400 hover:text-white cursor-pointer"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+
+              <div className="p-4 space-y-4">
+                {/* Quick All-4 Presets */}
+                <div className="flex flex-wrap items-center justify-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => setAllCorners(100)}
+                    className="inline-flex items-center gap-1 rounded-lg border border-emerald-500/40 bg-emerald-500/15 px-2.5 py-1 text-[10px] font-bold text-emerald-300 hover:bg-emerald-500/25 cursor-pointer"
+                  >
+                    <Sun className="h-3 w-3 text-amber-300" />
+                    4x Seco
+                  </button>
+                  {(stintMode === 'planning' ||
+                    TIRE_CORNERS.every(({ key }) => modalRow.startTireMeta?.[key]?.canKeep)) && (
+                    <button
+                      type="button"
+                      onClick={() => setAllCorners('keep')}
+                      className="inline-flex items-center gap-1 rounded-lg border border-[#334155] bg-[#1e293b] px-2.5 py-1 text-[10px] font-bold text-slate-200 hover:border-slate-400 cursor-pointer"
+                    >
+                      4x Manter
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => setAllCorners('wet')}
+                    className="inline-flex items-center gap-1 rounded-lg border border-blue-400/40 bg-blue-500/15 px-2.5 py-1 text-[10px] font-bold text-sky-300 hover:bg-blue-500/25 cursor-pointer"
+                  >
+                    <Droplets className="h-3 w-3 text-sky-300" />
+                    4x Chuva
+                  </button>
+                </div>
+
+                {/* Pitbox Top-Down GT3 Car Diagram */}
+                <div className="relative rounded-xl border border-dashed border-amber-500/35 bg-[#111827] px-3 py-4">
+                  <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
+                    {/* Left Side (FL & RL) */}
+                    <div className="flex flex-col justify-between gap-8">
+                      {renderCornerControls('FL', true)}
+                      {renderCornerControls('RL', true)}
+                    </div>
+
+                    {/* Top-Down GT3 Race Car SVG */}
+                    <div className="flex items-center justify-center px-1">
+                      <svg
+                        viewBox="0 0 110 210"
+                        className="h-52 w-24 drop-shadow-[0_0_12px_rgba(0,0,0,0.8)]"
+                        aria-hidden="true"
+                      >
+                        {/* Front Splitter */}
+                        <path
+                          d="M22 20 C22 10, 88 10, 88 20 L84 26 L26 26 Z"
+                          fill="#0f172a"
+                          stroke="#eab308"
+                          strokeWidth="1.5"
+                        />
+                        {/* GT3 Main Body */}
+                        <path
+                          d="M24 26 C20 38, 18 60, 18 105 C18 148, 20 172, 26 186 L84 186 C90 172, 92 148, 92 105 C92 60, 90 38, 86 26 Z"
+                          fill="#1e293b"
+                          stroke="#64748b"
+                          strokeWidth="2"
+                        />
+                        {/* Hood Vent */}
+                        <path
+                          d="M38 38 L72 38 L68 58 L42 58 Z"
+                          fill="#0f172a"
+                          stroke="#334155"
+                          strokeWidth="1.2"
+                        />
+                        {/* Windshield & Cockpit */}
+                        <path
+                          d="M30 70 C36 62, 74 62, 80 70 L76 132 C72 138, 38 138, 34 132 Z"
+                          fill="#020617"
+                          stroke="#475569"
+                          strokeWidth="1.5"
+                        />
+                        {/* Roof / Racing Stripe */}
+                        <rect x="46" y="76" width="18" height="46" rx="4" fill="#1e293b" stroke="#eab308" strokeWidth="1" />
+                        {/* Side Mirrors */}
+                        <rect x="11" y="74" width="7" height="10" rx="2" fill="#334155" />
+                        <rect x="92" y="74" width="7" height="10" rx="2" fill="#334155" />
+                        {/* Rear Engine Louvers */}
+                        <path d="M36 146 L74 146 M38 154 L72 154 M40 162 L70 162" stroke="#334155" strokeWidth="2" strokeLinecap="round" />
+                        {/* Rear GT3 Wing */}
+                        <rect
+                          x="14"
+                          y="185"
+                          width="82"
+                          height="12"
+                          rx="2"
+                          fill="#0f172a"
+                          stroke="#eab308"
+                          strokeWidth="1.5"
+                        />
+                      </svg>
+                    </div>
+
+                    {/* Right Side (FR & RR) */}
+                    <div className="flex flex-col justify-between gap-8">
+                      {renderCornerControls('FR', false)}
+                      {renderCornerControls('RR', false)}
+                    </div>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setTirePitModalRowId(null)}
+                  className="w-full rounded-xl bg-[#eab308] px-4 py-2 text-xs font-extrabold uppercase tracking-wider text-slate-950 hover:bg-amber-400 transition-colors cursor-pointer"
+                >
+                  Concluído
+                </button>
               </div>
             </div>
           </div>
