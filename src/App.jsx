@@ -23,6 +23,10 @@ import {
   X,
   Droplets,
   Sun,
+  Plus,
+  Trash2,
+  LayoutGrid,
+  Car,
 } from 'lucide-react';
 import { supabase, isSupabaseConfigured } from './lib/supabaseClient';
 
@@ -852,6 +856,7 @@ function MiniPirelliTire({ size = 16 }) {
 const INITIAL_NEXT_EVENT = buildLmuWeekendCalendar().find((e) => e.status === 'next');
 
 const DEFAULT_PARAMS = {
+  championship: 'WEC',
   carClass: 'LMGT3',
   carId: 'porsche-911-lmgt3',
   circuitId: detectCircuitIdFromEvent(INITIAL_NEXT_EVENT),
@@ -864,10 +869,7 @@ const DEFAULT_PARAMS = {
   fpDurationMin: 5,
   qualyDurationMin: 15,
   availableTires: 24,
-  pitTime4TiresSec: 45,
-  pitTime2TiresSec: 35,
-  pitTimeFuelOnlySec: 25,
-  pitTimeDriverOnlySec: 15,
+  pitlaneLossSec: 30,
 };
 
 const DEFAULT_FULL_TIRES = { FL: 100, FR: 100, RL: 100, RR: 100 };
@@ -930,6 +932,224 @@ const DEFAULT_STINT_OVERRIDES = {
     tiresEndEnabled: false,
   },
 };
+
+const DEFAULT_EVENT_CONFIG = {
+  championship: DEFAULT_PARAMS.championship,
+  circuitId: DEFAULT_PARAMS.circuitId,
+  sessionStart: DEFAULT_PARAMS.sessionStart,
+  raceDurationStr: DEFAULT_PARAMS.raceDurationStr,
+  fpDurationMin: DEFAULT_PARAMS.fpDurationMin,
+  qualyDurationMin: DEFAULT_PARAMS.qualyDurationMin,
+};
+
+const DEFAULT_CAR_PARAMS = {
+  carClass: DEFAULT_PARAMS.carClass,
+  carId: DEFAULT_PARAMS.carId,
+  lapTimeStr: DEFAULT_PARAMS.lapTimeStr,
+  tankCapacityL: DEFAULT_PARAMS.tankCapacityL,
+  fuelPerLapL: DEFAULT_PARAMS.fuelPerLapL,
+  virtualEnergyPerLapPct: DEFAULT_PARAMS.virtualEnergyPerLapPct,
+  availableTires: DEFAULT_PARAMS.availableTires,
+  pitlaneLossSec: DEFAULT_PARAMS.pitlaneLossSec,
+};
+
+const GLOBAL_PARAM_KEYS = new Set([
+  'championship',
+  'circuitId',
+  'sessionStart',
+  'raceDurationStr',
+  'fpDurationMin',
+  'qualyDurationMin',
+]);
+
+const CAR_SLOT_PRESETS = {
+  'car-1': {
+    id: 'car-1',
+    defaultLabel: 'FTR #14',
+    color: 'amber',
+    dotClass: 'bg-[#eab308]',
+    ringClass: 'border-amber-500/70 bg-amber-500/15 text-amber-200',
+    badgeClass: 'border-amber-500/50 bg-amber-500/15 text-amber-300',
+    accentBorder: 'border-l-amber-400',
+    defaultCarClass: 'LMGT3',
+    defaultCarId: 'porsche-911-lmgt3',
+  },
+  'car-2': {
+    id: 'car-2',
+    defaultLabel: 'FTR #88',
+    color: 'sky',
+    dotClass: 'bg-sky-400',
+    ringClass: 'border-sky-500/70 bg-sky-500/15 text-sky-200',
+    badgeClass: 'border-sky-500/50 bg-sky-500/15 text-sky-300',
+    accentBorder: 'border-l-sky-400',
+    defaultCarClass: 'LMGT3',
+    defaultCarId: 'ford-mustang-lmgt3',
+  },
+  'car-3': {
+    id: 'car-3',
+    defaultLabel: 'FTR #07',
+    color: 'emerald',
+    dotClass: 'bg-[#22c55e]',
+    ringClass: 'border-emerald-500/70 bg-emerald-500/15 text-emerald-200',
+    badgeClass: 'border-emerald-500/50 bg-emerald-500/15 text-emerald-300',
+    accentBorder: 'border-l-emerald-400',
+    defaultCarClass: 'LMP2',
+    defaultCarId: 'oreca-07',
+  },
+};
+
+const ALL_CAR_SLOT_IDS = ['car-1', 'car-2', 'car-3'];
+
+function createDefaultCarState(slotId = 'car-1', usePresetSamples = false) {
+  const preset = CAR_SLOT_PRESETS[slotId] || CAR_SLOT_PRESETS['car-1'];
+  const clearedPre = {
+    fp: {
+      driver: 'ND',
+      tiresStart: { ...DEFAULT_FULL_TIRES },
+      tiresEnd: { ...DEFAULT_FULL_TIRES },
+    },
+    qualy: {
+      driver: 'ND',
+      tiresStart: { ...DEFAULT_FULL_TIRES },
+      tiresEnd: { ...DEFAULT_FULL_TIRES },
+      tiresEndEnabled: false,
+    },
+  };
+  const clearedOverrides = {};
+  for (let i = 1; i <= 60; i += 1) {
+    clearedOverrides[i] = {
+      driver: 'ND',
+      pitScenario: '4_tires_fuel',
+      tiresStart: { ...DEFAULT_FULL_TIRES },
+      tiresEnd: { ...DEFAULT_FULL_TIRES },
+      tiresEndEnabled: false,
+    };
+  }
+  return {
+    id: slotId,
+    label: preset.defaultLabel,
+    color: preset.color,
+    carParams: {
+      ...DEFAULT_CAR_PARAMS,
+      carClass: preset.defaultCarClass,
+      carId: preset.defaultCarId,
+    },
+    preSessions: usePresetSamples
+      ? JSON.parse(JSON.stringify(DEFAULT_PRE_SESSIONS))
+      : clearedPre,
+    stintOverrides: usePresetSamples
+      ? JSON.parse(JSON.stringify(DEFAULT_STINT_OVERRIDES))
+      : clearedOverrides,
+    racePreSessions: null,
+    raceStintOverrides: null,
+    completedItems: {},
+  };
+}
+
+function normalizeMultiCarPayload(raw) {
+  const defaultCar1 = createDefaultCarState('car-1', true);
+  if (!raw || typeof raw !== 'object') {
+    return {
+      version: 2,
+      eventConfig: { ...DEFAULT_EVENT_CONFIG },
+      carOrder: ['car-1'],
+      activeCarId: 'car-1',
+      cars: { 'car-1': defaultCar1 },
+      eventSignups: {},
+    };
+  }
+
+  // v2 multi-car format
+  if (raw.cars && typeof raw.cars === 'object') {
+    const rawOrder = Array.isArray(raw.carOrder)
+      ? raw.carOrder.filter((id) => ALL_CAR_SLOT_IDS.includes(id) && raw.cars[id])
+      : Object.keys(raw.cars).filter((id) => ALL_CAR_SLOT_IDS.includes(id));
+    const carOrder = rawOrder.length > 0 ? rawOrder.slice(0, 3) : ['car-1'];
+    const normalizedCars = {};
+    carOrder.forEach((id) => {
+      const base = createDefaultCarState(id, id === 'car-1');
+      const incoming = raw.cars[id] || {};
+      normalizedCars[id] = {
+        ...base,
+        ...incoming,
+        id,
+        label:
+          typeof incoming.label === 'string' && incoming.label.trim()
+            ? incoming.label
+            : base.label,
+        color: incoming.color || base.color,
+        carParams: { ...base.carParams, ...(incoming.carParams || {}) },
+        preSessions: { ...base.preSessions, ...(incoming.preSessions || {}) },
+        stintOverrides: incoming.stintOverrides || base.stintOverrides,
+        racePreSessions:
+          incoming.racePreSessions !== undefined ? incoming.racePreSessions : null,
+        raceStintOverrides:
+          incoming.raceStintOverrides !== undefined ? incoming.raceStintOverrides : null,
+        completedItems: incoming.completedItems || {},
+      };
+    });
+    const activeCarId = carOrder.includes(raw.activeCarId) ? raw.activeCarId : carOrder[0];
+    return {
+      version: 2,
+      eventConfig: { ...DEFAULT_EVENT_CONFIG, ...(raw.eventConfig || {}) },
+      carOrder,
+      activeCarId,
+      cars: normalizedCars,
+      eventSignups: raw.eventSignups || {},
+    };
+  }
+
+  // Legacy v1 single-car format migration
+  const legacyParams = { ...DEFAULT_PARAMS, ...(raw.params || {}) };
+  const eventConfig = {
+    championship: legacyParams.championship || DEFAULT_EVENT_CONFIG.championship,
+    circuitId: legacyParams.circuitId || DEFAULT_EVENT_CONFIG.circuitId,
+    sessionStart: legacyParams.sessionStart || DEFAULT_EVENT_CONFIG.sessionStart,
+    raceDurationStr: legacyParams.raceDurationStr || DEFAULT_EVENT_CONFIG.raceDurationStr,
+    fpDurationMin:
+      legacyParams.fpDurationMin !== undefined
+        ? legacyParams.fpDurationMin
+        : DEFAULT_EVENT_CONFIG.fpDurationMin,
+    qualyDurationMin:
+      legacyParams.qualyDurationMin !== undefined
+        ? legacyParams.qualyDurationMin
+        : DEFAULT_EVENT_CONFIG.qualyDurationMin,
+  };
+  const car1 = {
+    ...defaultCar1,
+    carParams: {
+      carClass: legacyParams.carClass || DEFAULT_CAR_PARAMS.carClass,
+      carId: legacyParams.carId || DEFAULT_CAR_PARAMS.carId,
+      lapTimeStr: legacyParams.lapTimeStr || DEFAULT_CAR_PARAMS.lapTimeStr,
+      tankCapacityL: legacyParams.tankCapacityL || DEFAULT_CAR_PARAMS.tankCapacityL,
+      fuelPerLapL: legacyParams.fuelPerLapL || DEFAULT_CAR_PARAMS.fuelPerLapL,
+      virtualEnergyPerLapPct:
+        legacyParams.virtualEnergyPerLapPct || DEFAULT_CAR_PARAMS.virtualEnergyPerLapPct,
+      availableTires:
+        legacyParams.availableTires !== undefined
+          ? legacyParams.availableTires
+          : DEFAULT_CAR_PARAMS.availableTires,
+      pitlaneLossSec:
+        legacyParams.pitlaneLossSec !== undefined
+          ? legacyParams.pitlaneLossSec
+          : DEFAULT_CAR_PARAMS.pitlaneLossSec,
+    },
+    preSessions: { ...DEFAULT_PRE_SESSIONS, ...(raw.preSessions || {}) },
+    stintOverrides: raw.stintOverrides || DEFAULT_STINT_OVERRIDES,
+    racePreSessions: raw.racePreSessions !== undefined ? raw.racePreSessions : null,
+    raceStintOverrides: raw.raceStintOverrides !== undefined ? raw.raceStintOverrides : null,
+    completedItems: raw.completedItems || {},
+  };
+
+  return {
+    version: 2,
+    eventConfig,
+    carOrder: ['car-1'],
+    activeCarId: 'car-1',
+    cars: { 'car-1': car1 },
+    eventSignups: raw.eventSignups || {},
+  };
+}
 
 /**
  * Parses lap time string in format MM:SS.mmm, MM:SS, or seconds into total seconds.
@@ -1020,19 +1240,330 @@ function getTireTextColor(pct) {
   return 'text-red-400';
 }
 
-function getPitTimeSeconds(scenarioId, params) {
+function getTireCountForScenario(scenarioId) {
   switch (scenarioId) {
     case '4_tires_fuel':
-      return Math.max(0, Number(params.pitTime4TiresSec) || 0);
+      return 4;
     case '2_tires_fuel':
-      return Math.max(0, Number(params.pitTime2TiresSec) || 0);
+      return 2;
     case 'fuel_only':
-      return Math.max(0, Number(params.pitTimeFuelOnlySec) || 0);
     case 'driver_swap_only':
-      return Math.max(0, Number(params.pitTimeDriverOnlySec) || 0);
     default:
       return 0;
   }
+}
+
+function calculatePitStopDetails({
+  scenarioId,
+  params,
+  carClass,
+  nextStintLaps,
+  stintLaps,
+  remainingFuelL = 0,
+  remainingEnergyPct = 0,
+  hasDriverSwap = false,
+}) {
+  const isElms = params.championship === 'ELMS';
+  const tankL = Math.max(1, Number(params.tankCapacityL) || 100);
+  const fuelPerLap = Math.max(0.1, Number(params.fuelPerLapL) || 3.1);
+  const energyPerLap = Math.max(0.1, Number(params.virtualEnergyPerLapPct) || 2.1);
+
+  const targetLaps = Math.max(0, Number(nextStintLaps ?? stintLaps) || 0);
+  const needsRefuel = scenarioId !== 'driver_swap_only';
+
+  let neededEnergyPct = 0;
+  let neededLiters = 0;
+  let deltaEnergyPct = 0;
+  let deltaLiters = 0;
+  let refuelSec = 0;
+
+  if (needsRefuel && targetLaps > 0) {
+    if (isElms) {
+      neededLiters = Math.min(tankL, Math.max(0, targetLaps * fuelPerLap));
+      deltaLiters = Math.min(tankL, Math.max(0, neededLiters - Math.max(0, remainingFuelL)));
+      refuelSec = deltaLiters > 0 ? deltaLiters / 2.5 + 3 : 0;
+    } else {
+      neededEnergyPct = Math.min(100, Math.max(0, targetLaps * energyPerLap));
+      neededLiters = Math.min(tankL, Math.max(0, targetLaps * fuelPerLap));
+      deltaEnergyPct = Math.min(100, Math.max(0, neededEnergyPct - Math.max(0, remainingEnergyPct)));
+      deltaLiters = Math.min(tankL, Math.max(0, neededLiters - Math.max(0, remainingFuelL)));
+      refuelSec = deltaEnergyPct > 0 ? deltaEnergyPct / 2.5 + 3 : 0;
+    }
+  }
+
+  const tiresCount = getTireCountForScenario(scenarioId);
+  const perTireSec = carClass === 'LMGT3' || carClass === 'GTE' ? 8.5 : 8.0;
+  const tireSec = tiresCount * perTireSec;
+
+  const swapActive = Boolean(hasDriverSwap) || scenarioId === 'driver_swap_only';
+  const baseWithSwapSec = swapActive ? Math.max(refuelSec, 25) : refuelSec;
+
+  const stationarySec = Math.round((baseWithSwapSec + tireSec) * 10) / 10;
+  const pitlaneLossSec = Math.max(0, Number(params.pitlaneLossSec) || 0);
+  const totalSec = Math.round((stationarySec + pitlaneLossSec) * 10) / 10;
+
+  const deltaEnergyRounded = Math.round(deltaEnergyPct);
+  const deltaLitersRounded = Math.round(deltaLiters);
+  const mfdTargetLabel =
+    !needsRefuel || (isElms ? deltaLitersRounded <= 0 : deltaEnergyRounded <= 0 && deltaLitersRounded <= 0)
+      ? 'Sem abastec.'
+      : isElms
+      ? `+${deltaLitersRounded}L`
+      : `+${deltaEnergyRounded}% E (${deltaLitersRounded}L)`;
+
+  return {
+    stationarySec,
+    pitlaneLossSec,
+    totalSec,
+    refuelSec: Math.round(refuelSec * 10) / 10,
+    tireSec,
+    tiresCount,
+    swapActive,
+    deltaEnergyPct: deltaEnergyRounded,
+    deltaLiters: deltaLitersRounded,
+    neededEnergyPct: Math.round(neededEnergyPct),
+    neededLiters: Math.round(neededLiters),
+    mfdTargetLabel,
+  };
+}
+
+function computeCarTelemetry(eventConfig, carParams) {
+  const isElms = eventConfig.championship === 'ELMS';
+  const lapTimeSec = parseLapTimeToSeconds(carParams.lapTimeStr);
+  const tankL = Math.max(1, Number(carParams.tankCapacityL) || 100);
+  const fuelPerLap = Math.max(0.1, Number(carParams.fuelPerLapL) || 3.1);
+  const energyPerLap = Math.max(0.1, Number(carParams.virtualEnergyPerLapPct) || 2.1);
+
+  const fuelRatio = isElms ? null : fuelPerLap / energyPerLap;
+  const maxLapsByFuel = Math.floor(tankL / fuelPerLap);
+  const maxLapsByEnergy = isElms ? maxLapsByFuel : Math.floor(100 / energyPerLap);
+  const maxStintLaps = Math.max(
+    1,
+    isElms ? maxLapsByFuel : Math.min(maxLapsByFuel, maxLapsByEnergy)
+  );
+  const limitingFactor = isElms
+    ? 'Tanque (ELMS)'
+    : maxLapsByFuel <= maxLapsByEnergy
+    ? 'Tanque'
+    : 'Energia Virtual';
+  const maxStintMin = (maxStintLaps * lapTimeSec) / 60;
+
+  return {
+    isElms,
+    lapTimeSec,
+    fuelRatio,
+    maxLapsByFuel,
+    maxLapsByEnergy,
+    maxStintLaps,
+    limitingFactor,
+    maxStintMin,
+  };
+}
+
+function computeCarSchedule({ eventConfig, car, stintMode, telemetry }) {
+  const combinedParams = { ...eventConfig, ...car.carParams };
+  const planPre = car.preSessions || DEFAULT_PRE_SESSIONS;
+  const planOverrides = car.stintOverrides || DEFAULT_STINT_OVERRIDES;
+  const activePre =
+    stintMode === 'race' ? car.racePreSessions || planPre : planPre;
+  const activeOverrides =
+    stintMode === 'race' ? car.raceStintOverrides || planOverrides : planOverrides;
+
+  const rows = [];
+  let cursorMin = parseTimeToMinutes(eventConfig.sessionStart);
+
+  const fpDur = Math.max(0, Number(eventConfig.fpDurationMin) || 0);
+  const fpLaps = Math.floor((fpDur * 60) / telemetry.lapTimeSec);
+  rows.push({
+    id: 'fp',
+    type: 'fp',
+    label: 'Free Practice',
+    durationMin: fpDur,
+    laps: fpLaps,
+    startMin: cursorMin,
+    endMin: cursorMin + fpDur,
+    driver: activePre.fp?.driver || 'ND',
+    pitScenario: null,
+    pitDurationSec: 0,
+    pitStationarySec: 0,
+    pitlaneLossSec: 0,
+    tiresStart: DEFAULT_FULL_TIRES,
+    tiresEnd: DEFAULT_FULL_TIRES,
+  });
+  cursorMin += fpDur;
+
+  const qualyDur = Math.max(0, Number(eventConfig.qualyDurationMin) || 0);
+  const qualyLaps = Math.floor((qualyDur * 60) / telemetry.lapTimeSec);
+  rows.push({
+    id: 'qualy',
+    type: 'qualy',
+    label: 'Qualy',
+    durationMin: qualyDur,
+    laps: qualyLaps,
+    startMin: cursorMin,
+    endMin: cursorMin + qualyDur,
+    driver: activePre.qualy?.driver || 'ND',
+    plannedDriver: planPre.qualy?.driver || 'ND',
+    pitScenario: null,
+    pitDurationSec: 0,
+    pitStationarySec: 0,
+    pitlaneLossSec: 0,
+    tiresStart: activePre.qualy?.tiresStart || DEFAULT_FULL_TIRES,
+    tiresEnd:
+      activePre.qualy?.tiresEnd ||
+      activePre.qualy?.tires || { FL: 88, FR: 84, RL: 90, RR: 89 },
+    tiresEndEnabled: Boolean(activePre.qualy?.tiresEndEnabled),
+  });
+  cursorMin += qualyDur;
+
+  const totalRaceMin = parseDurationHHMMToMinutes(eventConfig.raceDurationStr);
+  const tankCapacityL = Math.max(1, Number(combinedParams.tankCapacityL) || 100);
+  const fuelPerLapL = Math.max(0.1, Number(combinedParams.fuelPerLapL) || 3.1);
+  const energyPerLapPct = Math.max(0.1, Number(combinedParams.virtualEnergyPerLapPct) || 2.1);
+
+  let remainingRaceMin = totalRaceMin;
+  let currentTankL = tankCapacityL;
+  let currentEnergyPct = telemetry.isElms ? 0 : 100;
+  let stintNum = 1;
+  const maxStintsGuard = 60;
+
+  while (remainingRaceMin > 0.05 && stintNum <= maxStintsGuard) {
+    const override = activeOverrides[stintNum] || {};
+    const plannedOverride = planOverrides[stintNum] || {};
+    const defaultDriver = DRIVERS[(stintNum - 1) % Math.min(6, DRIVERS.length)];
+    const driver = override.driver || defaultDriver;
+    const plannedDriver = plannedOverride.driver || defaultDriver;
+    const pitScenario = override.pitScenario || '4_tires_fuel';
+    const tiresStart = override.tiresStart || DEFAULT_FULL_TIRES;
+    const tiresEnd = override.tiresEnd || override.tires || { FL: 72, FR: 68, RL: 76, RR: 74 };
+    const tiresEndEnabled = Boolean(override.tiresEndEnabled);
+
+    const hasCustomDuration =
+      override.durationMinOverride !== undefined &&
+      override.durationMinOverride !== null &&
+      !Number.isNaN(Number(override.durationMinOverride));
+    const rawStintMin = hasCustomDuration
+      ? Math.min(remainingRaceMin, Math.max(1, Number(override.durationMinOverride)))
+      : Math.min(telemetry.maxStintMin, remainingRaceMin);
+    const stintLaps = Math.max(1, Math.round((rawStintMin * 60) / telemetry.lapTimeSec));
+    const startMin = cursorMin;
+    const endMin = startMin + rawStintMin;
+
+    const isLastStint = remainingRaceMin - rawStintMin <= 0.05;
+    const nextOverride = activeOverrides[stintNum + 1] || {};
+    const nextDefaultDriver = DRIVERS[stintNum % Math.min(6, DRIVERS.length)];
+    const nextDriver = nextOverride.driver || nextDefaultDriver;
+    const hasDriverSwap =
+      Boolean(driver) &&
+      Boolean(nextDriver) &&
+      driver !== 'ND' &&
+      nextDriver !== 'ND' &&
+      driver !== nextDriver;
+
+    // Fuel / energy remaining upon entering the box at the end of Stint i
+    const remainingFuelL = Math.max(0, currentTankL - stintLaps * fuelPerLapL);
+    const remainingEnergyPct = telemetry.isElms
+      ? 0
+      : Math.max(0, currentEnergyPct - stintLaps * energyPerLapPct);
+
+    let pitDetails = {
+      stationarySec: 0,
+      pitlaneLossSec: 0,
+      totalSec: 0,
+      refuelSec: 0,
+      tireSec: 0,
+      tiresCount: 0,
+      swapActive: false,
+      deltaEnergyPct: 0,
+      deltaLiters: 0,
+      neededEnergyPct: 0,
+      neededLiters: 0,
+      mfdTargetLabel: '',
+    };
+    let nextStintLaps = 0;
+
+    if (!isLastStint) {
+      const remainingAfterCurrentMin = Math.max(0, remainingRaceMin - rawStintMin);
+      const hasNextCustomDuration =
+        nextOverride.durationMinOverride !== undefined &&
+        nextOverride.durationMinOverride !== null &&
+        !Number.isNaN(Number(nextOverride.durationMinOverride));
+
+      // 2-pass convergence so pit duration & next stint demand match cleanly
+      let estPitMin = 0.75;
+      for (let pass = 0; pass < 2; pass += 1) {
+        const remForNextMin = Math.max(0.05, remainingAfterCurrentMin - estPitMin);
+        const rawNextMin = hasNextCustomDuration
+          ? Math.min(remForNextMin, Math.max(1, Number(nextOverride.durationMinOverride)))
+          : Math.min(telemetry.maxStintMin, remForNextMin);
+        const isNextLastStint = remForNextMin - rawNextMin <= 0.05;
+        const baseNextLaps = Math.max(
+          1,
+          Math.ceil((rawNextMin * 60) / telemetry.lapTimeSec)
+        );
+        nextStintLaps = baseNextLaps + (isNextLastStint ? 1 : 0);
+
+        pitDetails = calculatePitStopDetails({
+          scenarioId: pitScenario,
+          params: combinedParams,
+          carClass: combinedParams.carClass || 'LMGT3',
+          nextStintLaps,
+          remainingFuelL,
+          remainingEnergyPct,
+          hasDriverSwap,
+        });
+        estPitMin = pitDetails.totalSec / 60;
+      }
+    }
+
+    const pitDurationSec = pitDetails.totalSec;
+    const pitDurationMin = pitDurationSec / 60;
+
+    rows.push({
+      id: `stint_${stintNum}`,
+      type: 'race',
+      stintNum,
+      label: `Stint ${String(stintNum).padStart(2, '0')}`,
+      durationMin: rawStintMin,
+      isDurationOverridden: hasCustomDuration,
+      laps: stintLaps,
+      startMin,
+      endMin,
+      driver,
+      plannedDriver,
+      pitScenario,
+      pitDurationSec,
+      pitStationarySec: pitDetails.stationarySec,
+      pitlaneLossSec: pitDetails.pitlaneLossSec,
+      deltaEnergyPct: pitDetails.deltaEnergyPct,
+      deltaLiters: pitDetails.deltaLiters,
+      mfdTargetLabel: pitDetails.mfdTargetLabel,
+      nextStintLaps,
+      remainingFuelL,
+      remainingEnergyPct,
+      hasDriverSwap,
+      isLastStint,
+      tiresStart,
+      tiresEnd,
+      tiresEndEnabled,
+    });
+
+    remainingRaceMin -= rawStintMin;
+    if (!isLastStint) {
+      cursorMin = endMin + pitDurationMin;
+      remainingRaceMin = Math.max(0, remainingRaceMin - pitDurationMin);
+      currentTankL = Math.min(tankCapacityL, remainingFuelL + pitDetails.deltaLiters);
+      currentEnergyPct = telemetry.isElms
+        ? 0
+        : Math.min(100, remainingEnergyPct + pitDetails.deltaEnergyPct);
+    } else {
+      cursorMin = endMin;
+    }
+
+    stintNum += 1;
+  }
+
+  return rows;
 }
 
 function StartTireToggleButton({ corner, tireMeta, stintMode = 'race', onToggle }) {
@@ -1198,13 +1729,7 @@ function TireBadgeEditor({ corner, tireId, value, onChange }) {
 
 function loadInitialStrategyState() {
   const fallback = {
-    params: DEFAULT_PARAMS,
-    preSessions: DEFAULT_PRE_SESSIONS,
-    stintOverrides: DEFAULT_STINT_OVERRIDES,
-    racePreSessions: null,
-    raceStintOverrides: null,
-    completedItems: {},
-    eventSignups: {},
+    ...normalizeMultiCarPayload(null),
     loadedFromUrl: false,
   };
 
@@ -1216,12 +1741,7 @@ function loadInitialStrategyState() {
       if (decompressed) {
         const parsed = JSON.parse(decompressed);
         if (parsed && typeof parsed === 'object') {
-          const merged = {
-            params: { ...DEFAULT_PARAMS, ...(parsed.params || {}) },
-            preSessions: { ...DEFAULT_PRE_SESSIONS, ...(parsed.preSessions || {}) },
-            stintOverrides: parsed.stintOverrides || DEFAULT_STINT_OVERRIDES,
-            eventSignups: parsed.eventSignups || {},
-          };
+          const merged = normalizeMultiCarPayload(parsed);
           localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
           window.history.replaceState({}, '', window.location.pathname);
           return { ...merged, loadedFromUrl: true };
@@ -1238,13 +1758,7 @@ function loadInitialStrategyState() {
       const parsed = JSON.parse(saved);
       if (parsed && typeof parsed === 'object') {
         return {
-          params: { ...DEFAULT_PARAMS, ...(parsed.params || {}) },
-          preSessions: { ...DEFAULT_PRE_SESSIONS, ...(parsed.preSessions || {}) },
-          stintOverrides: parsed.stintOverrides || DEFAULT_STINT_OVERRIDES,
-          racePreSessions: parsed.racePreSessions || null,
-          raceStintOverrides: parsed.raceStintOverrides || null,
-          completedItems: parsed.completedItems || {},
-          eventSignups: parsed.eventSignups || {},
+          ...normalizeMultiCarPayload(parsed),
           loadedFromUrl: false,
         };
       }
@@ -1323,29 +1837,256 @@ function CheckeredStripButton({ done, onToggle, title = 'Marcar como concluído'
   );
 }
 
+const FreeNumericInput = React.forwardRef(function FreeNumericInput(
+  { value, onCommit, min = 0, allowDecimal = true, className = '', placeholder = '', ...rest },
+  ref
+) {
+  const [isFocused, setIsFocused] = useState(false);
+  const [draft, setDraft] = useState(() =>
+    value === undefined || value === null ? '' : String(value)
+  );
+
+  useEffect(() => {
+    if (!isFocused) {
+      setDraft(value === undefined || value === null ? '' : String(value));
+    }
+  }, [value, isFocused]);
+
+  const handleChange = (e) => {
+    const raw = e.target.value;
+    if (allowDecimal) {
+      if (/^[0-9]*[.,]?[0-9]*$/.test(raw)) {
+        setDraft(raw);
+      }
+    } else if (/^[0-9]*$/.test(raw)) {
+      setDraft(raw);
+    }
+  };
+
+  const commit = () => {
+    const cleaned = draft.trim().replace(',', '.');
+    if (cleaned === '' || cleaned === '.') {
+      setDraft(String(min));
+      onCommit(min);
+      return;
+    }
+    const parsed = Number(cleaned);
+    if (Number.isNaN(parsed)) {
+      setDraft(String(min));
+      onCommit(min);
+      return;
+    }
+    const clamped = Math.max(min, allowDecimal ? parsed : Math.round(parsed));
+    setDraft(String(clamped));
+    onCommit(clamped);
+  };
+
+  return (
+    <input
+      ref={ref}
+      type="text"
+      inputMode={allowDecimal ? 'decimal' : 'numeric'}
+      value={isFocused ? draft : value === undefined || value === null ? '' : String(value)}
+      placeholder={placeholder}
+      onFocus={() => {
+        setIsFocused(true);
+        setDraft(value === undefined || value === null ? '' : String(value));
+      }}
+      onChange={handleChange}
+      onBlur={() => {
+        setIsFocused(false);
+        commit();
+      }}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') {
+          e.currentTarget.blur();
+        }
+      }}
+      className={className}
+      {...rest}
+    />
+  );
+});
+
+function normalizeRaceDurationStr(raw) {
+  const trimmed = (raw || '').trim();
+  if (!trimmed) return '06:00';
+  if (trimmed.includes(':')) {
+    const [hRaw, mRaw] = trimmed.split(':');
+    const h = Math.max(0, parseInt(hRaw, 10) || 0);
+    const m = Math.min(59, Math.max(0, parseInt(mRaw, 10) || 0));
+    if (h === 0 && m === 0) return '00:10';
+    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+  }
+  const digits = trimmed.replace(/\D/g, '');
+  if (!digits) return '06:00';
+  if (digits.length <= 2) {
+    const h = Math.max(0, parseInt(digits, 10) || 0);
+    if (h === 0) return '00:10';
+    return `${String(h).padStart(2, '0')}:00`;
+  }
+  const h = parseInt(digits.slice(0, -2), 10) || 0;
+  const m = Math.min(59, parseInt(digits.slice(-2), 10) || 0);
+  if (h === 0 && m === 0) return '00:10';
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+}
+
+function normalizeLapTimeStr(raw) {
+  const trimmed = (raw || '').trim().replace(',', '.');
+  if (!trimmed) return '01:45.320';
+  const totalSec = parseLapTimeToSeconds(trimmed);
+  const mins = Math.floor(totalSec / 60);
+  const secs = totalSec - mins * 60;
+  const wholeSecs = Math.floor(secs);
+  const ms = Math.round((secs - wholeSecs) * 1000);
+  return `${String(mins).padStart(2, '0')}:${String(wholeSecs).padStart(2, '0')}.${String(
+    ms
+  ).padStart(3, '0')}`;
+}
+
+function FreeFormattedTextInput({
+  value,
+  onCommit,
+  normalize,
+  placeholder = '',
+  className = '',
+  inputMode = 'text',
+}) {
+  const [isFocused, setIsFocused] = useState(false);
+  const [draft, setDraft] = useState(() => value || '');
+
+  useEffect(() => {
+    if (!isFocused) {
+      setDraft(value || '');
+    }
+  }, [value, isFocused]);
+
+  return (
+    <input
+      type="text"
+      inputMode={inputMode}
+      placeholder={placeholder}
+      value={isFocused ? draft : value || ''}
+      onFocus={() => {
+        setIsFocused(true);
+        setDraft(value || '');
+      }}
+      onChange={(e) => setDraft(e.target.value)}
+      onBlur={() => {
+        setIsFocused(false);
+        const normalized = normalize ? normalize(draft) : draft.trim();
+        setDraft(normalized);
+        onCommit(normalized);
+      }}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') {
+          e.currentTarget.blur();
+        }
+      }}
+      className={className}
+    />
+  );
+}
+
 export default function App() {
   const initialStateRef = useRef(null);
   if (!initialStateRef.current) {
     initialStateRef.current = loadInitialStrategyState();
   }
 
-  const [params, setParams] = useState(() => initialStateRef.current.params);
-  const [preSessions, setPreSessions] = useState(() => initialStateRef.current.preSessions);
-  const [stintOverrides, setStintOverrides] = useState(
-    () => initialStateRef.current.stintOverrides
-  );
-  const [racePreSessions, setRacePreSessions] = useState(
-    () => initialStateRef.current.racePreSessions || null
-  );
-  const [raceStintOverrides, setRaceStintOverrides] = useState(
-    () => initialStateRef.current.raceStintOverrides || null
-  );
-  const [completedItems, setCompletedItems] = useState(
-    () => initialStateRef.current.completedItems || {}
-  );
+  const [eventConfig, setEventConfig] = useState(() => initialStateRef.current.eventConfig);
+  const [carOrder, setCarOrder] = useState(() => initialStateRef.current.carOrder);
+  const [activeCarId, setActiveCarId] = useState(() => initialStateRef.current.activeCarId);
+  const [cars, setCars] = useState(() => initialStateRef.current.cars);
   const [eventSignups, setEventSignups] = useState(
     () => initialStateRef.current.eventSignups || {}
   );
+
+  const activeCar = useMemo(
+    () => cars[activeCarId] || cars[carOrder[0]] || createDefaultCarState('car-1', true),
+    [cars, activeCarId, carOrder]
+  );
+
+  const params = useMemo(
+    () => ({
+      ...DEFAULT_EVENT_CONFIG,
+      ...eventConfig,
+      ...DEFAULT_CAR_PARAMS,
+      ...(activeCar?.carParams || {}),
+    }),
+    [eventConfig, activeCar]
+  );
+
+  const preSessions = activeCar?.preSessions || DEFAULT_PRE_SESSIONS;
+  const stintOverrides = activeCar?.stintOverrides || DEFAULT_STINT_OVERRIDES;
+  const racePreSessions = activeCar?.racePreSessions ?? null;
+  const raceStintOverrides = activeCar?.raceStintOverrides ?? null;
+  const completedItems = activeCar?.completedItems || {};
+
+  const updateActiveCar = (updater) => {
+    setCars((prev) => {
+      const targetId = prev[activeCarId] ? activeCarId : carOrder[0];
+      const currentCar = prev[targetId];
+      if (!currentCar) return prev;
+      return {
+        ...prev,
+        [targetId]: typeof updater === 'function' ? updater(currentCar) : { ...currentCar, ...updater },
+      };
+    });
+  };
+
+  const setParams = (updater) => {
+    const nextMerged = typeof updater === 'function' ? updater(params) : updater;
+    const nextGlobal = {};
+    const nextCar = {};
+    Object.keys(nextMerged).forEach((k) => {
+      if (GLOBAL_PARAM_KEYS.has(k)) {
+        nextGlobal[k] = nextMerged[k];
+      } else {
+        nextCar[k] = nextMerged[k];
+      }
+    });
+    setEventConfig((prev) => ({ ...prev, ...nextGlobal }));
+    updateActiveCar((car) => ({
+      ...car,
+      carParams: { ...car.carParams, ...nextCar },
+    }));
+  };
+
+  const setPreSessions = (updater) => {
+    updateActiveCar((car) => ({
+      ...car,
+      preSessions: typeof updater === 'function' ? updater(car.preSessions || DEFAULT_PRE_SESSIONS) : updater,
+    }));
+  };
+
+  const setStintOverrides = (updater) => {
+    updateActiveCar((car) => ({
+      ...car,
+      stintOverrides: typeof updater === 'function' ? updater(car.stintOverrides || DEFAULT_STINT_OVERRIDES) : updater,
+    }));
+  };
+
+  const setRacePreSessions = (updater) => {
+    updateActiveCar((car) => ({
+      ...car,
+      racePreSessions: typeof updater === 'function' ? updater(car.racePreSessions) : updater,
+    }));
+  };
+
+  const setRaceStintOverrides = (updater) => {
+    updateActiveCar((car) => ({
+      ...car,
+      raceStintOverrides: typeof updater === 'function' ? updater(car.raceStintOverrides) : updater,
+    }));
+  };
+
+  const setCompletedItems = (updater) => {
+    updateActiveCar((car) => ({
+      ...car,
+      completedItems: typeof updater === 'function' ? updater(car.completedItems || {}) : updater,
+    }));
+  };
 
   const [copied, setCopied] = useState(false);
   const [mobileParamsOpen, setMobileParamsOpen] = useState(true);
@@ -1361,15 +2102,16 @@ export default function App() {
   const desktopCalendarRef = useRef(null);
   const [selectedTireCornerModal, setSelectedTireCornerModal] = useState(null);
   const [circuitModalOpen, setCircuitModalOpen] = useState(false);
+  const [overviewModalOpen, setOverviewModalOpen] = useState(false);
+  const [cloneModalOpen, setCloneModalOpen] = useState(false);
   const [calendarEventModal, setCalendarEventModal] = useState(null);
   const [signupDriverDraft, setSignupDriverDraft] = useState(() => DRIVERS[0]);
   const [signupClassesDraft, setSignupClassesDraft] = useState(['Hypercar']);
   const [headerEventIdx, setHeaderEventIdx] = useState(0);
-  const [collapsedStints, setCollapsedStints] = useState({});
+  const [expandedStintId, setExpandedStintId] = useState(null);
   const [stintMode, setStintMode] = useState('planning'); // 'planning' | 'race'
   const [confirmDialog, setConfirmDialog] = useState(null);
   const [tirePitModalRowId, setTirePitModalRowId] = useState(null);
-  const mobileInitCollapsedRef = useRef(false);
   const [toast, setToast] = useState(() =>
     initialStateRef.current.loadedFromUrl
       ? { message: 'Estratégia carregada pelo link compartilhado!', type: 'success' }
@@ -1407,17 +2149,39 @@ export default function App() {
     }
   }, []);
 
+  const buildMultiCarPayload = () => ({
+    version: 2,
+    eventConfig,
+    carOrder,
+    activeCarId,
+    cars,
+    eventSignups,
+  });
+
+  const applyNormalizedState = (normalized, preserveActiveCar = false) => {
+    setEventConfig(normalized.eventConfig);
+    setCarOrder(normalized.carOrder);
+    setCars(normalized.cars);
+    setActiveCarId((prevActive) =>
+      preserveActiveCar && normalized.carOrder.includes(prevActive)
+        ? prevActive
+        : normalized.activeCarId
+    );
+    if (normalized.eventSignups) {
+      setEventSignups(normalized.eventSignups);
+    }
+  };
+
   useEffect(() => {
     try {
       localStorage.setItem(
         STORAGE_KEY,
         JSON.stringify({
-          params,
-          preSessions,
-          stintOverrides,
-          racePreSessions,
-          raceStintOverrides,
-          completedItems,
+          version: 2,
+          eventConfig,
+          carOrder,
+          activeCarId,
+          cars,
           eventSignups,
         })
       );
@@ -1429,7 +2193,7 @@ export default function App() {
     } catch {
       // ignore quota errors
     }
-  }, [params, preSessions, stintOverrides, racePreSessions, raceStintOverrides, completedItems, eventSignups]);
+  }, [eventConfig, carOrder, activeCarId, cars, eventSignups]);
 
   // Supabase Realtime Subscription (when configured and live room enabled)
   useEffect(() => {
@@ -1460,14 +2224,8 @@ export default function App() {
 
         if (data?.strategy_data) {
           isApplyingRemoteRef.current = true;
-          const remote = data.strategy_data;
-          if (remote.params) setParams({ ...DEFAULT_PARAMS, ...remote.params });
-          if (remote.preSessions) setPreSessions({ ...DEFAULT_PRE_SESSIONS, ...remote.preSessions });
-          if (remote.stintOverrides) setStintOverrides(remote.stintOverrides);
-          if (remote.racePreSessions !== undefined) setRacePreSessions(remote.racePreSessions);
-          if (remote.raceStintOverrides !== undefined) setRaceStintOverrides(remote.raceStintOverrides);
-          if (remote.completedItems) setCompletedItems(remote.completedItems);
-          if (remote.eventSignups) setEventSignups(remote.eventSignups);
+          const normalized = normalizeMultiCarPayload(data.strategy_data);
+          applyNormalizedState(normalized, true);
           setTimeout(() => {
             isApplyingRemoteRef.current = false;
           }, 50);
@@ -1475,15 +2233,7 @@ export default function App() {
           await supabase.from('race_strategies').upsert(
             {
               room_pin: activePin,
-              strategy_data: {
-                params,
-                preSessions,
-                stintOverrides,
-                racePreSessions,
-                raceStintOverrides,
-                completedItems,
-                eventSignups,
-              },
+              strategy_data: buildMultiCarPayload(),
               updated_by: CLIENT_INSTANCE_ID,
               updated_at: new Date().toISOString(),
             },
@@ -1517,14 +2267,8 @@ export default function App() {
           const record = payload.new;
           if (!record?.strategy_data || record.updated_by === CLIENT_INSTANCE_ID) return;
           isApplyingRemoteRef.current = true;
-          const remote = record.strategy_data;
-          if (remote.params) setParams({ ...DEFAULT_PARAMS, ...remote.params });
-          if (remote.preSessions) setPreSessions({ ...DEFAULT_PRE_SESSIONS, ...remote.preSessions });
-          if (remote.stintOverrides) setStintOverrides(remote.stintOverrides);
-          if (remote.racePreSessions !== undefined) setRacePreSessions(remote.racePreSessions);
-          if (remote.raceStintOverrides !== undefined) setRaceStintOverrides(remote.raceStintOverrides);
-          if (remote.completedItems) setCompletedItems(remote.completedItems);
-          if (remote.eventSignups) setEventSignups(remote.eventSignups);
+          const normalized = normalizeMultiCarPayload(record.strategy_data);
+          applyNormalizedState(normalized, true);
           setTimeout(() => {
             isApplyingRemoteRef.current = false;
           }, 50);
@@ -1576,15 +2320,7 @@ export default function App() {
         await supabase.from('race_strategies').upsert(
           {
             room_pin: activePin,
-            strategy_data: {
-              params,
-              preSessions,
-              stintOverrides,
-              racePreSessions,
-              raceStintOverrides,
-              completedItems,
-              eventSignups,
-            },
+            strategy_data: buildMultiCarPayload(),
             updated_by: CLIENT_INSTANCE_ID,
             updated_at: new Date().toISOString(),
           },
@@ -1599,12 +2335,10 @@ export default function App() {
       if (syncTimeoutRef.current) clearTimeout(syncTimeoutRef.current);
     };
   }, [
-    params,
-    preSessions,
-    stintOverrides,
-    racePreSessions,
-    raceStintOverrides,
-    completedItems,
+    eventConfig,
+    carOrder,
+    activeCarId,
+    cars,
     eventSignups,
     liveRoomEnabled,
     syncStatus,
@@ -1612,7 +2346,92 @@ export default function App() {
   ]);
 
   const handleParamChange = (key, value) => {
-    setParams((prev) => ({ ...prev, [key]: value }));
+    if (GLOBAL_PARAM_KEYS.has(key)) {
+      setEventConfig((prev) => ({ ...prev, [key]: value }));
+    } else {
+      updateActiveCar((car) => ({
+        ...car,
+        carParams: { ...car.carParams, [key]: value },
+      }));
+    }
+  };
+
+  const handleUpdateCarLabel = (slotId, nextLabel) => {
+    setCars((prev) => {
+      const target = prev[slotId];
+      if (!target) return prev;
+      return {
+        ...prev,
+        [slotId]: { ...target, label: nextLabel },
+      };
+    });
+  };
+
+  const handleAddCar = () => {
+    if (carOrder.length >= 3) {
+      showToast('Limite máximo de 3 carros simultâneos atingido.', 'warning');
+      return;
+    }
+    const nextSlot = ALL_CAR_SLOT_IDS.find((id) => !carOrder.includes(id));
+    if (!nextSlot) return;
+    const newCar = createDefaultCarState(nextSlot, false);
+    setCars((prev) => ({ ...prev, [nextSlot]: newCar }));
+    setCarOrder((prev) => [...prev, nextSlot]);
+    setActiveCarId(nextSlot);
+    showToast(`${newCar.label} adicionado ao painel!`, 'success');
+  };
+
+  const handleRemoveCar = (slotId) => {
+    if (carOrder.length <= 1) {
+      showToast('Pelo menos 1 carro deve permanecer ativo.', 'warning');
+      return;
+    }
+    const targetCar = cars[slotId];
+    setConfirmDialog({
+      title: `Remover ${targetCar?.label || slotId}`,
+      message: `Deseja remover o carro "${targetCar?.label || slotId}" desta corrida? Os stints e configurações dele serão excluídos.`,
+      confirmLabel: 'Remover Carro',
+      tone: 'red',
+      onConfirm: () => {
+        const nextOrder = carOrder.filter((id) => id !== slotId);
+        setCarOrder(nextOrder);
+        setCars((prev) => {
+          const copy = { ...prev };
+          delete copy[slotId];
+          return copy;
+        });
+        if (activeCarId === slotId) {
+          setActiveCarId(nextOrder[0]);
+        }
+        showToast(`${targetCar?.label || slotId} removido.`, 'warning');
+      },
+    });
+  };
+
+  const handleCloneCarStrategy = (targetCarId) => {
+    if (!targetCarId || targetCarId === activeCarId || !cars[targetCarId]) return;
+    const sourceCar = activeCar;
+    const targetCar = cars[targetCarId];
+    setCars((prev) => ({
+      ...prev,
+      [targetCarId]: {
+        ...prev[targetCarId],
+        carParams: JSON.parse(JSON.stringify(sourceCar.carParams)),
+        preSessions: JSON.parse(JSON.stringify(sourceCar.preSessions)),
+        stintOverrides: JSON.parse(JSON.stringify(sourceCar.stintOverrides)),
+        racePreSessions: sourceCar.racePreSessions
+          ? JSON.parse(JSON.stringify(sourceCar.racePreSessions))
+          : null,
+        raceStintOverrides: sourceCar.raceStintOverrides
+          ? JSON.parse(JSON.stringify(sourceCar.raceStintOverrides))
+          : null,
+      },
+    }));
+    setCloneModalOpen(false);
+    showToast(
+      `Estratégia de "${sourceCar.label}" copiada para "${targetCar.label}"!`,
+      'success'
+    );
   };
 
   const buildClearedSessions = () => {
@@ -1657,20 +2476,16 @@ export default function App() {
   };
 
   const handleToggleStintMode = () => {
-    const allCollapsed = {};
-    enrichedSchedule.forEach((r) => {
-      allCollapsed[r.id] = true;
-    });
     if (stintMode === 'planning') {
       if (!racePreSessions || !raceStintOverrides) {
         const { clearedPre, clearedOverrides } = buildClearedSessions();
         if (!racePreSessions) setRacePreSessions(clearedPre);
         if (!raceStintOverrides) setRaceStintOverrides(clearedOverrides);
       }
-      setCollapsedStints(allCollapsed);
+      setExpandedStintId(null);
       setStintMode('race');
     } else {
-      setCollapsedStints(allCollapsed);
+      setExpandedStintId(null);
       setStintMode('planning');
     }
   };
@@ -1685,11 +2500,7 @@ export default function App() {
       onConfirm: () => {
         setRacePreSessions(JSON.parse(JSON.stringify(preSessions)));
         setRaceStintOverrides(JSON.parse(JSON.stringify(stintOverrides)));
-        const allCollapsed = {};
-        enrichedSchedule.forEach((r) => {
-          allCollapsed[r.id] = true;
-        });
-        setCollapsedStints(allCollapsed);
+        setExpandedStintId(null);
         setStintMode('race');
         showToast('Planejamento exportado para o Modo Corrida!', 'success');
       },
@@ -1734,29 +2545,10 @@ export default function App() {
   };
 
   // Calculations: Fuel Ratio & Stint Autonomy
-  const telemetry = useMemo(() => {
-    const lapTimeSec = parseLapTimeToSeconds(params.lapTimeStr);
-    const tankL = Math.max(1, Number(params.tankCapacityL) || 100);
-    const fuelPerLap = Math.max(0.1, Number(params.fuelPerLapL) || 3.1);
-    const energyPerLap = Math.max(0.1, Number(params.virtualEnergyPerLapPct) || 2.1);
-
-    const fuelRatio = fuelPerLap / energyPerLap;
-    const maxLapsByFuel = Math.floor(tankL / fuelPerLap);
-    const maxLapsByEnergy = Math.floor(100 / energyPerLap);
-    const maxStintLaps = Math.max(1, Math.min(maxLapsByFuel, maxLapsByEnergy));
-    const limitingFactor = maxLapsByFuel <= maxLapsByEnergy ? 'Tanque' : 'Energia Virtual';
-    const maxStintMin = (maxStintLaps * lapTimeSec) / 60;
-
-    return {
-      lapTimeSec,
-      fuelRatio,
-      maxLapsByFuel,
-      maxLapsByEnergy,
-      maxStintLaps,
-      limitingFactor,
-      maxStintMin,
-    };
-  }, [params]);
+  const telemetry = useMemo(
+    () => computeCarTelemetry(eventConfig, activeCar.carParams || DEFAULT_CAR_PARAMS),
+    [eventConfig, activeCar]
+  );
 
   const activePreSessions =
     stintMode === 'race'
@@ -1768,115 +2560,125 @@ export default function App() {
       : stintOverrides;
 
   // Build Schedule: Free Practice -> Qualy -> Dynamic Race Stints
-  const schedule = useMemo(() => {
-    const rows = [];
-    let cursorMin = parseTimeToMinutes(params.sessionStart);
+  const schedule = useMemo(
+    () =>
+      computeCarSchedule({
+        eventConfig,
+        car: activeCar,
+        stintMode,
+        telemetry,
+      }),
+    [eventConfig, activeCar, stintMode, telemetry]
+  );
 
-    const fpDur = Math.max(0, Number(params.fpDurationMin) || 0);
-    const fpLaps = Math.floor((fpDur * 60) / telemetry.lapTimeSec);
-    rows.push({
-      id: 'fp',
-      type: 'fp',
-      label: 'Free Practice',
-      durationMin: fpDur,
-      laps: fpLaps,
-      startMin: cursorMin,
-      endMin: cursorMin + fpDur,
-      driver: activePreSessions.fp.driver,
-      pitScenario: null,
-      pitDurationSec: 0,
-      tiresStart: DEFAULT_FULL_TIRES,
-      tiresEnd: DEFAULT_FULL_TIRES,
-    });
-    cursorMin += fpDur;
+  // Overview across all active cars (side-by-side timeline & pitstop coordination)
+  const allCarsOverview = useMemo(() => {
+    const carSummaries = carOrder
+      .map((slotId) => {
+        const car = cars[slotId];
+        if (!car) return null;
+        const carTelemetry = computeCarTelemetry(eventConfig, car.carParams || DEFAULT_CAR_PARAMS);
+        const carSchedule = computeCarSchedule({
+          eventConfig,
+          car,
+          stintMode,
+          telemetry: carTelemetry,
+        });
+        const carRaceStints = carSchedule.filter((r) => r.type === 'race');
+        const model =
+          LMU_CARS.find((c) => c.id === car.carParams?.carId) ||
+          LMU_CARS.find((c) => c.classId === car.carParams?.carClass) ||
+          LMU_CARS[0];
+        const classMeta =
+          LMU_CAR_CLASSES.find((cls) => cls.id === model.classId) || LMU_CAR_CLASSES[0];
+        const preset = CAR_SLOT_PRESETS[slotId] || CAR_SLOT_PRESETS['car-1'];
+        return {
+          id: slotId,
+          car,
+          preset,
+          model,
+          classMeta,
+          telemetry: carTelemetry,
+          schedule: carSchedule,
+          raceStints: carRaceStints,
+          totalLaps: carRaceStints.reduce((acc, r) => acc + r.laps, 0),
+          pitCount: carRaceStints.filter((r) => !r.isLastStint).length,
+        };
+      })
+      .filter(Boolean);
 
-    const qualyDur = Math.max(0, Number(params.qualyDurationMin) || 0);
-    const qualyLaps = Math.floor((qualyDur * 60) / telemetry.lapTimeSec);
-    rows.push({
-      id: 'qualy',
-      type: 'qualy',
-      label: 'Qualy',
-      durationMin: qualyDur,
-      laps: qualyLaps,
-      startMin: cursorMin,
-      endMin: cursorMin + qualyDur,
-      driver: activePreSessions.qualy.driver,
-      plannedDriver: preSessions.qualy.driver,
-      pitScenario: null,
-      pitDurationSec: 0,
-      tiresStart: activePreSessions.qualy.tiresStart || DEFAULT_FULL_TIRES,
-      tiresEnd:
-        activePreSessions.qualy.tiresEnd ||
-        activePreSessions.qualy.tires || { FL: 88, FR: 84, RL: 90, RR: 89 },
-      tiresEndEnabled: Boolean(activePreSessions.qualy.tiresEndEnabled),
-    });
-    cursorMin += qualyDur;
-
-    const totalRaceMin = parseDurationHHMMToMinutes(params.raceDurationStr);
-    let remainingRaceMin = totalRaceMin;
-    let stintNum = 1;
-    const maxStintsGuard = 60;
-
-    while (remainingRaceMin > 0.05 && stintNum <= maxStintsGuard) {
-      const override = activeStintOverrides[stintNum] || {};
-      const plannedOverride = stintOverrides[stintNum] || {};
-      const defaultDriver = DRIVERS[(stintNum - 1) % Math.min(6, DRIVERS.length)];
-      const driver = override.driver || defaultDriver;
-      const plannedDriver = plannedOverride.driver || defaultDriver;
-      const pitScenario = override.pitScenario || '4_tires_fuel';
-      const tiresStart = override.tiresStart || DEFAULT_FULL_TIRES;
-      const tiresEnd = override.tiresEnd || override.tires || { FL: 72, FR: 68, RL: 76, RR: 74 };
-      const tiresEndEnabled = Boolean(override.tiresEndEnabled);
-
-      const hasCustomDuration =
-        override.durationMinOverride !== undefined &&
-        override.durationMinOverride !== null &&
-        !Number.isNaN(Number(override.durationMinOverride));
-      const rawStintMin = hasCustomDuration
-        ? Math.min(remainingRaceMin, Math.max(1, Number(override.durationMinOverride)))
-        : Math.min(telemetry.maxStintMin, remainingRaceMin);
-      const stintLaps = Math.max(1, Math.round((rawStintMin * 60) / telemetry.lapTimeSec));
-      const startMin = cursorMin;
-      const endMin = startMin + rawStintMin;
-
-      const isLastStint = remainingRaceMin - rawStintMin <= 0.05;
-      const pitDurationSec = isLastStint ? 0 : getPitTimeSeconds(pitScenario, params);
-      const pitDurationMin = pitDurationSec / 60;
-
-      rows.push({
-        id: `stint_${stintNum}`,
-        type: 'race',
-        stintNum,
-        label: `Stint ${String(stintNum).padStart(2, '0')}`,
-        durationMin: rawStintMin,
-        isDurationOverridden: hasCustomDuration,
-        laps: stintLaps,
-        startMin,
-        endMin,
-        driver,
-        plannedDriver,
-        pitScenario,
-        pitDurationSec,
-        isLastStint,
-        tiresStart,
-        tiresEnd,
-        tiresEndEnabled,
+    // Chronological pitstop events across all cars
+    const pitEvents = [];
+    carSummaries.forEach((summary) => {
+      summary.raceStints.forEach((stint) => {
+        if (!stint.isLastStint) {
+          pitEvents.push({
+            carId: summary.id,
+            carLabel: summary.car.label,
+            preset: summary.preset,
+            stintLabel: stint.label,
+            driver: stint.driver,
+            pitTimeMin: stint.endMin,
+            stationarySec: stint.pitStationarySec,
+            pitlaneLossSec: stint.pitlaneLossSec,
+            totalSec: stint.pitDurationSec,
+            mfdTargetLabel: stint.mfdTargetLabel,
+            scenarioLabel:
+              PIT_SCENARIOS.find((p) => p.id === stint.pitScenario)?.label || stint.pitScenario,
+          });
+        }
       });
+    });
+    pitEvents.sort((a, b) => a.pitTimeMin - b.pitTimeMin);
 
-      remainingRaceMin -= rawStintMin;
-      if (!isLastStint) {
-        // Advance clock by pitstop time and deduct pit time from remaining race clock
-        cursorMin = endMin + pitDurationMin;
-        remainingRaceMin = Math.max(0, remainingRaceMin - pitDurationMin);
-      } else {
-        cursorMin = endMin;
+    // Flag pitstop overlaps (< 2.5 min between different cars)
+    const pitEventsWithWarnings = pitEvents.map((ev, idx) => {
+      const prev = idx > 0 ? pitEvents[idx - 1] : null;
+      const next = idx < pitEvents.length - 1 ? pitEvents[idx + 1] : null;
+      const closeToPrev =
+        prev && prev.carId !== ev.carId && Math.abs(ev.pitTimeMin - prev.pitTimeMin) <= 2.5;
+      const closeToNext =
+        next && next.carId !== ev.carId && Math.abs(next.pitTimeMin - ev.pitTimeMin) <= 2.5;
+      return {
+        ...ev,
+        hasPitOverlap: Boolean(closeToPrev || closeToNext),
+      };
+    });
+
+    // Detect driver overlap across different cars at the same time
+    const driverConflicts = [];
+    for (let i = 0; i < carSummaries.length; i += 1) {
+      for (let j = i + 1; j < carSummaries.length; j += 1) {
+        const a = carSummaries[i];
+        const b = carSummaries[j];
+        a.raceStints.forEach((sa) => {
+          if (!sa.driver || sa.driver === 'ND') return;
+          b.raceStints.forEach((sb) => {
+            if (sa.driver !== sb.driver) return;
+            const overlapStart = Math.max(sa.startMin, sb.startMin);
+            const overlapEnd = Math.min(sa.endMin, sb.endMin);
+            if (overlapEnd - overlapStart > 0.5) {
+              driverConflicts.push({
+                driver: sa.driver,
+                carA: a.car.label,
+                stintA: sa.label,
+                carB: b.car.label,
+                stintB: sb.label,
+                startMin: overlapStart,
+                endMin: overlapEnd,
+              });
+            }
+          });
+        });
       }
-
-      stintNum += 1;
     }
 
-    return rows;
-  }, [params, preSessions, stintOverrides, activePreSessions, activeStintOverrides, telemetry]);
+    return {
+      carSummaries,
+      pitEvents: pitEventsWithWarnings,
+      driverConflicts,
+    };
+  }, [carOrder, cars, eventConfig, stintMode]);
 
   // Sequential physical tire tracking (#1, #2, #3...) individually across all tires
   const { enrichedSchedule, tireBankByCorner } = useMemo(() => {
@@ -2145,13 +2947,33 @@ export default function App() {
         tiresStart: DEFAULT_FULL_TIRES,
         tiresEnd: { FL: 72, FR: 68, RL: 76, RR: 74 },
       };
-      return {
+      const nextState = {
         ...base,
         [stintNum]: {
           ...current,
           [field]: value,
         },
       };
+
+      if (
+        field === 'pitScenario' &&
+        (value === 'driver_swap_only' || value === 'fuel_only')
+      ) {
+        const nextStintNum = stintNum + 1;
+        const nextStintCurrent = base[nextStintNum] || {
+          driver: DRIVERS[(nextStintNum - 1) % Math.min(6, DRIVERS.length)],
+          pitScenario: '4_tires_fuel',
+          tiresStart: DEFAULT_FULL_TIRES,
+          tiresEnd: { FL: 72, FR: 68, RL: 76, RR: 74 },
+          tiresEndEnabled: false,
+        };
+        nextState[nextStintNum] = {
+          ...nextStintCurrent,
+          tiresStart: { FL: 'keep', FR: 'keep', RL: 'keep', RR: 'keep' },
+        };
+      }
+
+      return nextState;
     });
   };
 
@@ -2220,22 +3042,6 @@ export default function App() {
     return LMU_CIRCUITS.find((c) => c.id === params.circuitId) || LMU_CIRCUITS[3];
   }, [params.circuitId]);
 
-  useEffect(() => {
-    if (
-      !mobileInitCollapsedRef.current &&
-      typeof window !== 'undefined' &&
-      window.innerWidth < 768 &&
-      enrichedSchedule.length > 0
-    ) {
-      mobileInitCollapsedRef.current = true;
-      const allCollapsed = {};
-      enrichedSchedule.forEach((r) => {
-        allCollapsed[r.id] = true;
-      });
-      setCollapsedStints(allCollapsed);
-    }
-  }, [enrichedSchedule]);
-
   const goToMobilePage = (pageIdx) => {
     setMobilePage(pageIdx);
     if (mobilePagerRef.current) {
@@ -2295,34 +3101,7 @@ export default function App() {
   }, []);
 
   const toggleStintCollapse = (rowId) => {
-    setCollapsedStints((prev) => ({ ...prev, [rowId]: !prev[rowId] }));
-  };
-
-  const areAllStintsCollapsed =
-    enrichedSchedule.length > 0 && enrichedSchedule.every((r) => Boolean(collapsedStints[r.id]));
-
-  const toggleAllStintsCollapse = () => {
-    if (areAllStintsCollapsed) {
-      setCollapsedStints({});
-    } else {
-      const next = {};
-      enrichedSchedule.forEach((r) => {
-        next[r.id] = true;
-      });
-      setCollapsedStints(next);
-    }
-  };
-
-  const handleShareLink = async () => {
-    try {
-      const payload = JSON.stringify({ params, preSessions, stintOverrides, eventSignups });
-      const compressed = LZString.compressToEncodedURIComponent(payload);
-      const shareUrl = `${window.location.origin}${window.location.pathname}?s=${compressed}`;
-      await navigator.clipboard.writeText(shareUrl);
-      showToast('Link da estratégia copiado!', 'success');
-    } catch {
-      showToast('Não foi possível copiar o link.', 'error');
-    }
+    setExpandedStintId((prev) => (prev === rowId ? null : rowId));
   };
 
   const handleGoToCalendar = () => {
@@ -2415,9 +3194,11 @@ export default function App() {
     const lines = [
       `🏁 *FTR PITWALL — Endurance Strategist (LMU)*`,
       `🛣️ *Circuito:* ${selectedCircuit.name} (${selectedCircuit.country})`,
-      `🏎️ *Carro:* [${selectedClassMeta.label}] ${selectedCar.name}`,
+      `🏎️ *Carro (${activeCar.label}):* [${selectedClassMeta.label}] ${selectedCar.name}`,
       `⏱️ *Início:* ${params.sessionStart} | *Corrida:* ${params.raceDurationStr} (${totalRaceMin} min)`,
-      `⛽ *Fuel Ratio:* ${telemetry.fuelRatio.toFixed(2)} L/% | *Autonomia Máx:* ${telemetry.maxStintLaps} voltas (~${telemetry.maxStintMin.toFixed(1)} min)`,
+      telemetry.isElms
+        ? `⛽ *Regulamento:* ELMS | *Autonomia Máx:* ${telemetry.maxStintLaps} voltas (~${telemetry.maxStintMin.toFixed(1)} min)`
+        : `⛽ *Fuel Ratio:* ${telemetry.fuelRatio.toFixed(2)} L/% | *Autonomia Máx:* ${telemetry.maxStintLaps} voltas (~${telemetry.maxStintMin.toFixed(1)} min)`,
       `⏱️ *Volta Base:* ${params.lapTimeStr}`,
       ``,
       `📋 *CRONOGRAMA DE STINTS:*`,
@@ -2427,7 +3208,7 @@ export default function App() {
       const timeRange = `${formatMinutesToHHMM(row.startMin)} - ${formatMinutesToHHMM(row.endMin)}`;
       const pitInfo =
         row.type === 'race' && !row.isLastStint
-          ? ` | Pit: ${PIT_SCENARIOS.find((p) => p.id === row.pitScenario)?.label} (${row.pitDurationSec}s)`
+          ? ` | Pit MFD: ${row.mfdTargetLabel} • ${PIT_SCENARIOS.find((p) => p.id === row.pitScenario)?.label} (Box ${row.pitStationarySec}s + Pit ${row.pitlaneLossSec}s)`
           : row.isLastStint
             ? ' | 🏁 Bandeira Quadriculada'
             : '';
@@ -3070,9 +3851,15 @@ export default function App() {
               </div>
               <span className="text-slate-700">|</span>
               <div className="flex flex-col items-center leading-tight">
-                <span className="text-[7px] font-sans uppercase text-slate-400">Ratio</span>
+                <span className="text-[7px] font-sans uppercase text-slate-400">
+                  {telemetry.isElms ? 'Regul.' : 'Ratio'}
+                </span>
                 <span className="font-bold text-amber-300">
-                  {isPinLocked ? '--' : telemetry.fuelRatio.toFixed(2)}
+                  {isPinLocked
+                    ? '--'
+                    : telemetry.isElms
+                    ? 'ELMS'
+                    : telemetry.fuelRatio.toFixed(2)}
                 </span>
               </div>
               <span className="text-slate-700">|</span>
@@ -3082,6 +3869,103 @@ export default function App() {
                   {isPinLocked ? '--' : `${telemetry.maxStintLaps}v`}
                 </span>
               </div>
+            </div>
+          </div>
+        </div>
+
+        {/* TEAM MULTI-CAR SELECTOR BAR */}
+        <div
+          className={`border-t border-[#334155]/80 bg-[#0b1120]/90 ${
+            mobilePage === 0 && mobileParamsOpen ? 'block' : 'hidden md:block'
+          } ${isPinLocked ? 'opacity-40 pointer-events-none' : ''}`}
+        >
+          <div className="mx-auto flex max-w-[1600px] flex-wrap items-center gap-2 px-4 py-1.5 sm:px-5">
+            {/* Grupo 1: Seletor de Carros */}
+            <div className="flex flex-wrap items-center gap-1.5">
+              {carOrder.map((slotId, idx) => {
+                const car = cars[slotId];
+                if (!car) return null;
+                const preset = CAR_SLOT_PRESETS[slotId] || CAR_SLOT_PRESETS['car-1'];
+                const carModel =
+                  LMU_CARS.find((c) => c.id === car.carParams?.carId) ||
+                  LMU_CARS.find((c) => c.classId === car.carParams?.carClass) ||
+                  LMU_CARS[0];
+                const carClassMeta =
+                  LMU_CAR_CLASSES.find((cls) => cls.id === carModel.classId) ||
+                  LMU_CAR_CLASSES[0];
+                const isActive = slotId === activeCar.id;
+                return (
+                  <div
+                    key={slotId}
+                    className={`group inline-flex items-center whitespace-nowrap rounded-lg border transition-all ${
+                      isActive
+                        ? `${preset.ringClass} shadow-sm`
+                        : 'border-[#334155] bg-[#1e293b]/70 text-slate-300 hover:border-slate-500 hover:text-white'
+                    }`}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => setActiveCarId(slotId)}
+                      className="inline-flex items-center gap-2 whitespace-nowrap px-2.5 py-1 text-left cursor-pointer"
+                      title={`Selecionar Carro #${idx + 1}: ${car.label} (${carModel.name})`}
+                    >
+                      <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${preset.dotClass}`} />
+                      <span className="text-[11px] font-extrabold tracking-tight whitespace-nowrap">
+                        {car.label || `Carro #${idx + 1}`}
+                      </span>
+                      <span
+                        className={`rounded border px-1 py-0.2 text-[8px] font-bold uppercase tracking-wider whitespace-nowrap ${carClassMeta.badgeClass}`}
+                      >
+                        {carClassMeta.label}
+                      </span>
+                      <span className="hidden md:inline text-[10px] text-slate-400 whitespace-nowrap">
+                        {carModel.name}
+                      </span>
+                    </button>
+                    {carOrder.length > 1 && slotId !== 'car-1' && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleRemoveCar(slotId);
+                        }}
+                        title={`Remover ${car.label}`}
+                        className="mr-1 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded text-slate-400 hover:bg-red-500/20 hover:text-red-300 cursor-pointer"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
+
+              {carOrder.length < 3 && (
+                <button
+                  type="button"
+                  onClick={handleAddCar}
+                  className="inline-flex items-center gap-1 whitespace-nowrap rounded-lg border border-dashed border-[#334155] bg-[#0f172a]/70 px-2.5 py-1 text-[11px] font-bold text-slate-300 hover:border-amber-500/60 hover:text-amber-300 transition-colors cursor-pointer"
+                  title="Adicionar mais um carro da equipe (máximo 3)"
+                >
+                  <Plus className="h-3.5 w-3.5 shrink-0" />
+                  <span>Adicionar Carro</span>
+                </button>
+              )}
+            </div>
+
+            {/* Grupo 2: Visão Geral FTR */}
+            <div className="flex w-full md:w-auto items-center justify-end md:ml-auto">
+              <button
+                type="button"
+                onClick={() => setOverviewModalOpen(true)}
+                className="inline-flex w-full md:w-auto items-center justify-center gap-1.5 whitespace-nowrap rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-1 text-[11px] font-bold text-amber-200 hover:bg-amber-500/20 transition-colors cursor-pointer"
+                title="Comparar pilotos e pitstops de todos os carros lado a lado"
+              >
+                <LayoutGrid className="h-3.5 w-3.5 shrink-0 text-[#eab308]" />
+                <span>Visão Geral FTR</span>
+                <span className="rounded bg-amber-500/20 px-1 font-mono text-[10px] text-amber-300">
+                  {carOrder.length}
+                </span>
+              </button>
             </div>
           </div>
         </div>
@@ -3170,6 +4054,36 @@ export default function App() {
                 stintMode === 'race' ? 'opacity-25 pointer-events-none select-none' : ''
               }`}
             >
+              {/* Championship / Regulation Selector */}
+              <div className="rounded-lg border border-[#334155] bg-[#0f172a]/70 p-2.5">
+                <label className="mb-1.5 block text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+                  Campeonato / Regulamento
+                </label>
+                <div className="grid grid-cols-2 gap-1.5">
+                  {[
+                    { id: 'WEC', label: 'WEC', sub: 'Fuel + Energia Virt.' },
+                    { id: 'ELMS', label: 'ELMS', sub: 'Somente Fuel (L)' },
+                  ].map((reg) => {
+                    const active = (params.championship || 'WEC') === reg.id;
+                    return (
+                      <button
+                        type="button"
+                        key={reg.id}
+                        onClick={() => handleParamChange('championship', reg.id)}
+                        className={`rounded-md border px-2 py-1.5 text-left transition-colors cursor-pointer ${
+                          active
+                            ? 'border-amber-500 bg-amber-500/20 text-amber-200'
+                            : 'border-[#334155] bg-[#1e293b] text-slate-400 hover:text-slate-200'
+                        }`}
+                      >
+                        <div className="text-xs font-extrabold leading-tight">{reg.label}</div>
+                        <div className="text-[9px] opacity-80 leading-tight">{reg.sub}</div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
               {/* Car & Class Selector */}
               <div
                 ref={mobileCarTrackRef}
@@ -3188,6 +4102,32 @@ export default function App() {
                     <div className="mt-0.5 text-xs font-bold leading-snug text-white">
                       {selectedCar.name}
                     </div>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="mb-1 block text-[10px] font-semibold uppercase text-slate-400">
+                    Identificação do Carro (Aba)
+                  </label>
+                  <div className="flex items-center gap-1.5">
+                    <input
+                      type="text"
+                      value={activeCar.label}
+                      onChange={(e) => handleUpdateCarLabel(activeCar.id, e.target.value)}
+                      placeholder="Ex: FTR #14 - Mustang GT3"
+                      className="flex-1 min-w-0 rounded-md border border-[#334155] bg-[#1e293b] px-2.5 py-1.5 text-xs font-bold text-slate-100 focus:border-[#eab308] focus:outline-none"
+                    />
+                    {carOrder.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => setCloneModalOpen(true)}
+                        title="Copiar estratégia deste carro para outro carro"
+                        className="inline-flex items-center gap-1 rounded-md border border-amber-500/40 bg-amber-500/10 px-2 py-1.5 text-[10px] font-bold text-amber-200 hover:bg-amber-500/20 cursor-pointer shrink-0"
+                      >
+                        <Copy className="h-3 w-3" />
+                        <span>Copiar p/ outro</span>
+                      </button>
+                    )}
                   </div>
                 </div>
                 <div className="grid grid-cols-[100px_1fr] gap-2">
@@ -3276,11 +4216,12 @@ export default function App() {
                     <Timer className="h-3 w-3 text-[#eab308]" />
                     Duração Corrida (00:00)
                   </label>
-                  <input
-                    type="text"
+                  <FreeFormattedTextInput
                     placeholder="06:00"
+                    inputMode="numeric"
                     value={params.raceDurationStr}
-                    onChange={(e) => handleParamChange('raceDurationStr', e.target.value)}
+                    normalize={normalizeRaceDurationStr}
+                    onCommit={(val) => handleParamChange('raceDurationStr', val)}
                     className="w-full rounded-lg border border-[#334155] bg-[#0f172a] px-2.5 py-2 text-sm font-mono tabular-nums text-slate-100 focus:border-[#eab308] focus:outline-none"
                   />
                 </div>
@@ -3289,11 +4230,12 @@ export default function App() {
                     <Gauge className="h-3 w-3 text-[#22c55e]" />
                     Tempo de Volta
                   </label>
-                  <input
-                    type="text"
+                  <FreeFormattedTextInput
                     placeholder="01:45.320"
+                    inputMode="decimal"
                     value={params.lapTimeStr}
-                    onChange={(e) => handleParamChange('lapTimeStr', e.target.value)}
+                    normalize={normalizeLapTimeStr}
+                    onCommit={(val) => handleParamChange('lapTimeStr', val)}
                     className="w-full rounded-lg border border-[#334155] bg-[#0f172a] px-2.5 py-2 text-sm font-mono tabular-nums text-slate-100 focus:border-[#eab308] focus:outline-none"
                   />
                 </div>
@@ -3302,14 +4244,11 @@ export default function App() {
                     <Fuel className="h-3 w-3 text-[#eab308]" />
                     Tanque (Litros)
                   </label>
-                  <input
-                    type="number"
-                    min="1"
-                    step="1"
+                  <FreeNumericInput
+                    min={1}
+                    allowDecimal={false}
                     value={params.tankCapacityL}
-                    onChange={(e) =>
-                      handleParamChange('tankCapacityL', Math.max(1, Number(e.target.value) || 0))
-                    }
+                    onCommit={(val) => handleParamChange('tankCapacityL', val)}
                     className="w-full rounded-lg border border-[#334155] bg-[#0f172a] px-2.5 py-2 text-sm font-mono tabular-nums text-slate-100 focus:border-[#eab308] focus:outline-none"
                   />
                 </div>
@@ -3318,47 +4257,38 @@ export default function App() {
                     <Fuel className="h-3 w-3 text-slate-400" />
                     Consumo (L/volta)
                   </label>
-                  <input
-                    type="number"
-                    min="0.1"
-                    step="0.1"
+                  <FreeNumericInput
+                    min={0.1}
+                    allowDecimal={true}
                     value={params.fuelPerLapL}
-                    onChange={(e) =>
-                      handleParamChange('fuelPerLapL', Math.max(0.1, Number(e.target.value) || 0.1))
-                    }
+                    onCommit={(val) => handleParamChange('fuelPerLapL', val)}
                     className="w-full rounded-lg border border-[#334155] bg-[#0f172a] px-2.5 py-2 text-sm font-mono tabular-nums text-slate-100 focus:border-[#eab308] focus:outline-none"
                   />
                 </div>
+                {!telemetry.isElms && (
                 <div>
                   <label className="mb-1 flex items-center gap-1 text-[11px] font-medium text-slate-400">
                     <Zap className="h-3 w-3 text-[#22c55e]" />
                     Energia Virt. (%/v)
                   </label>
-                  <input
-                    type="number"
-                    min="0.1"
-                    step="0.1"
+                  <FreeNumericInput
+                    min={0.1}
+                    allowDecimal={true}
                     value={params.virtualEnergyPerLapPct}
-                    onChange={(e) =>
-                      handleParamChange(
-                        'virtualEnergyPerLapPct',
-                        Math.max(0.1, Number(e.target.value) || 0.1)
-                      )
-                    }
+                    onCommit={(val) => handleParamChange('virtualEnergyPerLapPct', val)}
                     className="w-full rounded-lg border border-[#334155] bg-[#0f172a] px-2.5 py-2 text-sm font-mono tabular-nums text-slate-100 focus:border-[#eab308] focus:outline-none"
                   />
                 </div>
+                )}
                 <div>
                   <label className="mb-1 block text-[11px] font-medium text-slate-400">
                     Free Practice (min)
                   </label>
-                  <input
-                    type="number"
-                    min="0"
+                  <FreeNumericInput
+                    min={0}
+                    allowDecimal={false}
                     value={params.fpDurationMin}
-                    onChange={(e) =>
-                      handleParamChange('fpDurationMin', Math.max(0, Number(e.target.value) || 0))
-                    }
+                    onCommit={(val) => handleParamChange('fpDurationMin', val)}
                     className="w-full rounded-lg border border-[#334155] bg-[#0f172a] px-2.5 py-2 text-sm font-mono tabular-nums text-slate-100 focus:border-[#eab308] focus:outline-none"
                   />
                 </div>
@@ -3366,13 +4296,11 @@ export default function App() {
                   <label className="mb-1 block text-[11px] font-medium text-slate-400">
                     Qualy (min)
                   </label>
-                  <input
-                    type="number"
-                    min="0"
+                  <FreeNumericInput
+                    min={0}
+                    allowDecimal={false}
                     value={params.qualyDurationMin}
-                    onChange={(e) =>
-                      handleParamChange('qualyDurationMin', Math.max(0, Number(e.target.value) || 0))
-                    }
+                    onCommit={(val) => handleParamChange('qualyDurationMin', val)}
                     className="w-full rounded-lg border border-[#334155] bg-[#0f172a] px-2.5 py-2 text-sm font-mono tabular-nums text-slate-100 focus:border-[#eab308] focus:outline-none"
                   />
                 </div>
@@ -3391,15 +4319,12 @@ export default function App() {
                     </span>
                   </label>
                   <div className="flex items-center gap-2.5">
-                    <input
+                    <FreeNumericInput
                       ref={mobileAvailableTiresRef}
-                      type="number"
-                      min="0"
-                      step="1"
+                      min={0}
+                      allowDecimal={false}
                       value={params.availableTires ?? 24}
-                      onChange={(e) =>
-                        handleParamChange('availableTires', Math.max(0, Number(e.target.value) || 0))
-                      }
+                      onCommit={(val) => handleParamChange('availableTires', val)}
                       className="w-16 shrink-0 rounded-lg border border-[#334155] bg-[#0f172a] px-2 py-1.5 text-center text-sm font-mono font-bold tabular-nums text-slate-100 focus:border-[#eab308] focus:outline-none"
                     />
                     <div className="flex flex-1 flex-wrap items-center gap-1">
@@ -3419,69 +4344,29 @@ export default function App() {
               <div className="border-t border-[#334155] pt-3">
                 <div className="mb-2 flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-300">
                   <Wrench className="h-3.5 w-3.5 text-[#eab308]" />
-                  <span>Tempos Médios de Pitstop (seg)</span>
+                  <span>Pitstop LMU (Dinâmico)</span>
                 </div>
                 <div className="space-y-2">
                   <div className="flex items-center justify-between gap-2">
-                    <span className="text-xs text-slate-400">Combustível + 4 Pneus + Piloto</span>
+                    <span className="text-xs text-slate-300 font-medium">Pitlane Loss (passagem)</span>
                     <div className="flex items-center gap-1">
-                      <input
-                        type="number"
-                        min="0"
-                        value={params.pitTime4TiresSec}
-                        onChange={(e) =>
-                          handleParamChange('pitTime4TiresSec', Math.max(0, Number(e.target.value) || 0))
-                        }
+                      <FreeNumericInput
+                        min={0}
+                        allowDecimal={false}
+                        value={params.pitlaneLossSec ?? 30}
+                        onCommit={(val) => handleParamChange('pitlaneLossSec', val)}
                         className="w-16 rounded-md border border-[#334155] bg-[#0f172a] px-2 py-1 text-right text-xs font-mono tabular-nums text-slate-100 focus:border-[#eab308] focus:outline-none"
                       />
                       <span className="text-xs text-slate-500">s</span>
                     </div>
                   </div>
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="text-xs text-slate-400">Combustível + 2 Pneus + Piloto</span>
-                    <div className="flex items-center gap-1">
-                      <input
-                        type="number"
-                        min="0"
-                        value={params.pitTime2TiresSec}
-                        onChange={(e) =>
-                          handleParamChange('pitTime2TiresSec', Math.max(0, Number(e.target.value) || 0))
-                        }
-                        className="w-16 rounded-md border border-[#334155] bg-[#0f172a] px-2 py-1 text-right text-xs font-mono tabular-nums text-slate-100 focus:border-[#eab308] focus:outline-none"
-                      />
-                      <span className="text-xs text-slate-500">s</span>
-                    </div>
-                  </div>
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="text-xs text-slate-400">Apenas Combustível + Piloto</span>
-                    <div className="flex items-center gap-1">
-                      <input
-                        type="number"
-                        min="0"
-                        value={params.pitTimeFuelOnlySec}
-                        onChange={(e) =>
-                          handleParamChange('pitTimeFuelOnlySec', Math.max(0, Number(e.target.value) || 0))
-                        }
-                        className="w-16 rounded-md border border-[#334155] bg-[#0f172a] px-2 py-1 text-right text-xs font-mono tabular-nums text-slate-100 focus:border-[#eab308] focus:outline-none"
-                      />
-                      <span className="text-xs text-slate-500">s</span>
-                    </div>
-                  </div>
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="text-xs text-slate-400">Somente Troca de Piloto</span>
-                    <div className="flex items-center gap-1">
-                      <input
-                        type="number"
-                        min="0"
-                        value={params.pitTimeDriverOnlySec}
-                        onChange={(e) =>
-                          handleParamChange('pitTimeDriverOnlySec', Math.max(0, Number(e.target.value) || 0))
-                        }
-                        className="w-16 rounded-md border border-[#334155] bg-[#0f172a] px-2 py-1 text-right text-xs font-mono tabular-nums text-slate-100 focus:border-[#eab308] focus:outline-none"
-                      />
-                      <span className="text-xs text-slate-500">s</span>
-                    </div>
-                  </div>
+                  <p className="rounded-md border border-[#334155]/80 bg-[#0f172a]/60 px-2.5 py-1.5 text-[10px] leading-relaxed text-slate-400">
+                    Vazão: 2,5{telemetry.isElms ? 'L' : '%'}/s + 3s • Pneus sequenciais:{' '}
+                    <strong className="text-slate-200">
+                      {params.carClass === 'LMGT3' || params.carClass === 'GTE' ? '8,5s' : '8,0s'}
+                    </strong>
+                    /pneu • Troca de piloto: 25s (paralela ao combustível).
+                  </p>
                 </div>
               </div>
             </div>
@@ -3493,21 +4378,34 @@ export default function App() {
               <div className="flex items-center gap-2">
                 <Zap className="h-4 w-4 text-[#eab308]" />
                 <h2 className="text-xs font-bold uppercase tracking-wider text-[#eab308]">
-                  Fuel Ratio & Autonomia
+                  {telemetry.isElms ? 'Autonomia (ELMS)' : 'Fuel Ratio & Autonomia'}
                 </h2>
               </div>
             </div>
             <div className="grid grid-cols-2 gap-3">
-              <div className="rounded-lg border border-[#334155] bg-[#0f172a]/80 p-3">
-                <div className="text-[11px] text-slate-400">Fuel Ratio</div>
-                <div className="mt-1 text-2xl font-extrabold font-mono tabular-nums text-white">
-                  {telemetry.fuelRatio.toFixed(2)}
-                  <span className="ml-1 text-xs font-normal text-amber-400">L/%</span>
+              {!telemetry.isElms ? (
+                <div className="rounded-lg border border-[#334155] bg-[#0f172a]/80 p-3">
+                  <div className="text-[11px] text-slate-400">Fuel Ratio</div>
+                  <div className="mt-1 text-2xl font-extrabold font-mono tabular-nums text-white">
+                    {telemetry.fuelRatio.toFixed(2)}
+                    <span className="ml-1 text-xs font-normal text-amber-400">L/%</span>
+                  </div>
+                  <div className="mt-0.5 text-[10px] text-slate-500">
+                    {params.fuelPerLapL}L ÷ {params.virtualEnergyPerLapPct}%
+                  </div>
                 </div>
-                <div className="mt-0.5 text-[10px] text-slate-500">
-                  {params.fuelPerLapL}L ÷ {params.virtualEnergyPerLapPct}%
+              ) : (
+                <div className="rounded-lg border border-[#334155] bg-[#0f172a]/80 p-3">
+                  <div className="text-[11px] text-slate-400">Tanque / Consumo</div>
+                  <div className="mt-1 text-2xl font-extrabold font-mono tabular-nums text-white">
+                    {params.tankCapacityL}
+                    <span className="ml-1 text-xs font-normal text-amber-400">L</span>
+                  </div>
+                  <div className="mt-0.5 text-[10px] text-slate-500">
+                    {params.fuelPerLapL} L/volta
+                  </div>
                 </div>
-              </div>
+              )}
               <div className="rounded-lg border border-[#334155] bg-[#0f172a]/80 p-3">
                 <div className="text-[11px] text-slate-400">Autonomia Máx / Stint</div>
                 <div className="mt-1 text-2xl font-extrabold font-mono tabular-nums text-[#22c55e]">
@@ -3521,8 +4419,12 @@ export default function App() {
             </div>
             <div className="mt-3 flex items-center justify-between text-[11px] text-slate-400 border-t border-[#334155]/70 pt-2.5">
               <span>Tanque: {telemetry.maxLapsByFuel}v</span>
-              <span>•</span>
-              <span>Energia 100%: {telemetry.maxLapsByEnergy}v</span>
+              {!telemetry.isElms && (
+                <>
+                  <span>•</span>
+                  <span>Energia 100%: {telemetry.maxLapsByEnergy}v</span>
+                </>
+              )}
               <span>•</span>
               <span className="text-slate-200 font-semibold">{raceStintCount} stints</span>
             </div>
@@ -3541,23 +4443,16 @@ export default function App() {
                   </h2>
                 </div>
                 <div className="flex items-center gap-1.5 shrink-0">
-                  <button
-                    type="button"
-                    onClick={toggleAllStintsCollapse}
-                  className="inline-flex shrink-0 items-center gap-1 rounded-md border border-[#334155] bg-[#0f172a] px-2 py-1 text-[10px] font-semibold text-slate-200 transition-colors hover:border-[#eab308]/60 hover:text-[#eab308] cursor-pointer"
-                >
-                  {areAllStintsCollapsed ? (
-                    <>
-                      <ChevronDown className="h-3 w-3" />
-                      <span>Expandir Tudo</span>
-                    </>
-                  ) : (
-                    <>
+                  {expandedStintId !== null && (
+                    <button
+                      type="button"
+                      onClick={() => setExpandedStintId(null)}
+                      className="inline-flex shrink-0 items-center gap-1 rounded-md border border-[#334155] bg-[#0f172a] px-2 py-1 text-[10px] font-semibold text-slate-200 transition-colors hover:border-[#eab308]/60 hover:text-[#eab308] cursor-pointer"
+                    >
                       <ChevronUp className="h-3 w-3" />
-                      <span>Empacotar Tudo</span>
-                    </>
+                      <span>Recolher Stint</span>
+                    </button>
                   )}
-                </button>
                 </div>
               </div>
               {raceDriverStats.length > 0 && (
@@ -3588,7 +4483,7 @@ export default function App() {
 
             <div className="space-y-2.5 p-2.5 bg-[#0f172a]/70">
               {enrichedSchedule.map((row) => {
-                const isCollapsed = Boolean(collapsedStints[row.id]);
+                const isCollapsed = expandedStintId !== row.id;
                 const nextStintLabel = `Stint ${String((row.stintNum || 0) + 1).padStart(2, '0')}`;
                 const isStintDone = stintMode === 'race' && Boolean(completedItems[row.id]);
                 const isPitDone = stintMode === 'race' && Boolean(completedItems[`pit_${row.stintNum}`]);
@@ -3713,19 +4608,6 @@ export default function App() {
                         <div>
                           <div className="mb-1.5 flex items-center justify-between text-[10px] font-semibold uppercase text-slate-400">
                             <span>Pneus Início (Toque para alternar)</span>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                if (row.type === 'race') {
-                                  updateRaceStint(row.stintNum, 'tiresStart', DEFAULT_FULL_TIRES);
-                                } else {
-                                  updatePreSession(row.type, 'tiresStart', DEFAULT_FULL_TIRES);
-                                }
-                              }}
-                              className="inline-flex items-center rounded border border-emerald-500/40 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold text-emerald-300 transition-colors hover:border-emerald-400 hover:bg-emerald-500/20"
-                            >
-                              4 Pneus Novos
-                            </button>
                           </div>
                           <div className="grid grid-cols-4 gap-2">
                             {TIRE_CORNERS.map(({ key }) => {
@@ -3862,14 +4744,17 @@ export default function App() {
                           : 'border-amber-500/35 bg-amber-500/10'
                       } ${isPitDone ? 'opacity-70' : ''}`}
                     >
-                      <div className="flex flex-1 min-w-0 items-center justify-between gap-2 px-2.5 py-1.5">
-                      <div className="flex items-center gap-1.5 min-w-0 text-[10px]">
+                      <div className="flex flex-1 min-w-0 items-center justify-between gap-1.5 px-2 py-1">
+                      <div className="flex items-center gap-1.5 min-w-0 text-[10px] overflow-hidden">
                         <Wrench className={`h-3 w-3 shrink-0 ${stintMode === 'planning' ? 'text-indigo-300' : 'text-[#eab308]'}`} />
-                        <span className={`font-bold uppercase tracking-wider whitespace-nowrap ${stintMode === 'planning' ? 'text-indigo-300' : 'text-[#eab308]'}`}>
-                          Pit {String(row.stintNum).padStart(2, '0')}→{String((row.stintNum || 0) + 1).padStart(2, '0')}
+                        <span className={`font-bold whitespace-nowrap ${stintMode === 'planning' ? 'text-indigo-300' : 'text-[#eab308]'}`}>
+                          P{String(row.stintNum).padStart(2, '0')}→{String((row.stintNum || 0) + 1).padStart(2, '0')}
                         </span>
-                        <span className="font-mono text-slate-300 whitespace-nowrap">
-                          {formatMinutesToHHMM(row.endMin)}
+                        <span className="font-mono font-bold text-emerald-300 truncate">
+                          {row.mfdTargetLabel}
+                        </span>
+                        <span className="font-mono text-amber-300 whitespace-nowrap">
+                          • {row.pitStationarySec.toFixed(1)}s
                         </span>
                       </div>
                       <select
@@ -3877,7 +4762,7 @@ export default function App() {
                         onChange={(e) =>
                           updateRaceStint(row.stintNum, 'pitScenario', e.target.value)
                         }
-                        className={`min-w-0 max-w-[58%] rounded border bg-[#0f172a] px-2 py-1 text-[11px] text-slate-100 focus:outline-none ${
+                        className={`shrink-0 max-w-[128px] rounded border bg-[#0f172a] px-1.5 py-0.5 text-[10px] text-slate-100 focus:outline-none ${
                           stintMode === 'planning'
                             ? 'border-indigo-500/40 focus:border-indigo-400'
                             : 'border-amber-500/35 focus:border-[#eab308]'
@@ -3885,7 +4770,17 @@ export default function App() {
                       >
                         {PIT_SCENARIOS.map((sc) => (
                           <option key={sc.id} value={sc.id}>
-                            {sc.label} ({getPitTimeSeconds(sc.id, params)}s)
+                            {sc.label} (
+                            {calculatePitStopDetails({
+                              scenarioId: sc.id,
+                              params,
+                              carClass: params.carClass || 'LMGT3',
+                              nextStintLaps: row.nextStintLaps,
+                              remainingFuelL: row.remainingFuelL,
+                              remainingEnergyPct: row.remainingEnergyPct,
+                              hasDriverSwap: row.hasDriverSwap,
+                            }).stationarySec.toFixed(1)}
+                            s)
                           </option>
                         ))}
                       </select>
@@ -4056,6 +4951,36 @@ export default function App() {
                 stintMode === 'race' ? 'opacity-25 pointer-events-none select-none' : ''
               }`}
             >
+              {/* Championship / Regulation Selector */}
+              <div className="rounded-lg border border-[#334155] bg-[#0f172a]/70 p-2.5">
+                <label className="mb-1.5 block text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+                  Campeonato / Regulamento
+                </label>
+                <div className="grid grid-cols-2 gap-1.5">
+                  {[
+                    { id: 'WEC', label: 'WEC', sub: 'Fuel + Energia Virt.' },
+                    { id: 'ELMS', label: 'ELMS', sub: 'Somente Fuel (L)' },
+                  ].map((reg) => {
+                    const active = (params.championship || 'WEC') === reg.id;
+                    return (
+                      <button
+                        type="button"
+                        key={reg.id}
+                        onClick={() => handleParamChange('championship', reg.id)}
+                        className={`rounded-md border px-2 py-1.5 text-left transition-colors cursor-pointer ${
+                          active
+                            ? 'border-amber-500 bg-amber-500/20 text-amber-200'
+                            : 'border-[#334155] bg-[#1e293b] text-slate-400 hover:text-slate-200'
+                        }`}
+                      >
+                        <div className="text-xs font-extrabold leading-tight">{reg.label}</div>
+                        <div className="text-[9px] opacity-80 leading-tight">{reg.sub}</div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
               {/* Car & Class Selector */}
               <div className="rounded-lg border border-[#334155] bg-[#0f172a]/70 p-3 space-y-2.5">
                 <div className="flex items-center gap-2.5">
@@ -4071,6 +4996,32 @@ export default function App() {
                     <div className="mt-0.5 text-xs font-bold leading-snug text-white">
                       {selectedCar.name}
                     </div>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="mb-1 block text-[10px] font-semibold uppercase text-slate-400">
+                    Identificação do Carro (Aba)
+                  </label>
+                  <div className="flex items-center gap-1.5">
+                    <input
+                      type="text"
+                      value={activeCar.label}
+                      onChange={(e) => handleUpdateCarLabel(activeCar.id, e.target.value)}
+                      placeholder="Ex: FTR #14 - Mustang GT3"
+                      className="flex-1 min-w-0 rounded-md border border-[#334155] bg-[#1e293b] px-2.5 py-1.5 text-xs font-bold text-slate-100 focus:border-[#eab308] focus:outline-none"
+                    />
+                    {carOrder.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => setCloneModalOpen(true)}
+                        title="Copiar estratégia deste carro para outro carro"
+                        className="inline-flex items-center gap-1 rounded-md border border-amber-500/40 bg-amber-500/10 px-2 py-1.5 text-[10px] font-bold text-amber-200 hover:bg-amber-500/20 cursor-pointer shrink-0"
+                      >
+                        <Copy className="h-3 w-3" />
+                        <span>Copiar p/ outro</span>
+                      </button>
+                    )}
                   </div>
                 </div>
 
@@ -4163,11 +5114,12 @@ export default function App() {
                     <Timer className="h-3 w-3 text-[#eab308]" />
                     Duração Corrida (00:00)
                   </label>
-                  <input
-                    type="text"
+                  <FreeFormattedTextInput
                     placeholder="06:00"
+                    inputMode="numeric"
                     value={params.raceDurationStr}
-                    onChange={(e) => handleParamChange('raceDurationStr', e.target.value)}
+                    normalize={normalizeRaceDurationStr}
+                    onCommit={(val) => handleParamChange('raceDurationStr', val)}
                     className="w-full rounded-lg border border-[#334155] bg-[#0f172a] px-2.5 py-2 text-sm font-mono tabular-nums text-slate-100 focus:border-[#eab308] focus:outline-none"
                   />
                 </div>
@@ -4177,11 +5129,12 @@ export default function App() {
                     <Gauge className="h-3 w-3 text-[#22c55e]" />
                     Tempo de Volta
                   </label>
-                  <input
-                    type="text"
+                  <FreeFormattedTextInput
                     placeholder="01:45.320"
+                    inputMode="decimal"
                     value={params.lapTimeStr}
-                    onChange={(e) => handleParamChange('lapTimeStr', e.target.value)}
+                    normalize={normalizeLapTimeStr}
+                    onCommit={(val) => handleParamChange('lapTimeStr', val)}
                     className="w-full rounded-lg border border-[#334155] bg-[#0f172a] px-2.5 py-2 text-sm font-mono tabular-nums text-slate-100 focus:border-[#eab308] focus:outline-none"
                   />
                 </div>
@@ -4191,14 +5144,11 @@ export default function App() {
                     <Fuel className="h-3 w-3 text-[#eab308]" />
                     Tanque (Litros)
                   </label>
-                  <input
-                    type="number"
-                    min="1"
-                    step="1"
+                  <FreeNumericInput
+                    min={1}
+                    allowDecimal={false}
                     value={params.tankCapacityL}
-                    onChange={(e) =>
-                      handleParamChange('tankCapacityL', Math.max(1, Number(e.target.value) || 0))
-                    }
+                    onCommit={(val) => handleParamChange('tankCapacityL', val)}
                     className="w-full rounded-lg border border-[#334155] bg-[#0f172a] px-2.5 py-2 text-sm font-mono tabular-nums text-slate-100 focus:border-[#eab308] focus:outline-none"
                   />
                 </div>
@@ -4208,49 +5158,40 @@ export default function App() {
                     <Fuel className="h-3 w-3 text-slate-400" />
                     Consumo (L/volta)
                   </label>
-                  <input
-                    type="number"
-                    min="0.1"
-                    step="0.1"
+                  <FreeNumericInput
+                    min={0.1}
+                    allowDecimal={true}
                     value={params.fuelPerLapL}
-                    onChange={(e) =>
-                      handleParamChange('fuelPerLapL', Math.max(0.1, Number(e.target.value) || 0.1))
-                    }
+                    onCommit={(val) => handleParamChange('fuelPerLapL', val)}
                     className="w-full rounded-lg border border-[#334155] bg-[#0f172a] px-2.5 py-2 text-sm font-mono tabular-nums text-slate-100 focus:border-[#eab308] focus:outline-none"
                   />
                 </div>
 
+                {!telemetry.isElms && (
                 <div>
                   <label className="mb-1 flex items-center gap-1 text-[11px] font-medium text-slate-400">
                     <Zap className="h-3 w-3 text-[#22c55e]" />
                     Energia Virt. (%/v)
                   </label>
-                  <input
-                    type="number"
-                    min="0.1"
-                    step="0.1"
+                  <FreeNumericInput
+                    min={0.1}
+                    allowDecimal={true}
                     value={params.virtualEnergyPerLapPct}
-                    onChange={(e) =>
-                      handleParamChange(
-                        'virtualEnergyPerLapPct',
-                        Math.max(0.1, Number(e.target.value) || 0.1)
-                      )
-                    }
+                    onCommit={(val) => handleParamChange('virtualEnergyPerLapPct', val)}
                     className="w-full rounded-lg border border-[#334155] bg-[#0f172a] px-2.5 py-2 text-sm font-mono tabular-nums text-slate-100 focus:border-[#eab308] focus:outline-none"
                   />
                 </div>
+                )}
 
                 <div>
                   <label className="mb-1 block text-[11px] font-medium text-slate-400">
                     Free Practice (min)
                   </label>
-                  <input
-                    type="number"
-                    min="0"
+                  <FreeNumericInput
+                    min={0}
+                    allowDecimal={false}
                     value={params.fpDurationMin}
-                    onChange={(e) =>
-                      handleParamChange('fpDurationMin', Math.max(0, Number(e.target.value) || 0))
-                    }
+                    onCommit={(val) => handleParamChange('fpDurationMin', val)}
                     className="w-full rounded-lg border border-[#334155] bg-[#0f172a] px-2.5 py-2 text-sm font-mono tabular-nums text-slate-100 focus:border-[#eab308] focus:outline-none"
                   />
                 </div>
@@ -4259,13 +5200,11 @@ export default function App() {
                   <label className="mb-1 block text-[11px] font-medium text-slate-400">
                     Qualy (min)
                   </label>
-                  <input
-                    type="number"
-                    min="0"
+                  <FreeNumericInput
+                    min={0}
+                    allowDecimal={false}
                     value={params.qualyDurationMin}
-                    onChange={(e) =>
-                      handleParamChange('qualyDurationMin', Math.max(0, Number(e.target.value) || 0))
-                    }
+                    onCommit={(val) => handleParamChange('qualyDurationMin', val)}
                     className="w-full rounded-lg border border-[#334155] bg-[#0f172a] px-2.5 py-2 text-sm font-mono tabular-nums text-slate-100 focus:border-[#eab308] focus:outline-none"
                   />
                 </div>
@@ -4284,14 +5223,11 @@ export default function App() {
                     </span>
                   </label>
                   <div className="flex items-center gap-2.5">
-                    <input
-                      type="number"
-                      min="0"
-                      step="1"
+                    <FreeNumericInput
+                      min={0}
+                      allowDecimal={false}
                       value={params.availableTires ?? 24}
-                      onChange={(e) =>
-                        handleParamChange('availableTires', Math.max(0, Number(e.target.value) || 0))
-                      }
+                      onCommit={(val) => handleParamChange('availableTires', val)}
                       className="w-16 shrink-0 rounded-lg border border-[#334155] bg-[#0f172a] px-2 py-1.5 text-center text-sm font-mono font-bold tabular-nums text-slate-100 focus:border-[#eab308] focus:outline-none"
                     />
                     <div className="flex flex-1 flex-wrap items-center gap-1">
@@ -4312,84 +5248,29 @@ export default function App() {
               <div className="border-t border-[#334155] pt-3">
                 <div className="mb-2 flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-300">
                   <Wrench className="h-3.5 w-3.5 text-[#eab308]" />
-                  <span>Tempos Médios de Pitstop (seg)</span>
+                  <span>Pitstop LMU (Dinâmico)</span>
                 </div>
                 <div className="space-y-2">
                   <div className="flex items-center justify-between gap-2">
-                    <span className="text-xs text-slate-400">Combustível + 4 Pneus + Piloto</span>
+                    <span className="text-xs text-slate-300 font-medium">Pitlane Loss (passagem)</span>
                     <div className="flex items-center gap-1">
-                      <input
-                        type="number"
-                        min="0"
-                        value={params.pitTime4TiresSec}
-                        onChange={(e) =>
-                          handleParamChange(
-                            'pitTime4TiresSec',
-                            Math.max(0, Number(e.target.value) || 0)
-                          )
-                        }
+                      <FreeNumericInput
+                        min={0}
+                        allowDecimal={false}
+                        value={params.pitlaneLossSec ?? 30}
+                        onCommit={(val) => handleParamChange('pitlaneLossSec', val)}
                         className="w-16 rounded-md border border-[#334155] bg-[#0f172a] px-2 py-1 text-right text-xs font-mono tabular-nums text-slate-100 focus:border-[#eab308] focus:outline-none"
                       />
                       <span className="text-xs text-slate-500">s</span>
                     </div>
                   </div>
-
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="text-xs text-slate-400">Combustível + 2 Pneus + Piloto</span>
-                    <div className="flex items-center gap-1">
-                      <input
-                        type="number"
-                        min="0"
-                        value={params.pitTime2TiresSec}
-                        onChange={(e) =>
-                          handleParamChange(
-                            'pitTime2TiresSec',
-                            Math.max(0, Number(e.target.value) || 0)
-                          )
-                        }
-                        className="w-16 rounded-md border border-[#334155] bg-[#0f172a] px-2 py-1 text-right text-xs font-mono tabular-nums text-slate-100 focus:border-[#eab308] focus:outline-none"
-                      />
-                      <span className="text-xs text-slate-500">s</span>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="text-xs text-slate-400">Apenas Combustível + Piloto</span>
-                    <div className="flex items-center gap-1">
-                      <input
-                        type="number"
-                        min="0"
-                        value={params.pitTimeFuelOnlySec}
-                        onChange={(e) =>
-                          handleParamChange(
-                            'pitTimeFuelOnlySec',
-                            Math.max(0, Number(e.target.value) || 0)
-                          )
-                        }
-                        className="w-16 rounded-md border border-[#334155] bg-[#0f172a] px-2 py-1 text-right text-xs font-mono tabular-nums text-slate-100 focus:border-[#eab308] focus:outline-none"
-                      />
-                      <span className="text-xs text-slate-500">s</span>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="text-xs text-slate-400">Somente Troca de Piloto</span>
-                    <div className="flex items-center gap-1">
-                      <input
-                        type="number"
-                        min="0"
-                        value={params.pitTimeDriverOnlySec}
-                        onChange={(e) =>
-                          handleParamChange(
-                            'pitTimeDriverOnlySec',
-                            Math.max(0, Number(e.target.value) || 0)
-                          )
-                        }
-                        className="w-16 rounded-md border border-[#334155] bg-[#0f172a] px-2 py-1 text-right text-xs font-mono tabular-nums text-slate-100 focus:border-[#eab308] focus:outline-none"
-                      />
-                      <span className="text-xs text-slate-500">s</span>
-                    </div>
-                  </div>
+                  <p className="rounded-md border border-[#334155]/80 bg-[#0f172a]/60 px-2.5 py-1.5 text-[10px] leading-relaxed text-slate-400">
+                    Vazão: 2,5{telemetry.isElms ? 'L' : '%'}/s + 3s • Pneus sequenciais:{' '}
+                    <strong className="text-slate-200">
+                      {params.carClass === 'LMGT3' || params.carClass === 'GTE' ? '8,5s' : '8,0s'}
+                    </strong>
+                    /pneu • Troca de piloto: 25s (paralela ao combustível).
+                  </p>
                 </div>
               </div>
 
@@ -4416,7 +5297,7 @@ export default function App() {
               <div className="flex items-center gap-2">
                 <Zap className="h-4 w-4 text-[#eab308]" />
                 <h2 className="text-xs font-bold uppercase tracking-wider text-[#eab308]">
-                  Fuel Ratio & Autonomia
+                  {telemetry.isElms ? 'Autonomia (ELMS)' : 'Fuel Ratio & Autonomia'}
                 </h2>
               </div>
               <div className="flex items-center gap-2">
@@ -4432,9 +5313,11 @@ export default function App() {
 
             {!mobileFuelOpen && (
               <div className="mt-2 flex items-center justify-between text-xs font-mono tabular-nums lg:hidden">
-                <span className="font-bold text-white">
-                  {telemetry.fuelRatio.toFixed(2)} <span className="text-amber-400 font-normal">L/%</span>
-                </span>
+                {!telemetry.isElms && (
+                  <span className="font-bold text-white">
+                    {telemetry.fuelRatio.toFixed(2)} <span className="text-amber-400 font-normal">L/%</span>
+                  </span>
+                )}
                 <span className="font-bold text-[#22c55e]">
                   {telemetry.maxStintLaps}v (~{telemetry.maxStintMin.toFixed(1)}m)
                 </span>
@@ -4444,16 +5327,29 @@ export default function App() {
 
             <div className={`${mobileFuelOpen ? 'block' : 'hidden'} lg:block mt-3`}>
               <div className="grid grid-cols-2 gap-3">
-                <div className="rounded-lg border border-[#334155] bg-[#0f172a]/80 p-3">
-                  <div className="text-[11px] text-slate-400">Fuel Ratio</div>
-                  <div className="mt-1 text-2xl font-extrabold font-mono tabular-nums text-white">
-                    {telemetry.fuelRatio.toFixed(2)}
-                    <span className="ml-1 text-xs font-normal text-amber-400">L/%</span>
+                {!telemetry.isElms ? (
+                  <div className="rounded-lg border border-[#334155] bg-[#0f172a]/80 p-3">
+                    <div className="text-[11px] text-slate-400">Fuel Ratio</div>
+                    <div className="mt-1 text-2xl font-extrabold font-mono tabular-nums text-white">
+                      {telemetry.fuelRatio.toFixed(2)}
+                      <span className="ml-1 text-xs font-normal text-amber-400">L/%</span>
+                    </div>
+                    <div className="mt-0.5 text-[10px] text-slate-500">
+                      {params.fuelPerLapL}L ÷ {params.virtualEnergyPerLapPct}%
+                    </div>
                   </div>
-                  <div className="mt-0.5 text-[10px] text-slate-500">
-                    {params.fuelPerLapL}L ÷ {params.virtualEnergyPerLapPct}%
+                ) : (
+                  <div className="rounded-lg border border-[#334155] bg-[#0f172a]/80 p-3">
+                    <div className="text-[11px] text-slate-400">Tanque / Consumo</div>
+                    <div className="mt-1 text-2xl font-extrabold font-mono tabular-nums text-white">
+                      {params.tankCapacityL}
+                      <span className="ml-1 text-xs font-normal text-amber-400">L</span>
+                    </div>
+                    <div className="mt-0.5 text-[10px] text-slate-500">
+                      {params.fuelPerLapL} L/volta
+                    </div>
                   </div>
-                </div>
+                )}
 
                 <div className="rounded-lg border border-[#334155] bg-[#0f172a]/80 p-3">
                   <div className="text-[11px] text-slate-400">Autonomia Máx / Stint</div>
@@ -4469,8 +5365,12 @@ export default function App() {
 
               <div className="mt-3 flex items-center justify-between text-[11px] text-slate-400 border-t border-[#334155]/70 pt-2.5">
                 <span>Tanque: {telemetry.maxLapsByFuel}v</span>
-                <span>•</span>
-                <span>Energia 100%: {telemetry.maxLapsByEnergy}v</span>
+                {!telemetry.isElms && (
+                  <>
+                    <span>•</span>
+                    <span>Energia 100%: {telemetry.maxLapsByEnergy}v</span>
+                  </>
+                )}
                 <span>•</span>
                 <span className="text-slate-200 font-semibold">{raceStintCount} stints</span>
               </div>
@@ -4545,23 +5445,16 @@ export default function App() {
                 <span className="hidden xl:inline text-[11px] text-slate-400">
                   Clique nos badges de pneus (<span className="font-mono text-slate-200">FL/FR/RL/RR</span>) para editar
                 </span>
-                <button
-                  type="button"
-                  onClick={toggleAllStintsCollapse}
-                  className="inline-flex items-center gap-1 rounded-md border border-[#334155] bg-[#0f172a] px-2.5 py-1 text-[11px] font-semibold text-slate-200 transition-colors hover:border-[#eab308]/60 hover:text-[#eab308] cursor-pointer"
-                >
-                  {areAllStintsCollapsed ? (
-                    <>
-                      <ChevronDown className="h-3.5 w-3.5" />
-                      <span>Expandir Tudo</span>
-                    </>
-                  ) : (
-                    <>
-                      <ChevronUp className="h-3.5 w-3.5" />
-                      <span>Empacotar Tudo</span>
-                    </>
-                  )}
-                </button>
+                {expandedStintId !== null && (
+                  <button
+                    type="button"
+                    onClick={() => setExpandedStintId(null)}
+                    className="inline-flex items-center gap-1 rounded-md border border-[#334155] bg-[#0f172a] px-2.5 py-1 text-[11px] font-semibold text-slate-200 transition-colors hover:border-[#eab308]/60 hover:text-[#eab308] cursor-pointer"
+                  >
+                    <ChevronUp className="h-3.5 w-3.5" />
+                    <span>Recolher Stint</span>
+                  </button>
+                )}
               </div>
             </div>
 
@@ -4581,7 +5474,7 @@ export default function App() {
                 </thead>
                 <tbody className="divide-y divide-[#334155]/60">
                   {enrichedSchedule.map((row) => {
-                    const isCollapsed = Boolean(collapsedStints[row.id]);
+                    const isCollapsed = expandedStintId !== row.id;
                     const nextStintLabel = `Stint ${String((row.stintNum || 0) + 1).padStart(2, '0')}`;
                     const isStintDone = stintMode === 'race' && Boolean(completedItems[row.id]);
                     const isPitDone = stintMode === 'race' && Boolean(completedItems[`pit_${row.stintNum}`]);
@@ -4666,7 +5559,7 @@ export default function App() {
                                 </div>
                                 {row.type === 'race' && !row.isLastStint && (
                                   <span className="font-mono text-[11px] text-amber-400/90">
-                                    Pit: {PIT_SCENARIOS.find((p) => p.id === row.pitScenario)?.label} ({row.pitDurationSec}s)
+                                    {row.mfdTargetLabel} • Pit: {row.pitStationarySec.toFixed(1)}s (+{row.pitlaneLossSec}s)
                                   </span>
                                 )}
                               </div>
@@ -4702,7 +5595,7 @@ export default function App() {
                                   {formatMinutesToHHMM(row.startMin)} - {formatMinutesToHHMM(row.endMin)}
                                   {row.type === 'race' && !row.isLastStint && (
                                     <span className="ml-1.5 text-amber-400/90">
-                                      (+{row.pitDurationSec}s pit)
+                                      ({row.mfdTargetLabel} • Pit: {row.pitStationarySec.toFixed(1)}s)
                                     </span>
                                   )}
                                 </div>
@@ -4825,19 +5718,6 @@ export default function App() {
                                   </div>
                                 ) : (
                                   <div className="mx-auto flex flex-col items-center gap-1">
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        if (row.type === 'race') {
-                                          updateRaceStint(row.stintNum, 'tiresStart', DEFAULT_FULL_TIRES);
-                                        } else {
-                                          updatePreSession(row.type, 'tiresStart', DEFAULT_FULL_TIRES);
-                                        }
-                                      }}
-                                      className="inline-flex items-center justify-center rounded border border-emerald-500/40 bg-emerald-500/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-emerald-300 transition-colors hover:border-emerald-400 hover:bg-emerald-500/20 cursor-pointer"
-                                    >
-                                      4 Pneus Novos
-                                    </button>
                                     <div className="mx-auto grid w-[132px] grid-cols-2 gap-1.5">
                                       {TIRE_CORNERS.map(({ key }) => {
                                         const tireMeta = row.startTireMeta?.[key];
@@ -4948,31 +5828,42 @@ export default function App() {
                                     : 'bg-amber-500/5 border-amber-500/20'
                                 } ${isPitDone ? 'opacity-70' : ''}`}
                               >
-                                <td colSpan={4} className="px-3 py-1.5">
-                                  <div className="flex items-center gap-2 text-[11px]">
-                                    <Wrench className={`h-3.5 w-3.5 ${stintMode === 'planning' ? 'text-indigo-300' : 'text-[#eab308]'}`} />
+                                <td colSpan={4} className="px-3 py-1">
+                                  <div className="flex items-center gap-2 whitespace-nowrap text-[11px]">
+                                    <Wrench className={`h-3 w-3 shrink-0 ${stintMode === 'planning' ? 'text-indigo-300' : 'text-[#eab308]'}`} />
                                     <span className={`font-bold uppercase tracking-wider ${stintMode === 'planning' ? 'text-indigo-300' : 'text-[#eab308]'}`}>
-                                      Pitstop
+                                      Pit {String(row.stintNum).padStart(2, '0')}→{String((row.stintNum || 0) + 1).padStart(2, '0')}
                                     </span>
-                                    <span className="text-slate-400">
-                                      {row.label} → {nextStintLabel}
+                                    <span className="rounded border border-emerald-500/40 bg-emerald-500/15 px-1.5 py-0.2 font-mono font-bold text-emerald-300">
+                                      {row.mfdTargetLabel}
                                     </span>
                                     <span className="font-mono text-slate-300">
-                                      ({formatMinutesToHHMM(row.endMin)})
+                                      • Pit: <strong className="text-amber-300">{row.pitStationarySec.toFixed(1)}s</strong>{' '}
+                                      <span className="text-slate-400">(+{row.pitlaneLossSec}s)</span>
                                     </span>
                                   </div>
                                 </td>
-                                <td colSpan={2} className="px-3 py-1.5 text-center">
+                                <td colSpan={2} className="px-3 py-1 text-center">
                                   <select
                                     value={row.pitScenario}
                                     onChange={(e) =>
                                       updateRaceStint(row.stintNum, 'pitScenario', e.target.value)
                                     }
-                                    className="mx-auto rounded-md border border-amber-500/35 bg-[#0f172a] px-2.5 py-1 text-xs font-medium text-slate-100 focus:border-[#eab308] focus:outline-none cursor-pointer"
+                                    className="mx-auto rounded-md border border-amber-500/35 bg-[#0f172a] px-2 py-0.5 text-[11px] font-medium text-slate-100 focus:border-[#eab308] focus:outline-none cursor-pointer"
                                   >
                                     {PIT_SCENARIOS.map((sc) => (
                                       <option key={sc.id} value={sc.id}>
-                                        {sc.label} ({getPitTimeSeconds(sc.id, params)}s)
+                                        {sc.label} (
+                                        {calculatePitStopDetails({
+                                          scenarioId: sc.id,
+                                          params,
+                                          carClass: params.carClass || 'LMGT3',
+                                          nextStintLaps: row.nextStintLaps,
+                                          remainingFuelL: row.remainingFuelL,
+                                          remainingEnergyPct: row.remainingEnergyPct,
+                                          hasDriverSwap: row.hasDriverSwap,
+                                        }).stationarySec.toFixed(1)}
+                                        s)
                                       </option>
                                     ))}
                                   </select>
@@ -5029,7 +5920,7 @@ export default function App() {
             {/* MOBILE CARDS (< md) */}
             <div className="space-y-2.5 p-2.5 bg-[#0f172a]/70 md:hidden">
               {enrichedSchedule.map((row) => {
-                const isCollapsed = Boolean(collapsedStints[row.id]);
+                const isCollapsed = expandedStintId !== row.id;
                 const nextStintLabel = `Stint ${String((row.stintNum || 0) + 1).padStart(2, '0')}`;
                 const isStintDone = stintMode === 'race' && Boolean(completedItems[row.id]);
                 const isPitDone = stintMode === 'race' && Boolean(completedItems[`pit_${row.stintNum}`]);
@@ -5153,19 +6044,6 @@ export default function App() {
                               <div>
                                 <div className="mb-1.5 flex items-center justify-between text-[10px] font-semibold uppercase text-slate-400">
                                   <span>Pneus Início (Toque para alternar)</span>
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      if (row.type === 'race') {
-                                        updateRaceStint(row.stintNum, 'tiresStart', DEFAULT_FULL_TIRES);
-                                      } else {
-                                        updatePreSession(row.type, 'tiresStart', DEFAULT_FULL_TIRES);
-                                      }
-                                    }}
-                                    className="inline-flex items-center rounded border border-emerald-500/40 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold text-emerald-300 transition-colors hover:border-emerald-400 hover:bg-emerald-500/20"
-                                  >
-                                    4 Pneus Novos
-                                  </button>
                                 </div>
                                 <div className="grid grid-cols-4 gap-2">
                                   {TIRE_CORNERS.map(({ key }) => {
@@ -5267,14 +6145,17 @@ export default function App() {
                             : 'border-amber-500/35 bg-amber-500/10'
                         } ${isPitDone ? 'opacity-70' : ''}`}
                       >
-                        <div className="flex flex-1 min-w-0 items-center justify-between gap-2 px-2.5 py-1.5">
-                        <div className="flex items-center gap-1.5 min-w-0 text-[10px]">
+                        <div className="flex flex-1 min-w-0 items-center justify-between gap-1.5 px-2 py-1">
+                        <div className="flex items-center gap-1.5 min-w-0 text-[10px] overflow-hidden">
                           <Wrench className={`h-3 w-3 shrink-0 ${stintMode === 'planning' ? 'text-indigo-300' : 'text-[#eab308]'}`} />
-                          <span className={`font-bold uppercase tracking-wider whitespace-nowrap ${stintMode === 'planning' ? 'text-indigo-300' : 'text-[#eab308]'}`}>
-                            Pit {String(row.stintNum).padStart(2, '0')}→{String((row.stintNum || 0) + 1).padStart(2, '0')}
+                          <span className={`font-bold whitespace-nowrap ${stintMode === 'planning' ? 'text-indigo-300' : 'text-[#eab308]'}`}>
+                            P{String(row.stintNum).padStart(2, '0')}→{String((row.stintNum || 0) + 1).padStart(2, '0')}
                           </span>
-                          <span className="font-mono text-slate-300 whitespace-nowrap">
-                            {formatMinutesToHHMM(row.endMin)}
+                          <span className="font-mono font-bold text-emerald-300 truncate">
+                            {row.mfdTargetLabel}
+                          </span>
+                          <span className="font-mono text-amber-300 whitespace-nowrap">
+                            • {row.pitStationarySec.toFixed(1)}s
                           </span>
                         </div>
                         <select
@@ -5282,7 +6163,7 @@ export default function App() {
                           onChange={(e) =>
                             updateRaceStint(row.stintNum, 'pitScenario', e.target.value)
                           }
-                          className={`min-w-0 max-w-[58%] rounded border bg-[#0f172a] px-2 py-1 text-[11px] text-slate-100 focus:outline-none ${
+                          className={`shrink-0 max-w-[128px] rounded border bg-[#0f172a] px-1.5 py-0.5 text-[10px] text-slate-100 focus:outline-none ${
                             stintMode === 'planning'
                               ? 'border-indigo-500/40 focus:border-indigo-400'
                               : 'border-amber-500/35 focus:border-[#eab308]'
@@ -5290,7 +6171,17 @@ export default function App() {
                         >
                           {PIT_SCENARIOS.map((sc) => (
                             <option key={sc.id} value={sc.id}>
-                              {sc.label} ({getPitTimeSeconds(sc.id, params)}s)
+                              {sc.label} (
+                              {calculatePitStopDetails({
+                                scenarioId: sc.id,
+                                params,
+                                carClass: params.carClass || 'LMGT3',
+                                nextStintLaps: row.nextStintLaps,
+                                remainingFuelL: row.remainingFuelL,
+                                remainingEnergyPct: row.remainingEnergyPct,
+                                hasDriverSwap: row.hasDriverSwap,
+                              }).stationarySec.toFixed(1)}
+                              s)
                             </option>
                           ))}
                         </select>
@@ -5777,16 +6668,16 @@ export default function App() {
               {/* Animated Tire Visual (slides inward when MANTER / installed, outward when in pitbox) */}
               <div className="flex items-center gap-1.5">
                 <div
-                  className={`flex h-12 w-8 flex-col items-center justify-center rounded-md border-2 font-mono text-[9px] font-extrabold transition-all duration-300 ease-out ${tirePillColor} ${
+                  className={`flex h-12 w-10 flex-col items-center justify-center rounded-md border-2 font-mono text-[11px] font-extrabold transition-all duration-300 ease-out ${tirePillColor} ${
                     isKeep
                       ? alignRight
-                        ? 'translate-x-5 scale-90'
-                        : '-translate-x-5 scale-90'
+                        ? 'translate-x-4 scale-90'
+                        : '-translate-x-4 scale-90'
                       : 'translate-x-0 scale-100'
                   }`}
                   title={isKeep ? `${cornerKey}: Instalado no carro (Manter)` : `${cornerKey}: No box para troca`}
                 >
-                  <span className="leading-none opacity-80">{cornerKey}</span>
+                  <span className="leading-none opacity-90">{cornerKey}</span>
                   <span className="mt-1">
                     {isWet ? (
                       <Droplets className="h-3.5 w-3.5 text-sky-300" />
@@ -5798,7 +6689,7 @@ export default function App() {
               </div>
 
               {/* 4 quick choice buttons */}
-              <div className="grid grid-cols-2 gap-1">
+              <div className="grid grid-cols-2 gap-1.5">
                 {options.map((opt) => {
                   const active = mode === opt.id;
                   return (
@@ -5806,7 +6697,7 @@ export default function App() {
                       key={opt.id}
                       type="button"
                       onClick={() => setCornerVal(cornerKey, opt.val)}
-                      className={`inline-flex items-center justify-center gap-0.5 rounded border px-1.5 py-0.5 text-[9px] font-bold transition-colors cursor-pointer ${
+                      className={`inline-flex items-center justify-center gap-1 whitespace-nowrap rounded-md border px-2 py-1.5 text-[11px] sm:text-xs font-bold transition-colors cursor-pointer ${
                         active
                           ? opt.id === 'wet'
                             ? 'border-blue-400 bg-blue-500/30 text-sky-200'
@@ -5819,9 +6710,9 @@ export default function App() {
                       }`}
                     >
                       {opt.icon === 'drop' ? (
-                        <Droplets className="h-2.5 w-2.5 text-sky-300" />
+                        <Droplets className="h-3.5 w-3.5 shrink-0 text-sky-300" />
                       ) : (
-                        <Sun className="h-2.5 w-2.5 text-amber-300" />
+                        <Sun className="h-3.5 w-3.5 shrink-0 text-amber-300" />
                       )}
                       <span>{opt.label}</span>
                     </button>
@@ -5834,11 +6725,11 @@ export default function App() {
 
         return (
           <div
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-3 sm:p-4 backdrop-blur-sm"
             onClick={() => setTirePitModalRowId(null)}
           >
             <div
-              className="w-full max-w-md rounded-2xl border border-[#334155] bg-[#0f172a] shadow-2xl overflow-hidden"
+              className="w-full max-w-lg rounded-2xl border border-[#334155] bg-[#0f172a] shadow-2xl overflow-hidden"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="flex items-center justify-between border-b border-[#334155] bg-[#1e293b] px-4 py-3">
@@ -5862,15 +6753,15 @@ export default function App() {
                 </button>
               </div>
 
-              <div className="p-4 space-y-4">
+              <div className="p-3 sm:p-4 space-y-4">
                 {/* Quick All-4 Presets */}
-                <div className="flex flex-wrap items-center justify-center gap-1.5">
+                <div className="flex flex-wrap items-center justify-center gap-2">
                   <button
                     type="button"
                     onClick={() => setAllCorners(100)}
-                    className="inline-flex items-center gap-1 rounded-lg border border-emerald-500/40 bg-emerald-500/15 px-2.5 py-1 text-[10px] font-bold text-emerald-300 hover:bg-emerald-500/25 cursor-pointer"
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-500/40 bg-emerald-500/15 px-3 py-1.5 text-xs font-bold text-emerald-300 hover:bg-emerald-500/25 cursor-pointer"
                   >
-                    <Sun className="h-3 w-3 text-amber-300" />
+                    <Sun className="h-3.5 w-3.5 text-amber-300" />
                     4x Seco
                   </button>
                   {(stintMode === 'planning' ||
@@ -5878,7 +6769,7 @@ export default function App() {
                     <button
                       type="button"
                       onClick={() => setAllCorners('keep')}
-                      className="inline-flex items-center gap-1 rounded-lg border border-[#334155] bg-[#1e293b] px-2.5 py-1 text-[10px] font-bold text-slate-200 hover:border-slate-400 cursor-pointer"
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-[#334155] bg-[#1e293b] px-3 py-1.5 text-xs font-bold text-slate-200 hover:border-slate-400 cursor-pointer"
                     >
                       4x Manter
                     </button>
@@ -5886,75 +6777,180 @@ export default function App() {
                   <button
                     type="button"
                     onClick={() => setAllCorners('wet')}
-                    className="inline-flex items-center gap-1 rounded-lg border border-blue-400/40 bg-blue-500/15 px-2.5 py-1 text-[10px] font-bold text-sky-300 hover:bg-blue-500/25 cursor-pointer"
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-blue-400/40 bg-blue-500/15 px-3 py-1.5 text-xs font-bold text-sky-300 hover:bg-blue-500/25 cursor-pointer"
                   >
-                    <Droplets className="h-3 w-3 text-sky-300" />
+                    <Droplets className="h-3.5 w-3.5 text-sky-300" />
                     4x Chuva
                   </button>
                 </div>
 
                 {/* Pitbox Top-Down GT3 Car Diagram */}
-                <div className="relative rounded-xl border border-dashed border-amber-500/35 bg-[#111827] px-3 py-4">
-                  <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
+                <div className="relative rounded-xl border border-dashed border-amber-500/35 bg-[#111827] px-2 sm:px-3 py-4">
+                  <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-1.5 sm:gap-2">
                     {/* Left Side (FL & RL) */}
                     <div className="flex flex-col justify-between gap-8">
                       {renderCornerControls('FL', true)}
                       {renderCornerControls('RL', true)}
                     </div>
 
-                    {/* Top-Down GT3 Race Car SVG */}
-                    <div className="flex items-center justify-center px-1">
+                    {/* Top-Down Porsche 911 GT3 Blueprint SVG */}
+                    <div className="flex items-center justify-center px-0.5 sm:px-1">
                       <svg
-                        viewBox="0 0 110 210"
-                        className="h-52 w-24 drop-shadow-[0_0_12px_rgba(0,0,0,0.8)]"
+                        viewBox="0 0 140 260"
+                        fill="none"
+                        className="h-44 w-20 sm:h-56 sm:w-28 drop-shadow-[0_0_10px_rgba(234,179,8,0.18)]"
                         aria-hidden="true"
                       >
-                        {/* Front Splitter */}
+                        {/* Outer Body Silhouette (Porsche 911 GT3 widebody) */}
                         <path
-                          d="M22 20 C22 10, 88 10, 88 20 L84 26 L26 26 Z"
-                          fill="#0f172a"
+                          d="M42 18 C52 10, 88 10, 98 18 C110 26, 116 38, 116 52 L116 90 C114 102, 112 115, 112 135 C112 152, 118 164, 119 178 C120 198, 117 222, 108 238 C98 248, 42 248, 32 238 C23 222, 20 198, 21 178 C22 164, 28 152, 28 135 C28 115, 26 102, 24 90 L24 52 C24 38, 30 26, 42 18 Z"
                           stroke="#eab308"
                           strokeWidth="1.5"
+                          strokeLinejoin="round"
                         />
-                        {/* GT3 Main Body */}
+
+                        {/* Front Bumper & Hood Seam */}
                         <path
-                          d="M24 26 C20 38, 18 60, 18 105 C18 148, 20 172, 26 186 L84 186 C90 172, 92 148, 92 105 C92 60, 90 38, 86 26 Z"
-                          fill="#1e293b"
-                          stroke="#64748b"
-                          strokeWidth="2"
+                          d="M32 32 C46 18, 94 18, 108 32"
+                          stroke="#eab308"
+                          strokeWidth="1"
+                          strokeOpacity="0.85"
                         />
-                        {/* Hood Vent */}
                         <path
-                          d="M38 38 L72 38 L68 58 L42 58 Z"
-                          fill="#0f172a"
-                          stroke="#334155"
+                          d="M48 22 L34 86 M92 22 L106 86"
+                          stroke="#eab308"
+                          strokeWidth="1"
+                          strokeOpacity="0.8"
+                        />
+                        {/* Subtle Hood Center Lines */}
+                        <path
+                          d="M60 22 L57 76 M80 22 L83 76"
+                          stroke="#38bdf8"
+                          strokeWidth="0.8"
+                          strokeOpacity="0.45"
+                        />
+
+                        {/* Iconic Oval Porsche Headlights */}
+                        <g transform="translate(36 42) rotate(18)">
+                          <ellipse cx="0" cy="0" rx="6.5" ry="9.5" stroke="#eab308" strokeWidth="1.3" />
+                          <circle cx="0" cy="-1" r="3.8" stroke="#38bdf8" strokeWidth="0.9" strokeOpacity="0.85" />
+                        </g>
+                        <g transform="translate(104 42) rotate(-18)">
+                          <ellipse cx="0" cy="0" rx="6.5" ry="9.5" stroke="#eab308" strokeWidth="1.3" />
+                          <circle cx="0" cy="-1" r="3.8" stroke="#38bdf8" strokeWidth="0.9" strokeOpacity="0.85" />
+                        </g>
+
+                        {/* Side Mirrors */}
+                        <path
+                          d="M25 104 L13 107 C10 108, 10 115, 14 116 L26 113 Z"
+                          stroke="#eab308"
+                          strokeWidth="1.2"
+                          strokeLinejoin="round"
+                        />
+                        <path
+                          d="M115 104 L127 107 C130 108, 130 115, 126 116 L114 113 Z"
+                          stroke="#eab308"
+                          strokeWidth="1.2"
+                          strokeLinejoin="round"
+                        />
+
+                        {/* Twin Roof Racing Stripes (subtle translucent blue) */}
+                        <rect x="61" y="120" width="7" height="58" fill="#38bdf8" fillOpacity="0.16" />
+                        <rect x="72" y="120" width="7" height="58" fill="#38bdf8" fillOpacity="0.16" />
+
+                        {/* Windshield Frame & Glass */}
+                        <path
+                          d="M34 94 C44 74, 96 74, 106 94 L98 122 C82 118, 58 118, 42 122 Z"
+                          stroke="#eab308"
+                          strokeWidth="1.3"
+                          strokeLinejoin="round"
+                        />
+                        <path
+                          d="M39 95 C48 80, 92 80, 101 95 L95 117 C80 114, 60 114, 45 117 Z"
+                          stroke="#38bdf8"
+                          strokeWidth="1"
+                          strokeLinejoin="round"
+                        />
+                        {/* Windshield Wipers */}
+                        <path
+                          d="M44 86 L72 79 M72 79 L98 89"
+                          stroke="#38bdf8"
+                          strokeWidth="0.7"
+                          strokeOpacity="0.5"
+                        />
+
+                        {/* Cabin Side Windows & Roofline */}
+                        <path
+                          d="M34 94 C31 118, 30 148, 34 178 L42 178 C43 154, 43 136, 42 122"
+                          stroke="#eab308"
+                          strokeWidth="1.1"
+                          strokeLinejoin="round"
+                        />
+                        <path
+                          d="M106 94 C109 118, 110 148, 106 178 L98 178 C97 154, 97 136, 98 122"
+                          stroke="#eab308"
+                          strokeWidth="1.1"
+                          strokeLinejoin="round"
+                        />
+                        {/* Rear Haunch Accent Lines */}
+                        <path
+                          d="M27 154 C30 174, 31 198, 34 218 M113 154 C110 174, 109 198, 106 218"
+                          stroke="#38bdf8"
+                          strokeWidth="0.8"
+                          strokeOpacity="0.4"
+                        />
+
+                        {/* Rear Window */}
+                        <rect
+                          x="45"
+                          y="176"
+                          width="50"
+                          height="36"
+                          rx="8"
+                          stroke="#eab308"
                           strokeWidth="1.2"
                         />
-                        {/* Windshield & Cockpit */}
-                        <path
-                          d="M30 70 C36 62, 74 62, 80 70 L76 132 C72 138, 38 138, 34 132 Z"
-                          fill="#020617"
-                          stroke="#475569"
-                          strokeWidth="1.5"
-                        />
-                        {/* Roof / Racing Stripe */}
-                        <rect x="46" y="76" width="18" height="46" rx="4" fill="#1e293b" stroke="#eab308" strokeWidth="1" />
-                        {/* Side Mirrors */}
-                        <rect x="11" y="74" width="7" height="10" rx="2" fill="#334155" />
-                        <rect x="92" y="74" width="7" height="10" rx="2" fill="#334155" />
-                        {/* Rear Engine Louvers */}
-                        <path d="M36 146 L74 146 M38 154 L72 154 M40 162 L70 162" stroke="#334155" strokeWidth="2" strokeLinecap="round" />
-                        {/* Rear GT3 Wing */}
                         <rect
-                          x="14"
-                          y="185"
-                          width="82"
-                          height="12"
-                          rx="2"
-                          fill="#0f172a"
-                          stroke="#eab308"
-                          strokeWidth="1.5"
+                          x="49"
+                          y="180"
+                          width="42"
+                          height="28"
+                          rx="6"
+                          stroke="#38bdf8"
+                          strokeWidth="0.9"
                         />
+
+                        {/* Rear Engine Decklid Grille / Louvers */}
+                        <path
+                          d="M48 218 L92 218 M49 224 L91 224 M50 230 L90 230"
+                          stroke="#38bdf8"
+                          strokeWidth="0.85"
+                          strokeOpacity="0.6"
+                        />
+                        <path
+                          d="M58 216 L58 232 M66 216 L66 232 M74 216 L74 232 M82 216 L82 232"
+                          stroke="#38bdf8"
+                          strokeWidth="0.7"
+                          strokeOpacity="0.45"
+                        />
+
+                        {/* GT3 Rear Wing & Endplates */}
+                        <path
+                          d="M28 228 C44 238, 96 238, 112 228 L112 242 C96 250, 44 250, 28 242 Z"
+                          stroke="#38bdf8"
+                          strokeWidth="1"
+                        />
+                        <path
+                          d="M28 242 C44 250, 96 250, 112 242"
+                          stroke="#eab308"
+                          strokeWidth="1.4"
+                        />
+                        {/* Wing Endplates */}
+                        <rect x="25" y="224" width="3.5" height="22" rx="1.5" stroke="#eab308" strokeWidth="1.2" />
+                        <rect x="111.5" y="224" width="3.5" height="22" rx="1.5" stroke="#eab308" strokeWidth="1.2" />
+                        {/* Swan-Neck Wing Uprights */}
+                        <rect x="46" y="224" width="2.5" height="20" rx="1" stroke="#38bdf8" strokeWidth="1" />
+                        <rect x="91.5" y="224" width="2.5" height="20" rx="1" stroke="#38bdf8" strokeWidth="1" />
                       </svg>
                     </div>
 
@@ -5978,6 +6974,298 @@ export default function App() {
           </div>
         );
       })()}
+
+      {/* CLONE STRATEGY TO ANOTHER CAR MODAL */}
+      {cloneModalOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm"
+          onClick={() => setCloneModalOpen(false)}
+        >
+          <div
+            className="w-full max-w-sm rounded-2xl border border-[#334155] bg-[#0f172a] p-5 shadow-2xl space-y-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h3 className="text-sm font-bold text-white">
+                  Copiar Estratégia para Outro Carro
+                </h3>
+                <p className="mt-1 text-xs text-slate-400">
+                  Origem: <strong className="text-amber-300">{activeCar.label}</strong> ({selectedCar.name})
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setCloneModalOpen(false)}
+                className="text-slate-400 hover:text-white cursor-pointer"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <p className="text-[11px] leading-relaxed text-slate-300">
+              Escolha o carro de destino para copiar parâmetros de consumo, modelo e stints (você poderá ajustar os pilotos depois):
+            </p>
+            <div className="space-y-2">
+              {carOrder
+                .filter((id) => id !== activeCar.id)
+                .map((targetId) => {
+                  const targetCar = cars[targetId];
+                  if (!targetCar) return null;
+                  const preset = CAR_SLOT_PRESETS[targetId] || CAR_SLOT_PRESETS['car-1'];
+                  return (
+                    <button
+                      key={targetId}
+                      type="button"
+                      onClick={() => handleCloneCarStrategy(targetId)}
+                      className="w-full flex items-center justify-between gap-2 rounded-xl border border-[#334155] bg-[#1e293b] px-3 py-2.5 text-left hover:border-amber-500/60 hover:bg-[#1e293b]/80 transition-colors cursor-pointer"
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className={`h-2.5 w-2.5 rounded-full ${preset.dotClass}`} />
+                        <span className="text-xs font-bold text-white">{targetCar.label}</span>
+                      </div>
+                      <span className="text-[10px] font-semibold text-amber-300">Copiar para cá →</span>
+                    </button>
+                  );
+                })}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* VISÃO GERAL FTR (TODOS OS CARROS) MODAL */}
+      {overviewModalOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-3 sm:p-6 backdrop-blur-sm"
+          onClick={() => setOverviewModalOpen(false)}
+        >
+          <div
+            className="w-full max-w-6xl max-h-[90vh] flex flex-col rounded-2xl border border-[#334155] bg-[#0f172a] shadow-2xl overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b border-[#334155] bg-[#1e293b] px-4 py-3 sm:px-5">
+              <div className="flex items-center gap-2.5">
+                <LayoutGrid className="h-5 w-5 text-[#eab308]" />
+                <div>
+                  <h3 className="text-sm sm:text-base font-extrabold text-white">
+                    Visão Geral FTR — Todos os Carros ({allCarsOverview.carSummaries.length})
+                  </h3>
+                  <p className="text-[11px] text-slate-400">
+                    {selectedCircuit.name} • {eventConfig.championship} • Duração {eventConfig.raceDurationStr} • Modo{' '}
+                    <span className="font-semibold text-slate-200">
+                      {stintMode === 'race' ? 'Corrida' : 'Planejamento'}
+                    </span>
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setOverviewModalOpen(false)}
+                className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-[#334155] bg-[#0f172a] text-slate-400 hover:text-white cursor-pointer"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-5">
+              {/* Alertas de Conflito de Piloto */}
+              {allCarsOverview.driverConflicts.length > 0 && (
+                <div className="rounded-xl border border-red-500/40 bg-red-500/10 p-3 space-y-1">
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-red-300">
+                    <AlertTriangle className="h-4 w-4" />
+                    <span>Conflito de Piloto em Múltiplos Carros</span>
+                  </div>
+                  {allCarsOverview.driverConflicts.map((c, idx) => (
+                    <p key={`drv-conf-${idx}`} className="text-[11px] text-red-200">
+                      <strong>{c.driver}</strong> escalado simultaneamente em{' '}
+                      <strong>{c.carA}</strong> ({c.stintA}) e <strong>{c.carB}</strong> ({c.stintB}) entre{' '}
+                      <span className="font-mono">
+                        {formatMinutesToHHMM(c.startMin)}–{formatMinutesToHHMM(c.endMin)}
+                      </span>
+                      .
+                    </p>
+                  ))}
+                </div>
+              )}
+
+              {/* Resumo Lado a Lado dos Carros */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                {allCarsOverview.carSummaries.map((s) => (
+                  <div
+                    key={s.id}
+                    className={`rounded-xl border border-[#334155] border-l-4 ${s.preset.accentBorder} bg-[#1e293b]/80 p-3.5 space-y-2`}
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${s.preset.dotClass}`} />
+                        <span className="text-xs font-extrabold text-white truncate">
+                          {s.car.label}
+                        </span>
+                      </div>
+                      <span
+                        className={`rounded border px-1.5 py-0.5 text-[9px] font-bold uppercase ${s.classMeta.badgeClass}`}
+                      >
+                        {s.classMeta.label}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2 text-[11px] text-slate-300">
+                      <ManufacturerLogo brand={s.model.brand} size={20} />
+                      <span className="truncate font-medium">{s.model.name}</span>
+                    </div>
+                    <div className="grid grid-cols-3 gap-1.5 pt-1 text-center font-mono text-[11px]">
+                      <div className="rounded bg-[#0f172a]/80 p-1.5">
+                        <div className="text-[9px] font-sans uppercase text-slate-400">Stints</div>
+                        <div className="font-bold text-white">{s.raceStints.length}</div>
+                      </div>
+                      <div className="rounded bg-[#0f172a]/80 p-1.5">
+                        <div className="text-[9px] font-sans uppercase text-slate-400">Voltas</div>
+                        <div className="font-bold text-[#22c55e]">{s.totalLaps}</div>
+                      </div>
+                      <div className="rounded bg-[#0f172a]/80 p-1.5">
+                        <div className="text-[9px] font-sans uppercase text-slate-400">Pits</div>
+                        <div className="font-bold text-amber-300">{s.pitCount}</div>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setActiveCarId(s.id);
+                        setOverviewModalOpen(false);
+                      }}
+                      className="w-full rounded-lg border border-[#334155] bg-[#0f172a] py-1.5 text-[11px] font-bold text-slate-200 hover:border-amber-500/60 hover:text-amber-300 transition-colors cursor-pointer"
+                    >
+                      Abrir Estratégia deste Carro
+                    </button>
+                  </div>
+                ))}
+              </div>
+
+              {/* Comparativo de Pilotos por Stint (Lado a Lado) */}
+              <div className="rounded-xl border border-[#334155] bg-[#1e293b]/60 overflow-hidden">
+                <div className="border-b border-[#334155] bg-[#1e293b] px-4 py-2.5 flex items-center justify-between">
+                  <span className="text-xs font-bold uppercase tracking-wider text-slate-200">
+                    Escala de Pilotos & Horários (Lado a Lado)
+                  </span>
+                  <span className="text-[10px] text-slate-400">
+                    Horário de início → fim e duração do stint
+                  </span>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs">
+                    <thead className="border-b border-[#334155] bg-[#0f172a]/60 text-[10px] uppercase text-slate-400">
+                      <tr>
+                        <th className="px-3 py-2 font-semibold">Stint</th>
+                        {allCarsOverview.carSummaries.map((s) => (
+                          <th key={`th-${s.id}`} className="px-3 py-2 font-bold text-slate-200">
+                            <span className="inline-flex items-center gap-1.5">
+                              <span className={`h-2 w-2 rounded-full ${s.preset.dotClass}`} />
+                              <span>{s.car.label}</span>
+                            </span>
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[#334155]/60">
+                      {Array.from({
+                        length: Math.max(
+                          0,
+                          ...allCarsOverview.carSummaries.map((s) => s.raceStints.length)
+                        ),
+                      }).map((_, idx) => (
+                        <tr key={`ov-stint-${idx}`} className="hover:bg-[#0f172a]/40">
+                          <td className="px-3 py-2 font-mono font-bold text-slate-300 whitespace-nowrap">
+                            Stint {String(idx + 1).padStart(2, '0')}
+                          </td>
+                          {allCarsOverview.carSummaries.map((s) => {
+                            const row = s.raceStints[idx];
+                            if (!row) {
+                              return (
+                                <td key={`cell-${s.id}-${idx}`} className="px-3 py-2 text-slate-600">
+                                  —
+                                </td>
+                              );
+                            }
+                            return (
+                              <td key={`cell-${s.id}-${idx}`} className="px-3 py-2">
+                                <div className="flex flex-col gap-0.5">
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="font-bold text-white">{row.driver}</span>
+                                    <span className="font-mono text-[10px] text-slate-400">
+                                      ({formatMinutesToHHMM(row.startMin)}–{formatMinutesToHHMM(row.endMin)})
+                                    </span>
+                                  </div>
+                                  <div className="text-[10px] font-mono text-slate-400">
+                                    {row.laps}v •{' '}
+                                    {row.isLastStint ? (
+                                      <span className="text-[#22c55e] font-semibold">🏁 Bandeira</span>
+                                    ) : (
+                                      <span className="text-amber-300">
+                                        Box {formatMinutesToHHMM(row.endMin)} • {row.mfdTargetLabel} • Pit: {row.pitStationarySec.toFixed(1)}s
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              </td>
+                            );
+                          })}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Cronograma Unificado de Pitstops (Discord / Coordenação) */}
+              <div className="rounded-xl border border-[#334155] bg-[#1e293b]/60 overflow-hidden">
+                <div className="border-b border-[#334155] bg-[#1e293b] px-4 py-2.5 flex items-center justify-between">
+                  <span className="text-xs font-bold uppercase tracking-wider text-slate-200">
+                    Ordem Cronológica de Pitstops (Coordenação Discord)
+                  </span>
+                  <span className="text-[10px] text-slate-400">
+                    Alerta quando 2 carros param em janela ≤ 2,5 min
+                  </span>
+                </div>
+                {allCarsOverview.pitEvents.length === 0 ? (
+                  <div className="p-4 text-center text-xs text-slate-400">
+                    Nenhum pitstop programado nesta duração de corrida.
+                  </div>
+                ) : (
+                  <div className="divide-y divide-[#334155]/50 max-h-64 overflow-y-auto">
+                    {allCarsOverview.pitEvents.map((ev, idx) => (
+                      <div
+                        key={`pit-ev-${ev.carId}-${ev.stintLabel}-${idx}`}
+                        className={`flex flex-wrap items-center justify-between gap-2 px-4 py-2 text-xs ${
+                          ev.hasPitOverlap ? 'bg-amber-500/10' : ''
+                        }`}
+                      >
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <span className="font-mono font-bold text-amber-300">
+                            {formatMinutesToHHMM(ev.pitTimeMin)}
+                          </span>
+                          <span className={`h-2 w-2 rounded-full ${ev.preset.dotClass}`} />
+                          <span className="font-bold text-white">{ev.carLabel}</span>
+                          <span className="text-slate-400">({ev.stintLabel} • {ev.driver})</span>
+                        </div>
+                        <div className="flex items-center gap-2 font-mono text-[11px]">
+                          {ev.hasPitOverlap && (
+                            <span className="rounded border border-amber-500/50 bg-amber-500/20 px-1.5 py-0.5 text-[9px] font-sans font-bold uppercase text-amber-300">
+                              Janela Próxima
+                            </span>
+                          )}
+                          <span className="text-emerald-300 font-bold">{ev.mfdTargetLabel}</span>
+                          <span className="text-slate-300">{ev.scenarioLabel}</span>
+                          <span className="text-slate-400">
+                            Pit: {ev.stationarySec.toFixed(1)}s (+{ev.pitlaneLossSec}s)
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* CONFIRMATION MODAL */}
       {confirmDialog && (
