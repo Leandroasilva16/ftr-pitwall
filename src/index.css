@@ -31,3 +31,19 @@
 .tabular-nums {
   font-variant-numeric: tabular-nums;
 }
+
+@keyframes circuitOrbit3d {
+  0% {
+    transform: perspective(360px) rotateX(36deg) rotateZ(0deg);
+  }
+  100% {
+    transform: perspective(360px) rotateX(36deg) rotateZ(-360deg);
+  }
+}
+
+.circuit-orbit-3d {
+  display: inline-block;
+  transform-style: preserve-3d;
+  animation: circuitOrbit3d 12s linear infinite;
+  will-change: transform;
+}

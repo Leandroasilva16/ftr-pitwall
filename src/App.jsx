@@ -188,127 +188,220 @@ function ManufacturerLogo({ brand, size = 28 }) {
   switch (brand) {
     case 'ferrari':
       return (
-        <svg width={s} height={s} viewBox="0 0 32 32" className="shrink-0">
-          <path d="M7 4h18v12c0 7-9 12-9 12s-9-5-9-12V4z" fill="#facc15" stroke="#dc2626" strokeWidth="1.5" />
-          <path d="M7 4h18v3H7z" fill="#16a34a" />
-          <text x="16" y="21" textAnchor="middle" fontSize="10" fontWeight="900" fill="#0f172a" fontFamily="sans-serif">SF</text>
+        <svg width={s} height={s} viewBox="0 0 32 32" fill="none" className="shrink-0 bg-transparent">
+          <path
+            d="M7 5.5h18v10.5c0 6.8-9 11.5-9 11.5s-9-4.7-9-11.5V5.5z"
+            fill="#facc15"
+            stroke="#dc2626"
+            strokeWidth="1.3"
+          />
+          <path d="M7.6 5.5h5.6v2.6H7.6z" fill="#16a34a" />
+          <path d="M13.2 5.5h5.6v2.6h-5.6z" fill="#f8fafc" />
+          <path d="M18.8 5.5h5.6v2.6h-5.6z" fill="#dc2626" />
+          {/* Prancing Horse silhouette */}
+          <path
+            d="M17.8 10.2c.8-.5 1.7-.4 2.1.2-.8.6-1.1 1.4-.9 2.3l1.3 1.4-1.3.7-1.1-1-1.3 2 1.7 3.8-1.4.4-1.5-2.8-1.8 2.4-1.3-.6 1.7-2.8-2.2-1.8.8-1.1 1.8 1.2c.6-1.4 1.3-2.9 2.4-4.1z"
+            fill="#0f172a"
+          />
         </svg>
       );
     case 'porsche':
       return (
-        <svg width={s} height={s} viewBox="0 0 32 32" className="shrink-0">
-          <path d="M7 4h18v12c0 7-9 12-9 12s-9-5-9-12V4z" fill="#eab308" stroke="#fef08a" strokeWidth="1" />
-          <path d="M8 5h8v8H8zM16 13h8v8h-8z" fill="#dc2626" />
-          <path d="M16 5h8v8h-8zM8 13h8v8H8z" fill="#111827" />
-          <text x="16" y="19" textAnchor="middle" fontSize="8" fontWeight="900" fill="#facc15" fontFamily="sans-serif">P</text>
+        <svg width={s} height={s} viewBox="0 0 32 32" fill="none" className="shrink-0 bg-transparent">
+          <path
+            d="M6.5 4.5h19v11.5c0 6.5-9.5 11.5-9.5 11.5S6.5 22.5 6.5 16V4.5z"
+            fill="#d97706"
+            stroke="#fde047"
+            strokeWidth="1.2"
+          />
+          <rect x="7.8" y="8" width="8.2" height="5.5" fill="#dc2626" />
+          <rect x="16" y="8" width="8.2" height="5.5" fill="#111827" />
+          <rect x="7.8" y="13.5" width="8.2" height="5.5" fill="#111827" />
+          <rect x="16" y="13.5" width="8.2" height="5.5" fill="#dc2626" />
+          <path d="M12.5 10.5h7v7c0 2.5-3.5 4.2-3.5 4.2s-3.5-1.7-3.5-4.2v-7z" fill="#facc15" stroke="#111827" strokeWidth="0.9" />
+          <circle cx="16" cy="14.2" r="1.4" fill="#111827" />
         </svg>
       );
     case 'bmw':
       return (
-        <svg width={s} height={s} viewBox="0 0 32 32" className="shrink-0">
-          <circle cx="16" cy="16" r="12" fill="#0f172a" stroke="#e2e8f0" strokeWidth="1.5" />
-          <path d="M16 6a10 10 0 0 1 10 10H16V6z" fill="#38bdf8" />
-          <path d="M6 16a10 10 0 0 1 10-10v10H6z" fill="#f8fafc" />
-          <path d="M16 16h10a10 10 0 0 1-10 10V16z" fill="#f8fafc" />
-          <path d="M6 16h10v10A10 10 0 0 1 6 16z" fill="#38bdf8" />
+        <svg width={s} height={s} viewBox="0 0 32 32" fill="none" className="shrink-0 bg-transparent">
+          <circle cx="16" cy="16" r="12.5" stroke="#cbd5e1" strokeWidth="1.6" />
+          <circle cx="16" cy="16" r="10.2" fill="#0f172a" stroke="#64748b" strokeWidth="0.8" />
+          <path d="M16 7.5a8.5 8.5 0 0 1 8.5 8.5H16V7.5z" fill="#38bdf8" />
+          <path d="M7.5 16A8.5 8.5 0 0 1 16 7.5V16H7.5z" fill="#f8fafc" />
+          <path d="M16 16h8.5a8.5 8.5 0 0 1-8.5 8.5V16z" fill="#f8fafc" />
+          <path d="M7.5 16H16v8.5A8.5 8.5 0 0 1 7.5 16z" fill="#38bdf8" />
         </svg>
       );
     case 'toyota':
       return (
-        <svg width={s} height={s} viewBox="0 0 32 32" className="shrink-0">
-          <rect x="3" y="6" width="26" height="20" rx="4" fill="#dc2626" />
-          <text x="16" y="20" textAnchor="middle" fontSize="11" fontWeight="900" fill="#ffffff" fontFamily="sans-serif">GR</text>
+        <svg width={s} height={s} viewBox="0 0 32 32" fill="none" className="shrink-0 bg-transparent">
+          <ellipse cx="16" cy="14" rx="12" ry="8" stroke="#cbd5e1" strokeWidth="1.7" />
+          <ellipse cx="16" cy="14" rx="3.4" ry="7.6" stroke="#e2e8f0" strokeWidth="1.4" />
+          <ellipse cx="16" cy="10.2" rx="7.6" ry="2.6" stroke="#ef4444" strokeWidth="1.3" />
+          <text x="16" y="28" textAnchor="middle" fontSize="6" fontWeight="900" fill="#ef4444" fontFamily="sans-serif" letterSpacing="0.6">
+            TOYOTA
+          </text>
         </svg>
       );
     case 'aston':
       return (
-        <svg width={s} height={s} viewBox="0 0 32 32" className="shrink-0">
-          <path d="M3 13l13-4 13 4-4 6H7l-4-6z" fill="#10b981" stroke="#a7f3d0" strokeWidth="1.2" />
-          <text x="16" y="18" textAnchor="middle" fontSize="8" fontWeight="800" fill="#0f172a" fontFamily="sans-serif">AM</text>
+        <svg width={s} height={s} viewBox="0 0 32 32" fill="none" className="shrink-0 bg-transparent">
+          <path
+            d="M2.5 12h27l-3.8 7H6.3l-3.8-7z"
+            stroke="#e2e8f0"
+            strokeWidth="1.3"
+            strokeLinejoin="round"
+          />
+          <path d="M4.2 14.3h23.6M5.4 16.6h21.2" stroke="#94a3b8" strokeWidth="0.9" />
+          <rect x="9.5" y="12.6" width="13" height="4.2" rx="0.8" fill="#059669" stroke="#a7f3d0" strokeWidth="0.8" />
+          <text x="16" y="15.8" textAnchor="middle" fontSize="3.4" fontWeight="800" fill="#ffffff" fontFamily="sans-serif">
+            ASTON MARTIN
+          </text>
         </svg>
       );
     case 'cadillac':
       return (
-        <svg width={s} height={s} viewBox="0 0 32 32" className="shrink-0">
-          <path d="M6 5h20l-2 15-8 7-8-7L6 5z" fill="#eab308" stroke="#fef08a" strokeWidth="1" />
-          <rect x="9" y="8" width="7" height="6" fill="#dc2626" />
-          <rect x="16" y="8" width="7" height="6" fill="#2563eb" />
-          <rect x="9" y="14" width="7" height="5" fill="#111827" />
-          <rect x="16" y="14" width="7" height="5" fill="#f8fafc" />
+        <svg width={s} height={s} viewBox="0 0 32 32" fill="none" className="shrink-0 bg-transparent">
+          <path
+            d="M4.5 9h23l-2.4 10.5L16 24l-9.1-4.5L4.5 9z"
+            fill="#0f172a"
+            stroke="#e2e8f0"
+            strokeWidth="1.4"
+          />
+          <path d="M7 11h5.5v4H7z" fill="#f8fafc" />
+          <path d="M12.5 11H19v4h-6.5z" fill="#dc2626" />
+          <path d="M19 11h6v4h-6z" fill="#eab308" />
+          <path d="M8 15h6.5v3.8L16 20.5V15H8z" fill="#2563eb" />
+          <path d="M16 15v5.5l7.5-2.5V15H16z" fill="#cbd5e1" />
         </svg>
       );
     case 'alpine':
       return (
-        <svg width={s} height={s} viewBox="0 0 32 32" className="shrink-0">
-          <circle cx="16" cy="16" r="12" fill="#0284c7" stroke="#38bdf8" strokeWidth="1.5" />
-          <path d="M16 7l8 16h-4l-4-8-4 8H8l8-16z" fill="#ffffff" />
+        <svg width={s} height={s} viewBox="0 0 32 32" fill="none" className="shrink-0 bg-transparent">
+          <path
+            d="M4.5 22L18 7.5h4.2L19 22h-3.6l1.3-6.5H10l-3.8 6.5H4.5z"
+            fill="#38bdf8"
+          />
+          <path d="M4.5 18.2h21.5l-1.5 2.4H3l1.5-2.4z" fill="#0284c7" />
         </svg>
       );
     case 'peugeot':
       return (
-        <svg width={s} height={s} viewBox="0 0 32 32" className="shrink-0">
-          <path d="M7 5h18v11c0 7-9 11-9 11s-9-4-9-11V5z" fill="#1e3a8a" stroke="#60a5fa" strokeWidth="1.4" />
-          <text x="16" y="20" textAnchor="middle" fontSize="10" fontWeight="900" fill="#93c5fd" fontFamily="sans-serif">9X8</text>
+        <svg width={s} height={s} viewBox="0 0 32 32" fill="none" className="shrink-0 bg-transparent">
+          <path
+            d="M6.5 4.5h19v11.5c0 6.5-9.5 11-9.5 11s-9.5-4.5-9.5-11V4.5z"
+            fill="#0f172a"
+            stroke="#e2e8f0"
+            strokeWidth="1.3"
+          />
+          <path
+            d="M11 10.5l4-2.5 5 1.5-1.5 3 2.5 2-3.5 1.5-1 3.5-3-1.5-2.5-3.5z"
+            stroke="#f8fafc"
+            strokeWidth="1.2"
+            strokeLinejoin="round"
+          />
+          <text x="16" y="8" textAnchor="middle" fontSize="3.4" fontWeight="800" fill="#cbd5e1" fontFamily="sans-serif">
+            PEUGEOT
+          </text>
         </svg>
       );
     case 'lamborghini':
       return (
-        <svg width={s} height={s} viewBox="0 0 32 32" className="shrink-0">
-          <path d="M7 5h18v12c0 6-9 10-9 10s-9-4-9-10V5z" fill="#111827" stroke="#eab308" strokeWidth="1.6" />
-          <text x="16" y="20" textAnchor="middle" fontSize="10" fontWeight="900" fill="#eab308" fontFamily="sans-serif">LB</text>
+        <svg width={s} height={s} viewBox="0 0 32 32" fill="none" className="shrink-0 bg-transparent">
+          <path
+            d="M6.5 5h19v11.5c0 6-9.5 10.5-9.5 10.5S6.5 22.5 6.5 16.5V5z"
+            fill="#090d16"
+            stroke="#eab308"
+            strokeWidth="1.5"
+          />
+          <path
+            d="M11 18.5c1.5-3.5 4-5.5 7.5-5.5l2 2.2-2.2 1.2 1.7 3.1-2.2.8-1.4-2.5-2.8 1.9L11 18.5z"
+            fill="#facc15"
+          />
         </svg>
       );
     case 'mclaren':
       return (
-        <svg width={s} height={s} viewBox="0 0 32 32" className="shrink-0">
-          <rect x="3" y="6" width="26" height="20" rx="4" fill="#0f172a" stroke="#f97316" strokeWidth="1.5" />
-          <path d="M7 20c5-7 13-9 18-6-5 2-9 4-11 8-2-1-4-2-7-2z" fill="#f97316" />
+        <svg width={s} height={s} viewBox="0 0 32 32" fill="none" className="shrink-0 bg-transparent">
+          <path
+            d="M4 21.5c5.8-8.2 15.8-12.5 24-9-5.8 2.2-10.5 5.4-13.6 10.4-2.6-1-5.8-1.4-10.4-1.4z"
+            fill="#f97316"
+          />
+          <text x="15" y="27.5" textAnchor="middle" fontSize="5.2" fontWeight="900" fill="#e2e8f0" fontFamily="sans-serif" fontStyle="italic">
+            McLaren
+          </text>
         </svg>
       );
     case 'mercedes':
       return (
-        <svg width={s} height={s} viewBox="0 0 32 32" className="shrink-0">
-          <circle cx="16" cy="16" r="12" fill="#0f172a" stroke="#cbd5e1" strokeWidth="1.5" />
-          <path d="M16 5v11m0 0l-9 6m9-6l9 6" stroke="#e2e8f0" strokeWidth="2" strokeLinecap="round" />
+        <svg width={s} height={s} viewBox="0 0 32 32" fill="none" className="shrink-0 bg-transparent">
+          <circle cx="16" cy="16" r="12" stroke="#cbd5e1" strokeWidth="1.6" />
+          <path d="M16 4.5v11.5m0 0l-9.5 6.2m9.5-6.2l9.5 6.2" stroke="#e2e8f0" strokeWidth="1.8" strokeLinecap="round" />
         </svg>
       );
     case 'ford':
       return (
-        <svg width={s} height={s} viewBox="0 0 32 32" className="shrink-0">
-          <ellipse cx="16" cy="16" rx="13" ry="8" fill="#1d4ed8" stroke="#93c5fd" strokeWidth="1.4" />
-          <text x="16" y="19" textAnchor="middle" fontSize="8" fontWeight="800" fill="#ffffff" fontFamily="serif" fontStyle="italic">Ford</text>
+        <svg width={s} height={s} viewBox="0 0 32 32" fill="none" className="shrink-0 bg-transparent">
+          <ellipse cx="16" cy="16" rx="13.5" ry="7.8" fill="#1d4ed8" stroke="#e2e8f0" strokeWidth="1.4" />
+          <ellipse cx="16" cy="16" rx="11.8" ry="6.2" stroke="#93c5fd" strokeWidth="0.7" />
+          <text x="16" y="18.8" textAnchor="middle" fontSize="8.5" fontWeight="800" fill="#ffffff" fontFamily="serif" fontStyle="italic">
+            Ford
+          </text>
         </svg>
       );
     case 'corvette':
       return (
-        <svg width={s} height={s} viewBox="0 0 32 32" className="shrink-0">
-          <path d="M5 10l11 6 11-6-3 12-8-4-8 4-3-12z" fill="#eab308" stroke="#dc2626" strokeWidth="1.4" />
+        <svg width={s} height={s} viewBox="0 0 32 32" fill="none" className="shrink-0 bg-transparent">
+          {/* Left checkered flag wing */}
+          <path d="M3.5 9.5L15.5 16l-2.8 6.5L5.8 18z" fill="#e2e8f0" stroke="#94a3b8" strokeWidth="1" />
+          <path d="M5.5 11.5l3 1.8-.8 2.3-3-1.8zM9.2 14.5l3 1.7-.7 2.2-3-1.7z" fill="#0f172a" />
+          {/* Right red Corvette wing */}
+          <path d="M28.5 9.5L16.5 16l2.8 6.5 6.9-4.5z" fill="#ef4444" stroke="#cbd5e1" strokeWidth="1" />
+          <path d="M21 15.5l4-2.2-.7 2.4-4 2.1z" fill="#facc15" />
         </svg>
       );
     case 'lexus':
       return (
-        <svg width={s} height={s} viewBox="0 0 32 32" className="shrink-0">
-          <ellipse cx="16" cy="16" rx="12" ry="9" fill="#1e293b" stroke="#cbd5e1" strokeWidth="1.5" />
-          <path d="M14 9l-3 10h9" stroke="#f8fafc" strokeWidth="2.2" fill="none" strokeLinecap="round" />
+        <svg width={s} height={s} viewBox="0 0 32 32" fill="none" className="shrink-0 bg-transparent">
+          <ellipse cx="16" cy="15.5" rx="12" ry="8.8" stroke="#cbd5e1" strokeWidth="1.6" />
+          <path d="M14.2 8.2L10.5 19.5h10.5" stroke="#f8fafc" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      );
+    case 'isotta':
+      return (
+        <svg width={s} height={s} viewBox="0 0 32 32" fill="none" className="shrink-0 bg-transparent">
+          <circle cx="16" cy="16" r="12" stroke="#60a5fa" strokeWidth="1.4" />
+          <circle cx="16" cy="16" r="9.4" stroke="#93c5fd" strokeWidth="0.9" strokeDasharray="2 1.2" />
+          <text x="16" y="19.8" textAnchor="middle" fontSize="10.5" fontWeight="900" fill="#f8fafc" fontFamily="serif">
+            IF
+          </text>
+        </svg>
+      );
+    case 'oreca':
+      return (
+        <svg width={s} height={s} viewBox="0 0 32 32" fill="none" className="shrink-0 bg-transparent">
+          <path d="M4 11h24l-2 10H2l2-10z" stroke="#38bdf8" strokeWidth="1.3" />
+          <text x="15" y="18.2" textAnchor="middle" fontSize="6.6" fontWeight="900" fill="#f8fafc" fontFamily="sans-serif" fontStyle="italic">
+            ORECA
+          </text>
         </svg>
       );
     default: {
       const tagMap = {
-        oreca: { txt: 'OR', bg: '#0284c7', fg: '#ffffff' },
-        ligier: { txt: 'LG', bg: '#2563eb', fg: '#ffffff' },
-        duqueine: { txt: 'DQ', bg: '#7c3aed', fg: '#ffffff' },
-        ginetta: { txt: 'GN', bg: '#ea580c', fg: '#ffffff' },
-        adess: { txt: 'AD', bg: '#4f46e5', fg: '#ffffff' },
-        genesis: { txt: 'GN', bg: '#b45309', fg: '#fef3c7' },
-        glickenhaus: { txt: 'SCG', bg: '#dc2626', fg: '#ffffff' },
-        isotta: { txt: 'IF', bg: '#0f766e', fg: '#ffffff' },
-        vanwall: { txt: 'VW', bg: '#15803d', fg: '#ffffff' },
+        ligier: { txt: 'LG', stroke: '#3b82f6', fg: '#93c5fd' },
+        duqueine: { txt: 'DQ', stroke: '#a855f7', fg: '#e9d5ff' },
+        ginetta: { txt: 'GN', stroke: '#f97316', fg: '#fed7aa' },
+        adess: { txt: 'AD', stroke: '#6366f1', fg: '#c7d2fe' },
+        genesis: { txt: 'GN', stroke: '#eab308', fg: '#fef08a' },
+        glickenhaus: { txt: 'SCG', stroke: '#ef4444', fg: '#fecaca' },
+        vanwall: { txt: 'VW', stroke: '#22c55e', fg: '#bbf7d0' },
       };
-      const cfg = tagMap[brand] || { txt: 'LMU', bg: '#334155', fg: '#f8fafc' };
+      const cfg = tagMap[brand] || { txt: 'LMU', stroke: '#64748b', fg: '#f8fafc' };
       return (
-        <svg width={s} height={s} viewBox="0 0 32 32" className="shrink-0">
-          <rect x="3" y="5" width="26" height="22" rx="5" fill={cfg.bg} />
-          <text x="16" y="20" textAnchor="middle" fontSize="9.5" fontWeight="900" fill={cfg.fg} fontFamily="sans-serif">
+        <svg width={s} height={s} viewBox="0 0 32 32" fill="none" className="shrink-0 bg-transparent">
+          <rect x="3.5" y="6" width="25" height="20" rx="5" stroke={cfg.stroke} strokeWidth="1.5" />
+          <text x="16" y="19.5" textAnchor="middle" fontSize="9.5" fontWeight="900" fill={cfg.fg} fontFamily="sans-serif">
             {cfg.txt}
           </text>
         </svg>
@@ -324,7 +417,7 @@ const LMU_CIRCUITS = [
     shortName: 'Imola',
     country: 'Itália',
     flag: '🇮🇹',
-    svgPath: 'M14 48 C22 48, 34 45, 42 38 L50 28 C54 22, 62 24, 68 20 C76 15, 92 14, 102 22 C110 29, 106 42, 94 45 C86 47, 82 40, 76 42 C68 45, 64 55, 52 55 C38 55, 24 54, 14 48 Z',
+    svgPath: 'M14 50 C20 46, 28 42, 36 39 C43 36, 50 37, 62 36 C71 36, 75 33, 77 26 C78 21, 80 18, 88 18 C96 18, 103 16, 106 18 C108 20, 102 25, 98 31 C94 38, 90 48, 76 50 C62 51, 48 49, 36 51 C26 53, 18 55, 14 52 C12 51, 12 51, 14 50 Z',
   },
   {
     id: 'portimao',
@@ -332,7 +425,7 @@ const LMU_CIRCUITS = [
     shortName: 'Portimão',
     country: 'Portugal',
     flag: '🇵🇹',
-    svgPath: 'M16 46 L54 46 C64 46, 72 39, 68 31 C64 23, 74 14, 88 16 C100 18, 108 27, 102 36 C96 44, 86 43, 82 50 C78 56, 62 56, 46 53 C32 51, 20 55, 16 46 Z',
+    svgPath: 'M16 54 L98 54 C108 54, 110 44, 102 34 C96 26, 91 20, 86 21 C82 22, 83 30, 89 35 C94 39, 92 42, 84 42 C78 42, 74 34, 73 25 C72 17, 67 16, 63 22 C59 28, 53 29, 44 26 C35 23, 29 24, 30 29 C31 33, 44 35, 53 38 C59 40, 56 42, 46 42 L29 41 C25 41, 24 36, 23 31 C22 26, 17 28, 15 37 C13 45, 13 54, 16 54 Z',
   },
   {
     id: 'interlagos',
@@ -340,7 +433,7 @@ const LMU_CIRCUITS = [
     shortName: 'Interlagos',
     country: 'Brasil',
     flag: '🇧🇷',
-    svgPath: 'M24 52 C14 46, 13 31, 24 22 C35 13, 62 14, 84 19 C100 23, 107 34, 98 42 C90 48, 78 44, 72 37 C66 30, 56 36, 54 44 C52 52, 34 58, 24 52 Z',
+    svgPath: 'M14 34 C14 25, 27 18, 46 16 C64 14, 78 14, 88 16 C99 18, 106 25, 106 33 C106 39, 98 38, 92 31 C87 25, 83 20, 79 22 C75 24, 75 30, 71 32 C66 34, 62 25, 54 27 C46 29, 46 37, 56 41 C66 44, 76 46, 83 48 C89 50, 87 56, 75 56 C58 56, 40 54, 28 52 C18 50, 14 42, 14 34 Z',
   },
   {
     id: 'monza',
@@ -348,7 +441,7 @@ const LMU_CIRCUITS = [
     shortName: 'Monza',
     country: 'Itália',
     flag: '🇮🇹',
-    svgPath: 'M18 46 L18 24 C18 16, 26 15, 36 16 L82 16 C96 16, 106 20, 104 30 C102 38, 92 40, 84 44 C76 48, 66 50, 50 50 L26 50 C20 50, 18 48, 18 46 Z',
+    svgPath: 'M20 15 C25 14, 29 17, 34 25 C40 34, 46 41, 56 42 L100 43 C108 43, 108 53, 100 53 L48 53 C36 53, 28 48, 24 38 C20 30, 18 24, 16 19 C15 16, 17 15, 20 15 Z',
   },
   {
     id: 'bahrain',
@@ -356,7 +449,7 @@ const LMU_CIRCUITS = [
     shortName: 'Bahrain',
     country: 'Bahrein',
     flag: '🇧🇭',
-    svgPath: 'M18 50 L18 22 C18 16, 26 16, 36 16 L76 16 C88 16, 94 22, 86 28 C78 34, 78 39, 90 42 C102 45, 100 55, 86 55 C72 55, 64 46, 52 46 C40 46, 34 55, 24 55 C19 55, 18 53, 18 50 Z',
+    svgPath: 'M20 55 C18 55, 18 46, 19 36 C20 26, 22 18, 25 14 C27 12, 31 14, 36 20 C42 26, 48 31, 49 34 C50 37, 41 37, 36 38 C32 39, 32 42, 38 42 L62 43 C68 43, 68 38, 64 33 C60 28, 66 16, 73 16 C79 16, 86 27, 94 40 C100 49, 105 55, 98 56 L22 56 Z',
   },
   {
     id: 'barcelona',
@@ -364,7 +457,7 @@ const LMU_CIRCUITS = [
     shortName: 'Barcelona',
     country: 'Espanha',
     flag: '🇪🇸',
-    svgPath: 'M16 44 L54 44 C64 44, 74 36, 82 26 C88 18, 102 18, 104 28 C106 38, 94 47, 84 51 C72 56, 62 50, 52 53 C40 57, 20 56, 16 44 Z',
+    svgPath: 'M20 53 L100 53 C106 53, 108 46, 105 42 C102 38, 95 40, 94 36 C93 32, 101 32, 103 28 C105 24, 101 20, 94 22 C87 24, 81 26, 75 23 C69 20, 64 19, 59 24 C54 29, 50 34, 42 34 L31 34 C27 34, 27 29, 32 29 L44 29 C50 29, 50 22, 43 22 L21 22 C13 22, 12 36, 20 40 C26 43, 27 46, 24 49 C20 51, 17 53, 20 53 Z',
   },
   {
     id: 'lemans',
@@ -372,7 +465,7 @@ const LMU_CIRCUITS = [
     shortName: 'Le Mans',
     country: 'França',
     flag: '🇫🇷',
-    svgPath: 'M16 30 C16 20, 28 16, 42 18 L86 22 C100 23, 106 30, 102 40 C98 50, 84 54, 68 52 C56 50, 44 46, 34 48 C22 50, 16 42, 16 30 Z',
+    svgPath: 'M14 31 C16 27, 28 24, 44 21 C62 18, 78 15, 94 14 C103 14, 108 15, 106 20 C103 27, 96 39, 90 44 C86 47, 81 49, 76 51 C70 53, 64 52, 59 49 C55 47, 52 52, 45 53 C36 53, 26 53, 21 50 C16 47, 12 36, 14 31 Z',
   },
   {
     id: 'spa',
@@ -380,7 +473,7 @@ const LMU_CIRCUITS = [
     shortName: 'Spa',
     country: 'Bélgica',
     flag: '🇧🇪',
-    svgPath: 'M24 53 C17 48, 16 36, 24 27 C32 18, 48 14, 64 16 C82 18, 100 24, 104 34 C107 42, 96 48, 84 46 C74 44, 68 38, 60 42 C52 46, 44 55, 32 55 C28 55, 26 54, 24 53 Z',
+    svgPath: 'M14 52 C18 45, 23 36, 30 30 C38 24, 52 19, 68 16 C78 14, 84 15, 89 18 C93 20, 96 16, 101 20 C106 24, 105 30, 98 31 C91 31, 84 26, 78 28 C72 30, 72 36, 78 40 C86 44, 96 48, 100 52 C102 55, 96 58, 90 55 C82 51, 74 42, 66 38 C59 34, 51 36, 42 42 C32 48, 22 54, 16 55 C12 56, 12 54, 14 52 Z',
   },
   {
     id: 'cota',
@@ -388,7 +481,7 @@ const LMU_CIRCUITS = [
     shortName: 'COTA',
     country: 'EUA',
     flag: '🇺🇸',
-    svgPath: 'M14 48 L34 18 C37 14, 42 18, 45 25 C49 34, 57 32, 62 24 C68 15, 86 16, 98 24 C108 31, 106 44, 94 50 C80 56, 60 50, 44 52 C30 54, 18 54, 14 48 Z',
+    svgPath: 'M36 55 C30 50, 20 41, 14 35 C11 32, 16 28, 21 28 C26 28, 30 37, 34 38 C38 39, 41 33, 38 28 C35 24, 39 21, 43 24 C47 28, 48 33, 52 31 C56 29, 58 24, 66 23 C80 21, 96 17, 104 15 C109 14, 108 20, 102 24 C95 28, 84 27, 74 30 C64 33, 54 40, 46 45 C40 49, 39 57, 36 55 Z',
   },
   {
     id: 'paul-ricard',
@@ -396,15 +489,15 @@ const LMU_CIRCUITS = [
     shortName: 'Paul Ricard',
     country: 'França',
     flag: '🇫🇷',
-    svgPath: 'M16 42 C16 30, 28 22, 44 20 L88 18 C100 18, 106 26, 100 35 C94 44, 80 46, 68 43 C58 40, 50 48, 38 52 C26 55, 16 50, 16 42 Z',
+    svgPath: 'M14 19 C11 15, 16 13, 22 16 C36 22, 52 27, 68 31 C82 34, 94 36, 101 39 C108 42, 107 49, 101 52 C95 55, 88 53, 88 47 C88 43, 84 42, 76 43 C66 44, 58 41, 46 34 C34 28, 20 23, 14 19 Z',
   },
   {
     id: 'daytona',
     name: 'Daytona International Speedway',
     shortName: 'Daytona',
-    country: 'EUA',
+    country: 'Daytona, Flórida, EUA',
     flag: '🇺🇸',
-    svgPath: 'M18 35 C18 15, 102 15, 102 35 C102 55, 18 55, 18 35 Z M40 35 C46 43, 74 43, 80 35',
+    svgPath: 'M16 44 C10 32, 16 18, 30 16 L84 12 C104 12, 110 26, 106 40 C102 52, 92 56, 76 56 L28 56 C20 56, 16 50, 16 44 Z M30 16 C28 24, 27 32, 29 36 C31 39, 37 39, 46 39 L61 39 C68 39, 70 33, 68 25 C66 18, 76 16, 86 18 C94 20, 96 28, 92 40 C90 45, 86 47, 81 47 C75 48, 74 52, 76 56',
   },
   {
     id: 'fuji',
@@ -412,7 +505,15 @@ const LMU_CIRCUITS = [
     shortName: 'Fuji',
     country: 'Japão',
     flag: '🇯🇵',
-    svgPath: 'M16 42 L76 42 C90 42, 102 34, 98 24 C94 16, 76 16, 62 22 C50 27, 42 31, 34 26 C26 21, 16 28, 16 42 Z',
+    svgPath: 'M16 39 C14 37, 22 27, 31 19 C35 15, 41 16, 48 20 C56 24, 61 28, 63 36 C65 42, 71 45, 75 40 C80 34, 83 24, 88 22 C93 20, 99 23, 102 30 C106 38, 108 43, 101 45 C88 49, 74 53, 64 54 C52 54, 26 44, 16 39 Z',
+  },
+  {
+    id: 'indianapolis',
+    name: 'Indianapolis Motor Speedway (Road Course)',
+    shortName: 'Indianapolis',
+    country: 'Speedway, Indiana, EUA',
+    flag: '🇺🇸',
+    svgPath: 'M16 54 L94 54 C104 54, 108 46, 108 34 C108 20, 98 13, 86 14 C75 15, 72 22, 72 31 C72 36, 68 37, 60 37 L49 37 C44 37, 42 43, 36 43 C30 43, 27 40, 22 44 C17 48, 13 54, 16 54 Z M93 54 C93 48, 91 46, 86 46 C82 46, 81 42, 82 38 C83 35, 92 35, 96 33 C100 31, 100 22, 90 21 C82 20, 79 25, 78 29',
   },
   {
     id: 'lusail',
@@ -420,15 +521,15 @@ const LMU_CIRCUITS = [
     shortName: 'Qatar',
     country: 'Catar',
     flag: '🇶🇦',
-    svgPath: 'M18 46 L18 24 C18 16, 28 16, 40 16 L76 18 C92 19, 104 28, 102 40 C100 50, 86 55, 72 51 C60 47, 52 44, 42 50 C32 56, 18 54, 18 46 Z',
+    svgPath: 'M22 55 L96 55 C101 55, 100 50, 94 44 C88 38, 86 33, 88 27 C91 21, 91 18, 83 18 C75 18, 67 28, 63 34 C60 38, 58 34, 59 26 C60 19, 51 14, 46 15 C42 16, 42 26, 38 31 C35 35, 32 30, 29 23 C26 18, 20 19, 21 25 C22 31, 27 35, 25 39 C23 42, 19 44, 19 49 C19 53, 20 55, 22 55 Z',
   },
   {
     id: 'road-atlanta',
     name: 'Michelin Raceway Road Atlanta',
     shortName: 'Road Atlanta',
-    country: 'EUA',
+    country: 'Braselton, Georgia, EUA',
     flag: '🇺🇸',
-    svgPath: 'M14 42 C20 26, 36 18, 56 18 C74 18, 92 24, 102 34 C108 40, 102 50, 88 51 C72 52, 58 46, 44 48 C30 50, 18 52, 14 42 Z',
+    svgPath: 'M15 53 C14 51, 20 45, 26 41 C31 38, 35 40, 39 43 C43 45, 48 40, 53 35 C57 31, 56 28, 52 23 C47 18, 49 15, 57 15 C70 14, 84 13, 95 14 C103 14, 107 19, 102 25 C94 33, 84 42, 76 47 C66 52, 54 55, 44 55 C34 55, 28 53, 22 54 C18 55, 16 55, 15 53 Z',
   },
   {
     id: 'sebring',
@@ -436,7 +537,7 @@ const LMU_CIRCUITS = [
     shortName: 'Sebring',
     country: 'EUA',
     flag: '🇺🇸',
-    svgPath: 'M16 44 L24 24 C27 18, 36 16, 48 18 L82 22 C94 24, 104 32, 100 42 C96 50, 80 52, 64 49 L34 52 C22 53, 14 50, 16 44 Z',
+    svgPath: 'M18 54 C15 53, 24 42, 34 31 C42 22, 48 15, 55 15 C61 15, 64 19, 64 26 C64 34, 72 38, 83 39 C92 40, 94 49, 85 50 C74 50, 58 50, 48 49 C43 48, 41 42, 43 37 C45 32, 52 29, 52 26 C52 24, 46 26, 40 33 C33 41, 30 46, 32 50 C34 53, 22 55, 18 54 Z',
   },
   {
     id: 'silverstone',
@@ -444,39 +545,47 @@ const LMU_CIRCUITS = [
     shortName: 'Silverstone',
     country: 'Reino Unido',
     flag: '🇬🇧',
-    svgPath: 'M22 48 C16 38, 18 24, 30 18 C44 12, 68 14, 86 20 C102 25, 106 38, 96 47 C86 55, 72 48, 62 46 C52 44, 44 55, 32 54 C26 53, 24 51, 22 48 Z',
+    svgPath: 'M17 41 C15 39, 23 28, 30 21 C34 17, 39 19, 46 23 C54 27, 58 32, 62 39 C65 44, 74 44, 75 37 C76 31, 75 24, 81 19 C86 15, 92 19, 97 27 C102 35, 107 41, 101 45 C94 49, 84 54, 77 54 C71 54, 69 47, 64 48 C60 49, 59 54, 52 53 C40 50, 22 45, 17 41 Z',
   },
   {
     id: 'long-beach',
-    name: 'Streets of Long Beach',
+    name: 'Long Beach Grand Prix Circuit',
     shortName: 'Long Beach',
-    country: 'EUA',
+    country: 'Long Beach, Califórnia, EUA',
     flag: '🇺🇸',
-    svgPath: 'M16 42 L56 42 C64 42, 68 31, 76 29 L98 29 C104 29, 105 38, 102 44 C98 50, 82 52, 64 52 L24 52 C17 52, 16 47, 16 42 Z',
+    svgPath: 'M20 38 C16 32, 24 18, 34 15 C42 13, 52 18, 66 25 L96 36 C104 34, 108 38, 104 44 C108 48, 104 54, 96 52 L58 37 C52 35, 48 42, 44 50 C40 56, 30 50, 20 38 Z',
+  },
+  {
+    id: 'watkins-glen',
+    name: 'Watkins Glen International',
+    shortName: 'Watkins Glen',
+    country: 'Watkins Glen, Nova York, EUA',
+    flag: '🇺🇸',
+    svgPath: 'M16 43 C14 41, 24 38, 32 34 C38 31, 40 24, 42 18 C44 14, 49 14, 56 15 C70 17, 86 20, 96 22 C101 23, 103 28, 106 39 C107 44, 104 46, 97 47 C91 48, 88 47, 86 41 C84 34, 82 31, 75 32 C68 33, 62 35, 60 42 C58 48, 55 51, 48 53 C41 56, 36 57, 30 53 C24 49, 18 45, 16 43 Z',
   },
   {
     id: 'laguna-seca',
     name: 'WeatherTech Raceway Laguna Seca',
     shortName: 'Laguna Seca',
-    country: 'EUA',
+    country: 'Monterey, Califórnia, EUA',
     flag: '🇺🇸',
-    svgPath: 'M18 44 C20 30, 32 18, 48 17 C60 16, 66 26, 74 30 C82 34, 96 26, 102 34 C108 42, 96 53, 80 53 C60 53, 36 53, 22 50 C19 49, 18 47, 18 44 Z',
+    svgPath: 'M22 51 C20 49, 28 43, 33 38 C36 35, 29 32, 23 28 C19 25, 22 20, 29 18 C44 15, 60 13, 72 12 C78 11, 82 14, 87 21 C91 27, 96 32, 93 35 C90 38, 76 39, 67 41 C61 42, 60 48, 63 52 C66 55, 74 52, 79 49 C83 47, 86 52, 81 55 C74 58, 62 59, 48 56 C36 54, 24 53, 22 51 Z',
   },
 ];
 
-function CircuitTrackSvg({ svgPath, className = 'h-12 w-24' }) {
+function CircuitTrackSvg({ svgPath, className = 'h-12 w-20', spin3d = false }) {
   return (
     <svg
       viewBox="0 0 120 70"
-      className={`${className} drop-shadow-[0_0_5px_rgba(234,179,8,0.35)]`}
+      className={`${className} ${spin3d ? 'circuit-orbit-3d' : ''} bg-transparent drop-shadow-[0_0_5px_rgba(56,189,248,0.3)]`}
       fill="none"
       strokeLinecap="round"
       strokeLinejoin="round"
       aria-hidden="true"
     >
-      <path d={svgPath} stroke="#0f172a" strokeWidth="7" opacity="0.9" />
-      <path d={svgPath} stroke="#334155" strokeWidth="5" opacity="0.85" />
-      <path d={svgPath} stroke="currentColor" strokeWidth="2.6" />
+      <path d={svgPath} stroke="#0f172a" strokeWidth="6.5" opacity="0.85" />
+      <path d={svgPath} stroke="#334155" strokeWidth="4.4" opacity="0.7" />
+      <path d={svgPath} stroke="currentColor" strokeWidth="2.4" />
     </svg>
   );
 }
@@ -3910,6 +4019,7 @@ export default function App() {
                       title={`Selecionar Carro #${idx + 1}: ${car.label} (${carModel.name})`}
                     >
                       <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${preset.dotClass}`} />
+                      <ManufacturerLogo brand={carModel.brand} size={20} />
                       <span className="text-[11px] font-extrabold tracking-tight whitespace-nowrap">
                         {car.label || `Carro #${idx + 1}`}
                       </span>
@@ -4191,6 +4301,7 @@ export default function App() {
                     </div>
                     <CircuitTrackSvg
                       svgPath={selectedCircuit.svgPath}
+                      spin3d={true}
                       className="h-12 w-24 shrink-0 text-[#eab308]"
                     />
                   </button>
@@ -4441,18 +4552,12 @@ export default function App() {
                   <h2 className="truncate text-xs font-bold uppercase tracking-wider text-slate-200">
                     Stints
                   </h2>
-                </div>
-                <div className="flex items-center gap-1.5 shrink-0">
-                  {expandedStintId !== null && (
-                    <button
-                      type="button"
-                      onClick={() => setExpandedStintId(null)}
-                      className="inline-flex shrink-0 items-center gap-1 rounded-md border border-[#334155] bg-[#0f172a] px-2 py-1 text-[10px] font-semibold text-slate-200 transition-colors hover:border-[#eab308]/60 hover:text-[#eab308] cursor-pointer"
-                    >
-                      <ChevronUp className="h-3 w-3" />
-                      <span>Recolher Stint</span>
-                    </button>
-                  )}
+                  <div className="inline-flex items-center gap-1 rounded border border-[#334155] bg-[#0f172a]/70 px-1.5 py-0.5">
+                    <CircuitTrackSvg svgPath={selectedCircuit.svgPath} className="h-4 w-7 shrink-0 text-[#38bdf8]" />
+                    <span className="text-[10px] font-semibold text-slate-300 truncate max-w-[80px]">
+                      {selectedCircuit.shortName}
+                    </span>
+                  </div>
                 </div>
               </div>
               {raceDriverStats.length > 0 && (
@@ -4527,7 +4632,13 @@ export default function App() {
                       </span>
                     </div>
                   ) : (
-                  <div className={`flex items-stretch overflow-hidden rounded-xl border border-l-4 shadow-md transition-all ${cardColorClass} ${isStintDone ? 'opacity-70' : ''}`}>
+                  <div
+                    onClick={(e) => {
+                      if (e.target.closest('input, select, button')) return;
+                      toggleStintCollapse(row.id);
+                    }}
+                    className={`flex items-stretch overflow-hidden rounded-xl border border-l-4 shadow-md transition-all cursor-pointer ${cardColorClass} ${isStintDone ? 'opacity-70' : ''}`}
+                  >
                   <div className="flex-1 min-w-0 p-3.5 space-y-3">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
@@ -5088,6 +5199,7 @@ export default function App() {
                     </div>
                     <CircuitTrackSvg
                       svgPath={selectedCircuit.svgPath}
+                      spin3d={true}
                       className="h-12 w-24 shrink-0 text-[#eab308]"
                     />
                   </button>
@@ -5440,21 +5552,17 @@ export default function App() {
                 <h2 className="text-xs font-bold uppercase tracking-wider text-slate-200">
                   Stints
                 </h2>
+                <div className="inline-flex items-center gap-1.5 rounded-md border border-[#334155] bg-[#0f172a]/70 px-2 py-0.5">
+                  <CircuitTrackSvg svgPath={selectedCircuit.svgPath} className="h-5 w-9 shrink-0 text-[#38bdf8]" />
+                  <span className="text-[11px] font-semibold text-slate-300">
+                    {selectedCircuit.flag} {selectedCircuit.shortName}
+                  </span>
+                </div>
               </div>
               <div className="flex items-center gap-2">
                 <span className="hidden xl:inline text-[11px] text-slate-400">
                   Clique nos badges de pneus (<span className="font-mono text-slate-200">FL/FR/RL/RR</span>) para editar
                 </span>
-                {expandedStintId !== null && (
-                  <button
-                    type="button"
-                    onClick={() => setExpandedStintId(null)}
-                    className="inline-flex items-center gap-1 rounded-md border border-[#334155] bg-[#0f172a] px-2.5 py-1 text-[11px] font-semibold text-slate-200 transition-colors hover:border-[#eab308]/60 hover:text-[#eab308] cursor-pointer"
-                  >
-                    <ChevronUp className="h-3.5 w-3.5" />
-                    <span>Recolher Stint</span>
-                  </button>
-                )}
               </div>
             </div>
 
@@ -5525,7 +5633,11 @@ export default function App() {
                           </tr>
                         ) : isCollapsed ? (
                           <tr
-                            className={`transition-colors ${rowAccentClass}`}
+                            onClick={(e) => {
+                              if (e.target.closest('input, select, button')) return;
+                              toggleStintCollapse(row.id);
+                            }}
+                            className={`transition-colors cursor-pointer ${rowAccentClass}`}
                           >
                             <td colSpan={6} className="px-3 py-2">
                               <div className="flex flex-wrap items-center justify-between gap-2">
@@ -5568,7 +5680,11 @@ export default function App() {
                         ) : (
                           <>
                             <tr
-                              className={`transition-colors ${rowAccentClass}`}
+                              onClick={(e) => {
+                                if (e.target.closest('input, select, button')) return;
+                                toggleStintCollapse(row.id);
+                              }}
+                              className={`transition-colors cursor-pointer ${rowAccentClass}`}
                             >
                               {/* STINT + HORÁRIO */}
                               <td className="px-3 py-2.5 whitespace-nowrap">
@@ -5964,7 +6080,13 @@ export default function App() {
                         </span>
                       </div>
                     ) : (
-                    <div className={`flex items-stretch overflow-hidden rounded-xl border border-l-4 shadow-md transition-all ${cardColorClass} ${isStintDone ? 'opacity-70' : ''}`}>
+                    <div
+                      onClick={(e) => {
+                        if (e.target.closest('input, select, button')) return;
+                        toggleStintCollapse(row.id);
+                      }}
+                      className={`flex items-stretch overflow-hidden rounded-xl border border-l-4 shadow-md transition-all cursor-pointer ${cardColorClass} ${isStintDone ? 'opacity-70' : ''}`}
+                    >
                     <div className="flex-1 min-w-0 p-3.5 space-y-3">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
@@ -6440,6 +6562,7 @@ export default function App() {
                     </div>
                     <CircuitTrackSvg
                       svgPath={circuit.svgPath}
+                      spin3d={isSelected}
                       className={`my-2 h-12 w-full ${
                         isSelected ? 'text-[#eab308]' : 'text-slate-300'
                       }`}
@@ -7043,14 +7166,19 @@ export default function App() {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between border-b border-[#334155] bg-[#1e293b] px-4 py-3 sm:px-5">
-              <div className="flex items-center gap-2.5">
-                <LayoutGrid className="h-5 w-5 text-[#eab308]" />
+              <div className="flex items-center gap-3">
+                <LayoutGrid className="h-5 w-5 shrink-0 text-[#eab308]" />
+                <CircuitTrackSvg
+                  svgPath={selectedCircuit.svgPath}
+                  spin3d={true}
+                  className="hidden sm:block h-8 w-14 shrink-0 text-[#38bdf8]"
+                />
                 <div>
                   <h3 className="text-sm sm:text-base font-extrabold text-white">
                     Visão Geral FTR — Todos os Carros ({allCarsOverview.carSummaries.length})
                   </h3>
                   <p className="text-[11px] text-slate-400">
-                    {selectedCircuit.name} • {eventConfig.championship} • Duração {eventConfig.raceDurationStr} • Modo{' '}
+                    {selectedCircuit.flag} {selectedCircuit.name} • {eventConfig.championship} • Duração {eventConfig.raceDurationStr} • Modo{' '}
                     <span className="font-semibold text-slate-200">
                       {stintMode === 'race' ? 'Corrida' : 'Planejamento'}
                     </span>
