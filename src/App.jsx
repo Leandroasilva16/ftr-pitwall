@@ -27,6 +27,7 @@ import {
   Trash2,
   LayoutGrid,
   Car,
+  Calculator,
 } from 'lucide-react';
 import { supabase, isSupabaseConfigured } from './lib/supabaseClient';
 
@@ -61,10 +62,13 @@ const TIRE_CORNERS = [
 ];
 
 const PIT_SCENARIOS = [
-  { id: '4_tires_fuel', label: '4 pneus + combustível' },
-  { id: '2_tires_fuel', label: '2 pneus + combustível' },
-  { id: 'fuel_only', label: 'Apenas combustível' },
-  { id: 'driver_swap_only', label: 'Somente troca de piloto' },
+  { id: '2_tires_swap_fuel', label: '2 Pneus + Troca Piloto + Combustível' },
+  { id: '4_tires_swap_fuel', label: '4 Pneus + Troca Piloto + Combustível' },
+  { id: '2_tires_fuel', label: '2 Pneus + Combustível' },
+  { id: '4_tires_fuel', label: '4 Pneus + Combustível' },
+  { id: 'swap_fuel', label: 'Troca Piloto + Combustível' },
+  { id: 'driver_swap_only', label: 'Troca Piloto' },
+  { id: 'fuel_only', label: 'Combustível' },
 ];
 
 const PT_MONTHS = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
@@ -979,6 +983,7 @@ const DEFAULT_PARAMS = {
   qualyDurationMin: 15,
   availableTires: 24,
   pitlaneLossSec: 30,
+  tireWearPerLapPct: { FL: 1.0, FR: 1.2, RL: 0.8, RR: 0.9 },
 };
 
 const DEFAULT_FULL_TIRES = { FL: 100, FR: 100, RL: 100, RR: 100 };
@@ -1060,6 +1065,7 @@ const DEFAULT_CAR_PARAMS = {
   virtualEnergyPerLapPct: DEFAULT_PARAMS.virtualEnergyPerLapPct,
   availableTires: DEFAULT_PARAMS.availableTires,
   pitlaneLossSec: DEFAULT_PARAMS.pitlaneLossSec,
+  tireWearPerLapPct: { ...DEFAULT_PARAMS.tireWearPerLapPct },
 };
 
 const GLOBAL_PARAM_KEYS = new Set([
@@ -1152,6 +1158,7 @@ function createDefaultCarState(slotId = 'car-1', usePresetSamples = false) {
     racePreSessions: null,
     raceStintOverrides: null,
     completedItems: {},
+    selectedDrivers: [],
   };
 }
 
@@ -1187,7 +1194,14 @@ function normalizeMultiCarPayload(raw) {
             ? incoming.label
             : base.label,
         color: incoming.color || base.color,
-        carParams: { ...base.carParams, ...(incoming.carParams || {}) },
+        carParams: {
+          ...base.carParams,
+          ...(incoming.carParams || {}),
+          tireWearPerLapPct: {
+            ...DEFAULT_CAR_PARAMS.tireWearPerLapPct,
+            ...(incoming.carParams?.tireWearPerLapPct || {}),
+          },
+        },
         preSessions: { ...base.preSessions, ...(incoming.preSessions || {}) },
         stintOverrides: incoming.stintOverrides || base.stintOverrides,
         racePreSessions:
@@ -1195,6 +1209,9 @@ function normalizeMultiCarPayload(raw) {
         raceStintOverrides:
           incoming.raceStintOverrides !== undefined ? incoming.raceStintOverrides : null,
         completedItems: incoming.completedItems || {},
+        selectedDrivers: Array.isArray(incoming.selectedDrivers)
+          ? incoming.selectedDrivers.filter((d) => DRIVERS.includes(d) && d !== 'ND').slice(0, 6)
+          : [],
       };
     });
     const activeCarId = carOrder.includes(raw.activeCarId) ? raw.activeCarId : carOrder[0];
@@ -1352,9 +1369,12 @@ function getTireTextColor(pct) {
 function getTireCountForScenario(scenarioId) {
   switch (scenarioId) {
     case '4_tires_fuel':
+    case '4_tires_swap_fuel':
       return 4;
     case '2_tires_fuel':
+    case '2_tires_swap_fuel':
       return 2;
+    case 'swap_fuel':
     case 'fuel_only':
     case 'driver_swap_only':
     default:
@@ -1404,7 +1424,12 @@ function calculatePitStopDetails({
   const perTireSec = carClass === 'LMGT3' || carClass === 'GTE' ? 8.5 : 8.0;
   const tireSec = tiresCount * perTireSec;
 
-  const swapActive = Boolean(hasDriverSwap) || scenarioId === 'driver_swap_only';
+  const scenarioHasSwap =
+    scenarioId === 'driver_swap_only' ||
+    scenarioId === 'swap_fuel' ||
+    scenarioId === '2_tires_swap_fuel' ||
+    scenarioId === '4_tires_swap_fuel';
+  const swapActive = Boolean(hasDriverSwap) || scenarioHasSwap;
   const baseWithSwapSec = swapActive ? Math.max(refuelSec, 25) : refuelSec;
 
   const stationarySec = Math.round((baseWithSwapSec + tireSec) * 10) / 10;
@@ -1686,8 +1711,11 @@ function StartTireToggleButton({ corner, tireMeta, stintMode = 'race', onToggle 
   if (mode === 'wet') {
     displayValue = 'CHUVA';
   } else if (stintMode === 'planning') {
-    if (mode === 'keep') displayValue = 'MANTER';
-    else if (mode === 'used') displayValue = 'USADO';
+    if (mode === 'keep') {
+      displayValue = pct !== null && pct !== undefined ? `MANT ${pct}%` : 'MANTER';
+    } else if (mode === 'used') {
+      displayValue = pct !== null && pct !== undefined ? `~${pct}%` : 'USADO';
+    }
   } else {
     if (mode === 'keep') {
       displayValue = pct === 'ND' || pct === null || pct === undefined ? 'MANTER' : `MANT ${pct}%`;
@@ -2213,6 +2241,12 @@ export default function App() {
   const [circuitModalOpen, setCircuitModalOpen] = useState(false);
   const [overviewModalOpen, setOverviewModalOpen] = useState(false);
   const [cloneModalOpen, setCloneModalOpen] = useState(false);
+  const [carLineupModalOpen, setCarLineupModalOpen] = useState(false);
+  const [tireWearCalcOpen, setTireWearCalcOpen] = useState(false);
+  const [wearCalcLaps, setWearCalcLaps] = useState(10);
+  const [wearCalcMode, setWearCalcMode] = useState('remaining');
+  const [wearCalcValues, setWearCalcValues] = useState({ FL: 90, FR: 88, RL: 92, RR: 91 });
+  const [headerTireView, setHeaderTireView] = useState('wear');
   const [calendarEventModal, setCalendarEventModal] = useState(null);
   const [signupDriverDraft, setSignupDriverDraft] = useState(() => DRIVERS[0]);
   const [signupClassesDraft, setSignupClassesDraft] = useState(['Hypercar']);
@@ -2250,6 +2284,17 @@ export default function App() {
     if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
     toastTimeoutRef.current = setTimeout(() => setToast(null), 3000);
   };
+
+  useEffect(() => {
+    if (stintMode !== 'planning') {
+      setHeaderTireView('best');
+      return;
+    }
+    const timer = setInterval(() => {
+      setHeaderTireView((prev) => (prev === 'wear' ? 'best' : 'wear'));
+    }, 5000);
+    return () => clearInterval(timer);
+  }, [stintMode]);
 
   useEffect(() => {
     if (initialStateRef.current?.loadedFromUrl) {
@@ -2795,6 +2840,9 @@ export default function App() {
     const bank = { FL: [], FR: [], RL: [], RR: [] };
     const prevMounted = { FL: null, FR: null, RL: null, RR: null };
     const prevPlanIsWet = { FL: false, FR: false, RL: false, RR: false };
+    const prevPlanMounted = { FL: null, FR: null, RL: null, RR: null };
+    const planDryBank = { FL: [], FR: [], RL: [], RR: [] };
+    const wearRates = params.tireWearPerLapPct || DEFAULT_CAR_PARAMS.tireWearPerLapPct;
 
     const enriched = schedule.map((row) => {
       if (row.type === 'fp') {
@@ -2803,6 +2851,7 @@ export default function App() {
 
       if (stintMode === 'planning') {
         const startTireMeta = {};
+        const endTireMeta = {};
         TIRE_CORNERS.forEach(({ key }) => {
           const rawStart = row.tiresStart?.[key];
           const mode =
@@ -2815,17 +2864,114 @@ export default function App() {
               : 'used';
           const isWet = mode === 'wet' || (mode === 'keep' && prevPlanIsWet[key]);
           prevPlanIsWet[key] = isWet;
+
+          const wearPerLap = Math.max(0, Number(wearRates[key] ?? 1));
+          const stintWear = (row.laps || 0) * wearPerLap;
+
+          let startPct = 100;
+          let endPct = 100;
+          let tireId = '';
+          let tireNum = null;
+
+          if (mode === 'wet') {
+            startPct = 100;
+            endPct = Math.max(0, Math.round(startPct - stintWear));
+            prevPlanMounted[key] = { currentPct: endPct, isWet: true, num: null, id: '' };
+          } else if (mode === 'new') {
+            const num = globalTireNum++;
+            startPct = 100;
+            endPct = Math.max(0, Math.round(startPct - stintWear));
+            const tireObj = {
+              isWet: false,
+              num,
+              id: `#${num}`,
+              currentPct: endPct,
+              lastSource: row.label,
+              hasRecordedWear: true,
+            };
+            bank[key].push(tireObj);
+            planDryBank[key].push(tireObj);
+            prevPlanMounted[key] = tireObj;
+            tireNum = num;
+            tireId = tireObj.id;
+          } else if (mode === 'keep') {
+            const prevObj = prevPlanMounted[key];
+            startPct = prevObj ? prevObj.currentPct : 100;
+            endPct = Math.max(0, Math.round(startPct - stintWear));
+            if (prevObj) {
+              prevObj.currentPct = endPct;
+              prevObj.lastSource = row.label;
+              tireNum = prevObj.num;
+              tireId = prevObj.id;
+            } else {
+              const num = globalTireNum++;
+              const tireObj = {
+                isWet,
+                num,
+                id: isWet ? '' : `#${num}`,
+                currentPct: endPct,
+                lastSource: row.label,
+                hasRecordedWear: !isWet,
+              };
+              if (!isWet) {
+                bank[key].push(tireObj);
+                planDryBank[key].push(tireObj);
+              }
+              prevPlanMounted[key] = tireObj;
+              tireNum = num;
+              tireId = tireObj.id;
+            }
+          } else {
+            const bestUsed =
+              planDryBank[key].length > 0
+                ? planDryBank[key].reduce(
+                    (best, t) => (t.currentPct > best.currentPct ? t : best),
+                    planDryBank[key][0]
+                  )
+                : null;
+            startPct = bestUsed ? bestUsed.currentPct : 100;
+            endPct = Math.max(0, Math.round(startPct - stintWear));
+            if (bestUsed) {
+              bestUsed.currentPct = endPct;
+              bestUsed.lastSource = row.label;
+              prevPlanMounted[key] = bestUsed;
+              tireNum = bestUsed.num;
+              tireId = bestUsed.id;
+            } else {
+              const num = globalTireNum++;
+              const tireObj = {
+                isWet: false,
+                num,
+                id: `#${num}`,
+                currentPct: endPct,
+                lastSource: row.label,
+                hasRecordedWear: true,
+              };
+              bank[key].push(tireObj);
+              planDryBank[key].push(tireObj);
+              prevPlanMounted[key] = tireObj;
+              tireNum = num;
+              tireId = tireObj.id;
+            }
+          }
+
           startTireMeta[key] = {
             mode,
             isWet,
             canKeep: true,
-            tireNum: null,
-            tireId: '',
-            pct: null,
+            tireNum,
+            tireId,
+            pct: startPct,
             sourceLabel: null,
           };
+          endTireMeta[key] = {
+            tireNum,
+            tireId: isWet ? '💧' : tireId,
+            pct: endPct,
+            isWet,
+          };
         });
-        return { ...row, startTireMeta, endTireMeta: null };
+        return { ...row, startTireMeta, endTireMeta };
       }
 
       const startTireMeta = {};
@@ -2955,7 +3101,7 @@ export default function App() {
     });
 
     return { enrichedSchedule: enriched, tireBankByCorner: bank };
-  }, [schedule, stintMode]);
+  }, [schedule, stintMode, params.tireWearPerLapPct]);
 
   // Tire Reuse Analyzer: ranks physical tires (#1, #2...) by their latest remaining %
   const tireRecommendations = useMemo(() => {
@@ -3003,6 +3149,36 @@ export default function App() {
       message: 'Limite do simulador: máximo de 6 pilotos diferentes por sessão.',
       type: 'warning',
     });
+  };
+
+  const toggleCarLineupDriver = (driverName) => {
+    const current = Array.isArray(activeCar.selectedDrivers) ? activeCar.selectedDrivers : [];
+    if (current.includes(driverName)) {
+      updateActiveCar((car) => ({
+        ...car,
+        selectedDrivers: current.filter((d) => d !== driverName),
+      }));
+    } else {
+      if (current.length >= 6) {
+        notifyMaxDriversLimit();
+        return;
+      }
+      updateActiveCar((car) => ({
+        ...car,
+        selectedDrivers: [...current, driverName],
+      }));
+    }
+  };
+
+  const getSelectableDriversForRow = (currentDriver) => {
+    const selected = Array.isArray(activeCar.selectedDrivers) ? activeCar.selectedDrivers : [];
+    if (selected.length === 0) return DRIVERS;
+    const list = [...selected];
+    if (currentDriver && currentDriver !== 'ND' && !list.includes(currentDriver)) {
+      list.push(currentDriver);
+    }
+    list.push('ND');
+    return list;
   };
 
   const updatePreSession = (sessionKey, field, value) => {
@@ -3064,22 +3240,27 @@ export default function App() {
         },
       };
 
-      if (
-        field === 'pitScenario' &&
-        (value === 'driver_swap_only' || value === 'fuel_only')
-      ) {
-        const nextStintNum = stintNum + 1;
-        const nextStintCurrent = base[nextStintNum] || {
-          driver: DRIVERS[(nextStintNum - 1) % Math.min(6, DRIVERS.length)],
-          pitScenario: '4_tires_fuel',
-          tiresStart: DEFAULT_FULL_TIRES,
-          tiresEnd: { FL: 72, FR: 68, RL: 76, RR: 74 },
-          tiresEndEnabled: false,
-        };
-        nextState[nextStintNum] = {
-          ...nextStintCurrent,
-          tiresStart: { FL: 'keep', FR: 'keep', RL: 'keep', RR: 'keep' },
-        };
+      if (field === 'pitScenario') {
+        const isKeepAll =
+          value === 'driver_swap_only' || value === 'fuel_only' || value === 'swap_fuel';
+        const isNew4Tires = value === '4_tires_fuel' || value === '4_tires_swap_fuel';
+
+        if (isKeepAll || isNew4Tires) {
+          const nextStintNum = stintNum + 1;
+          const nextStintCurrent = base[nextStintNum] || {
+            driver: DRIVERS[(nextStintNum - 1) % Math.min(6, DRIVERS.length)],
+            pitScenario: '4_tires_fuel',
+            tiresStart: DEFAULT_FULL_TIRES,
+            tiresEnd: { FL: 72, FR: 68, RL: 76, RR: 74 },
+            tiresEndEnabled: false,
+          };
+          nextState[nextStintNum] = {
+            ...nextStintCurrent,
+            tiresStart: isKeepAll
+              ? { FL: 'keep', FR: 'keep', RL: 'keep', RR: 'keep' }
+              : { ...DEFAULT_FULL_TIRES },
+          };
+        }
       }
 
       return nextState;
@@ -3862,40 +4043,92 @@ export default function App() {
               )}
             </button>
 
-            {/* Mobile-only best tire reuse summary on its own row below */}
-            <div
-              onClick={() => !isPinLocked && toggleMobilePage(2)}
-              title={mobilePage === 2 ? 'Voltar para a tela anterior' : 'Ver conjunto detalhado de pneus usados'}
-              className={`w-full sm:hidden flex items-center justify-between gap-2 rounded-lg border border-emerald-500/35 bg-[#1e293b] px-2.5 py-1.5 text-[10px] font-mono transition-all ${
-                isPinLocked
-                  ? 'opacity-50 pointer-events-none'
-                  : stintMode === 'planning'
-                  ? 'opacity-25 cursor-pointer hover:border-emerald-400/60 active:scale-[0.99]'
-                  : 'cursor-pointer hover:border-emerald-400/60 active:scale-[0.99]'
-              }`}
-            >
-              <div className="flex items-center gap-1.5 shrink-0 text-[#22c55e] font-sans font-bold uppercase tracking-wider text-[9px]">
-                <Disc className="h-3.5 w-3.5" />
-                <span>Melhores Pneus Usados</span>
-              </div>
-              <div className="flex flex-wrap items-center justify-end gap-x-2.5 gap-y-0.5">
-                {TIRE_CORNERS.map(({ key }) => {
-                  const best = tireRecommendations[key]?.best;
-                  return (
-                    <span key={`mob-rec-${key}`} className="tabular-nums">
-                      <span className="text-slate-400">{key}:</span>{' '}
-                      {!isPinLocked && best ? (
-                        <span className={`font-bold ${getTireTextColor(best.pct)}`}>
-                          {best.tireId} {best.pct}%
-                        </span>
-                      ) : (
-                        <span className="text-slate-500">—</span>
-                      )}
-                    </span>
-                  );
-                })}
-              </div>
-            </div>
+            {/* Mobile-only tire wear (Planning) alternating every 5s with best tire reuse */}
+            {(() => {
+              const showWearHeader = stintMode === 'planning' && headerTireView === 'wear';
+              return (
+                <div
+                  onClick={() => {
+                    if (isPinLocked) return;
+                    if (showWearHeader) {
+                      const laps = Math.max(1, Number(wearCalcLaps) || 10);
+                      const nextVals = {};
+                      TIRE_CORNERS.forEach(({ key }) => {
+                        const rate = Number(params.tireWearPerLapPct?.[key] ?? 1);
+                        nextVals[key] =
+                          wearCalcMode === 'remaining'
+                            ? Math.max(0, Math.round((100 - laps * rate) * 10) / 10)
+                            : Math.min(100, Math.round(laps * rate * 10) / 10);
+                      });
+                      setWearCalcValues(nextVals);
+                      setTireWearCalcOpen(true);
+                    } else {
+                      toggleMobilePage(2);
+                    }
+                  }}
+                  title={
+                    showWearHeader
+                      ? 'Clique para abrir a Calculadora de Desgaste (Regra de 3)'
+                      : mobilePage === 2
+                      ? 'Voltar para a tela anterior'
+                      : 'Ver conjunto detalhado de pneus usados'
+                  }
+                  className={`w-full sm:hidden flex items-center justify-between gap-2 rounded-lg border bg-[#1e293b] px-2.5 py-1.5 text-[10px] font-mono transition-all ${
+                    showWearHeader ? 'border-amber-500/35' : 'border-emerald-500/35'
+                  } ${
+                    isPinLocked
+                      ? 'opacity-50 pointer-events-none'
+                      : 'cursor-pointer hover:border-amber-400/60 active:scale-[0.99]'
+                  }`}
+                >
+                  {showWearHeader ? (
+                    <>
+                      <div className="flex items-center gap-1.5 shrink-0 text-[#eab308] font-sans font-bold uppercase tracking-wider text-[9px]">
+                        <Calculator className="h-3.5 w-3.5" />
+                        <span>Desgaste / Volta</span>
+                      </div>
+                      <div className="flex flex-wrap items-center justify-end gap-x-2 gap-y-0.5">
+                        {TIRE_CORNERS.map(({ key }) => {
+                          const wear = Number(params.tireWearPerLapPct?.[key] ?? 0);
+                          return (
+                            <span key={`mob-wear-${key}`} className="tabular-nums">
+                              <span className="text-slate-400">{key}:</span>{' '}
+                              <span className="font-bold text-amber-300">
+                                {isPinLocked ? '—' : `${wear.toFixed(2).replace(/\.?0+$/, '')}%`}
+                              </span>
+                            </span>
+                          );
+                        })}
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="flex items-center gap-1.5 shrink-0 text-[#22c55e] font-sans font-bold uppercase tracking-wider text-[9px]">
+                        <Disc className="h-3.5 w-3.5" />
+                        <span>Melhores Pneus Usados</span>
+                      </div>
+                      <div className="flex flex-wrap items-center justify-end gap-x-2.5 gap-y-0.5">
+                        {TIRE_CORNERS.map(({ key }) => {
+                          const best = tireRecommendations[key]?.best;
+                          return (
+                            <span key={`mob-rec-${key}`} className="tabular-nums">
+                              <span className="text-slate-400">{key}:</span>{' '}
+                              {!isPinLocked && best ? (
+                                <span className={`font-bold ${getTireTextColor(best.pct)}`}>
+                                  {best.tireId} {best.pct}%
+                                </span>
+                              ) : (
+                                <span className="text-slate-500">—</span>
+                              )}
+                            </span>
+                          );
+                        })}
+                      </div>
+                    </>
+                  )}
+                </div>
+              );
+            })()}
 
             {/* Mobile-only 1-line race summary strip */}
             <div
@@ -4240,6 +4473,27 @@ export default function App() {
                     )}
                   </div>
                 </div>
+
+                <div>
+                  <button
+                    type="button"
+                    onClick={() => setCarLineupModalOpen(true)}
+                    className="w-full flex items-center justify-between gap-2 rounded-md border border-[#334155] bg-[#1e293b] px-2.5 py-1.5 text-left hover:border-amber-500/60 transition-colors cursor-pointer"
+                    title="Escolher quais pilotos correrão neste carro (filtra a lista nos stints)"
+                  >
+                    <span className="inline-flex items-center gap-1.5 text-[11px] font-bold text-slate-200">
+                      <Users className="h-3.5 w-3.5 text-[#eab308]" />
+                      <span>Pilotos do Carro</span>
+                    </span>
+                    <span className="font-mono text-[10px] font-semibold text-amber-300 truncate max-w-[55%]">
+                      {activeCar.selectedDrivers?.length > 0
+                        ? `${activeCar.selectedDrivers.length}/6 (${activeCar.selectedDrivers
+                            .map((d) => d.split(' ')[0])
+                            .join(', ')})`
+                        : `Todos (${DRIVERS.length - 1})`}
+                    </span>
+                  </button>
+                </div>
                 <div className="grid grid-cols-[100px_1fr] gap-2">
                   <div>
                     <label className="mb-1 block text-[10px] font-semibold uppercase text-slate-400">
@@ -4414,6 +4668,67 @@ export default function App() {
                     onCommit={(val) => handleParamChange('qualyDurationMin', val)}
                     className="w-full rounded-lg border border-[#334155] bg-[#0f172a] px-2.5 py-2 text-sm font-mono tabular-nums text-slate-100 focus:border-[#eab308] focus:outline-none"
                   />
+                </div>
+                <div className="col-span-2 rounded-lg border border-[#334155] bg-[#0f172a]/50 p-2.5 space-y-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const laps = Math.max(1, Number(wearCalcLaps) || 10);
+                        const nextVals = {};
+                        TIRE_CORNERS.forEach(({ key }) => {
+                          const rate = Number(params.tireWearPerLapPct?.[key] ?? 1);
+                          nextVals[key] =
+                            wearCalcMode === 'remaining'
+                              ? Math.max(0, Math.round((100 - laps * rate) * 10) / 10)
+                              : Math.min(100, Math.round(laps * rate * 10) / 10);
+                        });
+                        setWearCalcValues(nextVals);
+                        setTireWearCalcOpen(true);
+                      }}
+                      title="Abrir calculadora de desgaste (Regra de 3)"
+                      className="inline-flex items-center gap-1.5 text-[11px] font-medium text-slate-300 hover:text-amber-300 transition-colors cursor-pointer"
+                    >
+                      <Disc className="h-3 w-3 text-[#eab308]" />
+                      <span>Desgaste Estimado (%/volta)</span>
+                      <span className="inline-flex items-center gap-0.5 rounded border border-amber-500/40 bg-amber-500/15 px-1.5 py-0.5 text-[9px] font-bold text-amber-300">
+                        <Calculator className="h-2.5 w-2.5" />
+                        Calc
+                      </span>
+                    </button>
+                    <span className="font-mono text-[10px] text-slate-400">
+                      Stint {telemetry.maxStintLaps}v
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-4 gap-1.5">
+                    {TIRE_CORNERS.map(({ key }) => {
+                      const wear = Number(params.tireWearPerLapPct?.[key] ?? 1);
+                      const estEnd = Math.max(0, Math.round(100 - telemetry.maxStintLaps * wear));
+                      return (
+                        <div key={`m-wear-${key}`} className="flex flex-col gap-1">
+                          <label className="text-center font-mono text-[10px] font-bold text-slate-400">
+                            {key}
+                          </label>
+                          <FreeNumericInput
+                            min={0}
+                            allowDecimal={true}
+                            value={params.tireWearPerLapPct?.[key] ?? 0}
+                            onCommit={(val) =>
+                              handleParamChange('tireWearPerLapPct', {
+                                ...DEFAULT_CAR_PARAMS.tireWearPerLapPct,
+                                ...(params.tireWearPerLapPct || {}),
+                                [key]: val,
+                              })
+                            }
+                            className="w-full rounded-md border border-[#334155] bg-[#0f172a] px-1.5 py-1.5 text-center text-xs font-mono tabular-nums text-slate-100 focus:border-[#eab308] focus:outline-none"
+                          />
+                          <span className={`text-center font-mono text-[9.5px] font-bold ${getTireTextColor(estEnd)}`}>
+                            ~{estEnd}%
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
                 <div className="col-span-2">
                   <label className="mb-1 flex items-center justify-between text-[11px] font-medium text-slate-400">
@@ -4703,7 +5018,7 @@ export default function App() {
                           }}
                           className="w-full rounded-md border border-[#334155] bg-[#0f172a] px-2.5 py-2 text-xs text-slate-100 focus:border-[#eab308] focus:outline-none"
                         >
-                          {DRIVERS.map((d) => {
+                          {getSelectableDriversForRow(row.driver).map((d) => {
                             const allowed = canAssignDriver(row.id, d);
                             return (
                               <option key={d} value={d} disabled={!allowed}>
@@ -4774,6 +5089,35 @@ export default function App() {
                                   auto
                                 </button>
                               )}
+                            </div>
+                          </div>
+                        )}
+
+                        {stintMode === 'planning' && (
+                          <div>
+                            <div className="mb-1.5 flex items-center justify-between text-[10px] font-semibold uppercase text-slate-400">
+                              <span>Pneus Fim Estimado ({row.laps}v)</span>
+                            </div>
+                            <div className="grid grid-cols-4 gap-2">
+                              {TIRE_CORNERS.map(({ key }) => {
+                                const estPct = row.endTireMeta?.[key]?.pct ?? 100;
+                                const isWet = Boolean(row.endTireMeta?.[key]?.isWet);
+                                return (
+                                  <div
+                                    key={`m-p1-plan-end-${key}`}
+                                    className={`flex flex-col items-center justify-center rounded-md border px-2 py-1.5 font-mono text-xs font-semibold ${getTireBadgeClasses(
+                                      estPct
+                                    )}`}
+                                  >
+                                    <span className="text-[10px] uppercase tracking-wider opacity-90 leading-none">
+                                      {key} {isWet ? '💧' : ''}
+                                    </span>
+                                    <span className="tabular-nums leading-tight mt-1 text-[11px] font-bold">
+                                      ~{estPct}%
+                                    </span>
+                                  </div>
+                                );
+                              })}
                             </div>
                           </div>
                         )}
@@ -4943,11 +5287,7 @@ export default function App() {
         {/* PAGE 3 (SWIPE LEFT FROM CENTER): TIRE MANAGER, FUEL RATIO & CALENDAR */}
         <div className="w-full shrink-0 snap-start px-4 py-4 space-y-4">
           {/* TIRE MANAGER */}
-          <div
-            className={`rounded-xl border border-[#334155] bg-[#1e293b] p-4 transition-opacity ${
-              stintMode === 'planning' ? 'opacity-25 pointer-events-none select-none' : ''
-            }`}
-          >
+          <div className="rounded-xl border border-[#334155] bg-[#1e293b] p-4 transition-opacity">
             <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
               <div className="flex items-center gap-2">
                 <Disc className="h-4 w-4 text-[#22c55e]" />
@@ -5136,6 +5476,27 @@ export default function App() {
                   </div>
                 </div>
 
+                <div>
+                  <button
+                    type="button"
+                    onClick={() => setCarLineupModalOpen(true)}
+                    className="w-full flex items-center justify-between gap-2 rounded-md border border-[#334155] bg-[#1e293b] px-2.5 py-1.5 text-left hover:border-amber-500/60 transition-colors cursor-pointer"
+                    title="Escolher quais pilotos correrão neste carro (filtra a lista nos stints)"
+                  >
+                    <span className="inline-flex items-center gap-1.5 text-[11px] font-bold text-slate-200">
+                      <Users className="h-3.5 w-3.5 text-[#eab308]" />
+                      <span>Pilotos do Carro</span>
+                    </span>
+                    <span className="font-mono text-[10px] font-semibold text-amber-300 truncate max-w-[55%]">
+                      {activeCar.selectedDrivers?.length > 0
+                        ? `${activeCar.selectedDrivers.length}/6 (${activeCar.selectedDrivers
+                            .map((d) => d.split(' ')[0])
+                            .join(', ')})`
+                        : `Todos (${DRIVERS.length - 1})`}
+                    </span>
+                  </button>
+                </div>
+
                 <div className="grid grid-cols-[100px_1fr] gap-2">
                   <div>
                     <label className="mb-1 block text-[10px] font-semibold uppercase text-slate-400">
@@ -5319,6 +5680,68 @@ export default function App() {
                     onCommit={(val) => handleParamChange('qualyDurationMin', val)}
                     className="w-full rounded-lg border border-[#334155] bg-[#0f172a] px-2.5 py-2 text-sm font-mono tabular-nums text-slate-100 focus:border-[#eab308] focus:outline-none"
                   />
+                </div>
+
+                <div className="col-span-2 rounded-lg border border-[#334155] bg-[#0f172a]/50 p-2.5 space-y-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const laps = Math.max(1, Number(wearCalcLaps) || 10);
+                        const nextVals = {};
+                        TIRE_CORNERS.forEach(({ key }) => {
+                          const rate = Number(params.tireWearPerLapPct?.[key] ?? 1);
+                          nextVals[key] =
+                            wearCalcMode === 'remaining'
+                              ? Math.max(0, Math.round((100 - laps * rate) * 10) / 10)
+                              : Math.min(100, Math.round(laps * rate * 10) / 10);
+                        });
+                        setWearCalcValues(nextVals);
+                        setTireWearCalcOpen(true);
+                      }}
+                      title="Abrir calculadora de desgaste (Regra de 3)"
+                      className="inline-flex items-center gap-1.5 text-[11px] font-medium text-slate-300 hover:text-amber-300 transition-colors cursor-pointer"
+                    >
+                      <Disc className="h-3 w-3 text-[#eab308]" />
+                      <span>Desgaste Estimado (%/volta)</span>
+                      <span className="inline-flex items-center gap-0.5 rounded border border-amber-500/40 bg-amber-500/15 px-1.5 py-0.5 text-[9px] font-bold text-amber-300">
+                        <Calculator className="h-2.5 w-2.5" />
+                        Calc
+                      </span>
+                    </button>
+                    <span className="font-mono text-[10px] text-slate-400">
+                      Stint {telemetry.maxStintLaps}v
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-4 gap-1.5">
+                    {TIRE_CORNERS.map(({ key }) => {
+                      const wear = Number(params.tireWearPerLapPct?.[key] ?? 1);
+                      const estEnd = Math.max(0, Math.round(100 - telemetry.maxStintLaps * wear));
+                      return (
+                        <div key={`d-wear-${key}`} className="flex flex-col gap-1">
+                          <label className="text-center font-mono text-[10px] font-bold text-slate-400">
+                            {key}
+                          </label>
+                          <FreeNumericInput
+                            min={0}
+                            allowDecimal={true}
+                            value={params.tireWearPerLapPct?.[key] ?? 0}
+                            onCommit={(val) =>
+                              handleParamChange('tireWearPerLapPct', {
+                                ...DEFAULT_CAR_PARAMS.tireWearPerLapPct,
+                                ...(params.tireWearPerLapPct || {}),
+                                [key]: val,
+                              })
+                            }
+                            className="w-full rounded-md border border-[#334155] bg-[#0f172a] px-1.5 py-1.5 text-center text-xs font-mono tabular-nums text-slate-100 focus:border-[#eab308] focus:outline-none"
+                          />
+                          <span className={`text-center font-mono text-[9.5px] font-bold ${getTireTextColor(estEnd)}`}>
+                            ~{estEnd}%
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
 
                 <div className="col-span-2">
@@ -5811,7 +6234,7 @@ export default function App() {
                                     }}
                                     className="w-full max-w-[140px] rounded-md border border-[#334155] bg-[#0f172a] px-2 py-1 text-xs font-medium text-slate-100 focus:border-[#eab308] focus:outline-none cursor-pointer"
                                   >
-                                    {DRIVERS.map((d) => {
+                                    {getSelectableDriversForRow(row.driver).map((d) => {
                                       const allowed = canAssignDriver(row.id, d);
                                       return (
                                         <option key={d} value={d} disabled={!allowed}>
@@ -5862,10 +6285,27 @@ export default function App() {
                               {/* PNEUS FIM */}
                               <td className="px-3 py-2.5 whitespace-nowrap">
                                 {stintMode === 'planning' ? (
-                                  <div className="flex justify-center">
-                                    <span className="inline-flex items-center rounded border border-[#334155] bg-[#0f172a]/60 px-2.5 py-1 text-[10px] text-slate-500">
-                                      Modo Planejamento
-                                    </span>
+                                  <div className="mx-auto grid w-[132px] grid-cols-2 gap-1.5">
+                                    {TIRE_CORNERS.map(({ key }) => {
+                                      const estPct = row.endTireMeta?.[key]?.pct ?? 100;
+                                      const isWet = Boolean(row.endTireMeta?.[key]?.isWet);
+                                      return (
+                                        <div
+                                          key={`plan-end-${key}`}
+                                          title={`Estimativa ${key} ao fim do stint (${row.laps}v)`}
+                                          className={`flex flex-col items-center justify-center rounded-md border px-2 py-1.5 font-mono text-xs font-semibold ${getTireBadgeClasses(
+                                            estPct
+                                          )}`}
+                                        >
+                                          <span className="text-[10px] uppercase tracking-wider opacity-90 leading-none">
+                                            {key} {isWet ? '💧' : ''}
+                                          </span>
+                                          <span className="tabular-nums leading-tight mt-1 text-[11px] font-bold">
+                                            ~{estPct}%
+                                          </span>
+                                        </div>
+                                      );
+                                    })}
                                   </div>
                                 ) : row.type === 'fp' ? (
                                   <div className="flex justify-center">
@@ -5924,7 +6364,7 @@ export default function App() {
                                   </div>
                                 )}
                               </td>
-                              {stintMode === 'race' && (
+                        {stintMode === 'race' && (
                                 <td className="w-4 p-0">
                                   <div className="flex h-full min-h-[44px] items-stretch">
                                     <CheckeredStripButton
@@ -5984,7 +6424,7 @@ export default function App() {
                                     ))}
                                   </select>
                                 </td>
-                                {stintMode === 'race' && (
+                        {stintMode === 'race' && (
                                   <td className="w-4 p-0">
                                     <div className="flex h-full min-h-[32px] items-stretch">
                                       <CheckeredStripButton
@@ -6150,7 +6590,7 @@ export default function App() {
                                 }}
                                 className="w-full rounded-md border border-[#334155] bg-[#0f172a] px-2.5 py-2 text-xs text-slate-100 focus:border-[#eab308] focus:outline-none"
                               >
-                                {DRIVERS.map((d) => {
+                                {getSelectableDriversForRow(row.driver).map((d) => {
                                   const allowed = canAssignDriver(row.id, d);
                                   return (
                                     <option key={d} value={d} disabled={!allowed}>
@@ -6190,7 +6630,36 @@ export default function App() {
                                 </div>
                               </div>
 
-                              {stintMode === 'race' && (
+                              {stintMode === 'planning' && (
+                          <div>
+                            <div className="mb-1.5 flex items-center justify-between text-[10px] font-semibold uppercase text-slate-400">
+                              <span>Pneus Fim Estimado ({row.laps}v)</span>
+                            </div>
+                            <div className="grid grid-cols-4 gap-2">
+                              {TIRE_CORNERS.map(({ key }) => {
+                                const estPct = row.endTireMeta?.[key]?.pct ?? 100;
+                                const isWet = Boolean(row.endTireMeta?.[key]?.isWet);
+                                return (
+                                  <div
+                                    key={`m-p1-plan-end-${key}`}
+                                    className={`flex flex-col items-center justify-center rounded-md border px-2 py-1.5 font-mono text-xs font-semibold ${getTireBadgeClasses(
+                                      estPct
+                                    )}`}
+                                  >
+                                    <span className="text-[10px] uppercase tracking-wider opacity-90 leading-none">
+                                      {key} {isWet ? '💧' : ''}
+                                    </span>
+                                    <span className="tabular-nums leading-tight mt-1 text-[11px] font-bold">
+                                      ~{estPct}%
+                                    </span>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
+
+                        {stintMode === 'race' && (
                               <div>
                                 <div className="mb-1.5 flex items-center justify-between text-[10px] font-semibold uppercase text-slate-400">
                                   <span>Pneus Fim — Borracha Restante</span>
@@ -6324,11 +6793,7 @@ export default function App() {
           </div>
 
           {/* BOTTOM PANEL: TIRE MANAGER (BEST TO REUSE) */}
-          <div
-            className={`rounded-xl border border-[#334155] bg-[#1e293b] p-4 transition-opacity ${
-              stintMode === 'planning' ? 'opacity-25 pointer-events-none select-none' : ''
-            }`}
-          >
+          <div className="rounded-xl border border-[#334155] bg-[#1e293b] p-4 transition-opacity">
             <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
               <div className="flex items-center gap-2">
                 <Disc className="h-4 w-4 text-[#22c55e]" />
@@ -7389,6 +7854,253 @@ export default function App() {
                     ))}
                   </div>
                 )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* TIRE WEAR RULE-OF-THREE CALCULATOR MODAL */}
+      {tireWearCalcOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm"
+          onClick={() => setTireWearCalcOpen(false)}
+        >
+          <div
+            className="w-full max-w-md rounded-2xl border border-[#334155] bg-[#0f172a] shadow-2xl overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b border-[#334155] bg-[#1e293b] px-4 py-3">
+              <div className="flex items-center gap-2">
+                <Calculator className="h-4 w-4 text-[#eab308]" />
+                <div>
+                  <h3 className="text-sm font-bold text-white">
+                    Calculadora de Desgaste (Regra de 3)
+                  </h3>
+                  <p className="text-[11px] text-slate-400">
+                    Informe quantas voltas você andou e a leitura dos pneus
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setTireWearCalcOpen(false)}
+                className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-[#334155] bg-[#0f172a] text-slate-400 hover:text-white cursor-pointer"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="p-4 space-y-4">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="mb-1 block text-[10px] font-semibold uppercase text-slate-400">
+                    Voltas Percorridas
+                  </label>
+                  <FreeNumericInput
+                    min={1}
+                    allowDecimal={false}
+                    value={wearCalcLaps}
+                    onCommit={(val) => setWearCalcLaps(Math.max(1, val))}
+                    className="w-full rounded-lg border border-[#334155] bg-[#1e293b] px-3 py-2 text-sm font-mono font-bold text-white focus:border-[#eab308] focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-[10px] font-semibold uppercase text-slate-400">
+                    Tipo de Leitura
+                  </label>
+                  <div className="grid grid-cols-2 gap-1 rounded-lg border border-[#334155] bg-[#1e293b] p-1">
+                    <button
+                      type="button"
+                      onClick={() => setWearCalcMode('remaining')}
+                      className={`rounded-md px-2 py-1.5 text-[10px] font-bold transition-colors cursor-pointer ${
+                        wearCalcMode === 'remaining'
+                          ? 'bg-[#eab308] text-slate-950'
+                          : 'text-slate-400 hover:text-white'
+                      }`}
+                    >
+                      Restante %
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setWearCalcMode('used')}
+                      className={`rounded-md px-2 py-1.5 text-[10px] font-bold transition-colors cursor-pointer ${
+                        wearCalcMode === 'used'
+                          ? 'bg-[#eab308] text-slate-950'
+                          : 'text-slate-400 hover:text-white'
+                      }`}
+                    >
+                      Gasto %
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                {TIRE_CORNERS.map(({ key }) => {
+                  const inputVal = Number(wearCalcValues[key] ?? 0);
+                  const totalUsed =
+                    wearCalcMode === 'remaining'
+                      ? Math.max(0, 100 - inputVal)
+                      : Math.max(0, inputVal);
+                  const laps = Math.max(1, Number(wearCalcLaps) || 1);
+                  const perLap = Math.round((totalUsed / laps) * 100) / 100;
+                  const estEnd = Math.max(0, Math.round(100 - telemetry.maxStintLaps * perLap));
+
+                  return (
+                    <div
+                      key={`calc-${key}`}
+                      className="rounded-xl border border-[#334155] bg-[#1e293b]/70 p-2.5 flex flex-col gap-1.5"
+                    >
+                      <label className="text-center font-mono text-xs font-extrabold text-white">
+                        {key}
+                      </label>
+                      <FreeNumericInput
+                        min={0}
+                        allowDecimal={true}
+                        value={wearCalcValues[key] ?? 0}
+                        onCommit={(val) =>
+                          setWearCalcValues((prev) => ({ ...prev, [key]: Math.min(100, val) }))
+                        }
+                        className="w-full rounded-md border border-[#334155] bg-[#0f172a] px-2 py-1.5 text-center text-sm font-mono font-bold text-slate-100 focus:border-[#eab308] focus:outline-none"
+                      />
+                      <div className="text-center font-mono text-[10px] text-amber-300 font-bold">
+                        {perLap.toFixed(2)}%/v
+                      </div>
+                      <div className={`text-center font-mono text-[9.5px] ${getTireTextColor(estEnd)}`}>
+                        Stint: ~{estEnd}%
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <p className="rounded-lg border border-[#334155]/80 bg-[#1e293b]/50 px-3 py-2 text-[11px] leading-relaxed text-slate-400">
+                {wearCalcMode === 'remaining'
+                  ? 'Modo Restante %: informe quanto sobrou no pneu (ex.: 88% após 10 voltas = 12% gastos → 1,20%/volta).'
+                  : 'Modo Gasto %: informe quanto foi gasto no total (ex.: 12% em 10 voltas → 1,20%/volta).'}
+              </p>
+
+              <div className="flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setTireWearCalcOpen(false)}
+                  className="rounded-lg border border-[#334155] bg-[#1e293b] px-3 py-2 text-xs font-semibold text-slate-300 hover:text-white cursor-pointer"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const laps = Math.max(1, Number(wearCalcLaps) || 1);
+                    const nextRates = {};
+                    TIRE_CORNERS.forEach(({ key }) => {
+                      const inputVal = Number(wearCalcValues[key] ?? 0);
+                      const totalUsed =
+                        wearCalcMode === 'remaining'
+                          ? Math.max(0, 100 - inputVal)
+                          : Math.max(0, inputVal);
+                      nextRates[key] = Math.round((totalUsed / laps) * 100) / 100;
+                    });
+                    handleParamChange('tireWearPerLapPct', nextRates);
+                    setTireWearCalcOpen(false);
+                    showToast('Desgaste por volta calculado e aplicado!', 'success');
+                  }}
+                  className="rounded-lg bg-[#eab308] px-4 py-2 text-xs font-extrabold uppercase tracking-wider text-slate-950 hover:bg-amber-400 transition-colors cursor-pointer"
+                >
+                  Aplicar nos Parâmetros
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* CAR LINEUP DRIVER FILTER MODAL */}
+      {carLineupModalOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm"
+          onClick={() => setCarLineupModalOpen(false)}
+        >
+          <div
+            className="w-full max-w-md rounded-2xl border border-[#334155] bg-[#0f172a] shadow-2xl overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b border-[#334155] bg-[#1e293b] px-4 py-3">
+              <div className="flex items-center gap-2">
+                <Users className="h-4 w-4 text-[#eab308]" />
+                <div>
+                  <h3 className="text-sm font-bold text-white">
+                    Pilotos do Carro — {activeCar.label}
+                  </h3>
+                  <p className="text-[11px] text-slate-400">
+                    Selecione até 6 pilotos para filtrar a lista nos stints (
+                    {activeCar.selectedDrivers?.length || 0}/6)
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setCarLineupModalOpen(false)}
+                className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-[#334155] bg-[#0f172a] text-slate-400 hover:text-white cursor-pointer"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="p-4 space-y-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-[55vh] overflow-y-auto pr-1">
+                {DRIVERS.filter((d) => d !== 'ND').map((driverName) => {
+                  const isSelected = (activeCar.selectedDrivers || []).includes(driverName);
+                  return (
+                    <button
+                      key={`lineup-${driverName}`}
+                      type="button"
+                      onClick={() => toggleCarLineupDriver(driverName)}
+                      className={`flex items-center justify-between gap-2 rounded-xl border px-3 py-2 text-left transition-all cursor-pointer ${
+                        isSelected
+                          ? 'border-amber-500 bg-amber-500/15 text-white'
+                          : 'border-[#334155] bg-[#1e293b]/70 text-slate-300 hover:border-slate-500'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2 min-w-0">
+                        <DriverAvatar90s driver={driverName} size={28} />
+                        <span className="truncate text-xs font-bold">{driverName}</span>
+                      </div>
+                      <span
+                        className={`inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-md border text-[11px] font-bold ${
+                          isSelected
+                            ? 'border-amber-400 bg-[#eab308] text-slate-950'
+                            : 'border-[#334155] bg-[#0f172a] text-transparent'
+                        }`}
+                      >
+                        <Check className="h-3.5 w-3.5" />
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              <div className="flex items-center justify-between gap-2 pt-1 border-t border-[#334155]">
+                <button
+                  type="button"
+                  onClick={() =>
+                    updateActiveCar((car) => ({
+                      ...car,
+                      selectedDrivers: [],
+                    }))
+                  }
+                  className="rounded-lg border border-[#334155] bg-[#1e293b] px-3 py-1.5 text-xs font-semibold text-slate-300 hover:text-white cursor-pointer"
+                >
+                  Mostrar Todos
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCarLineupModalOpen(false)}
+                  className="rounded-lg bg-[#eab308] px-4 py-1.5 text-xs font-extrabold uppercase tracking-wider text-slate-950 hover:bg-amber-400 transition-colors cursor-pointer"
+                >
+                  Concluído
+                </button>
               </div>
             </div>
           </div>
