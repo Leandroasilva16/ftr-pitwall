@@ -18,7 +18,9 @@ Ao final de cada stint (exceto o último da corrida), é possível escolher o pr
 | `swap_fuel` | Troca Piloto + Combustível | `0` | Forçada (`25s` em paralelo) | Sim |
 | `driver_swap_only` | Troca Piloto | `0` | Forçada (`25s`) | Não (`0s`) |
 
-> **Observação:** Sempre que o piloto definido para o `Stint i + 1` for diferente do piloto do `Stint i` (e ambos forem diferentes de `ND`), a troca de piloto é ativada automaticamente na parada mesmo nos cenários sem `_swap_`.
+> **Observação:**
+> - Sempre que o piloto definido para o `Stint i + 1` for diferente do piloto do `Stint i` (e ambos forem diferentes de `ND`), a troca de piloto é ativada automaticamente na parada mesmo nos cenários sem `_swap_`.
+> - No seletor da interface, linhas divisórias separam visualmente os grupos entre as opções **2 e 3**, **4 e 5** e **6 e 7**.
 
 ---
 

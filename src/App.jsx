@@ -1986,19 +1986,32 @@ function CheckeredStripButton({ done, onToggle, title = 'Marcar como concluído'
 }
 
 const FreeNumericInput = React.forwardRef(function FreeNumericInput(
-  { value, onCommit, min = 0, allowDecimal = true, className = '', placeholder = '', ...rest },
+  {
+    value,
+    onCommit,
+    min = 0,
+    allowDecimal = true,
+    minDigits = 0,
+    className = '',
+    placeholder = '',
+    ...rest
+  },
   ref
 ) {
+  const formatVal = (v) => {
+    if (v === undefined || v === null) return '';
+    const str = String(v);
+    return minDigits > 0 && !allowDecimal ? str.padStart(minDigits, '0') : str;
+  };
+
   const [isFocused, setIsFocused] = useState(false);
-  const [draft, setDraft] = useState(() =>
-    value === undefined || value === null ? '' : String(value)
-  );
+  const [draft, setDraft] = useState(() => formatVal(value));
 
   useEffect(() => {
     if (!isFocused) {
-      setDraft(value === undefined || value === null ? '' : String(value));
+      setDraft(formatVal(value));
     }
-  }, [value, isFocused]);
+  }, [value, isFocused, minDigits, allowDecimal]);
 
   const handleChange = (e) => {
     const raw = e.target.value;
@@ -2014,18 +2027,18 @@ const FreeNumericInput = React.forwardRef(function FreeNumericInput(
   const commit = () => {
     const cleaned = draft.trim().replace(',', '.');
     if (cleaned === '' || cleaned === '.') {
-      setDraft(String(min));
+      setDraft(formatVal(min));
       onCommit(min);
       return;
     }
     const parsed = Number(cleaned);
     if (Number.isNaN(parsed)) {
-      setDraft(String(min));
+      setDraft(formatVal(min));
       onCommit(min);
       return;
     }
     const clamped = Math.max(min, allowDecimal ? parsed : Math.round(parsed));
-    setDraft(String(clamped));
+    setDraft(formatVal(clamped));
     onCommit(clamped);
   };
 
@@ -2034,11 +2047,11 @@ const FreeNumericInput = React.forwardRef(function FreeNumericInput(
       ref={ref}
       type="text"
       inputMode={allowDecimal ? 'decimal' : 'numeric'}
-      value={isFocused ? draft : value === undefined || value === null ? '' : String(value)}
+      value={isFocused ? draft : formatVal(value)}
       placeholder={placeholder}
       onFocus={() => {
         setIsFocused(true);
-        setDraft(value === undefined || value === null ? '' : String(value));
+        setDraft(formatVal(value));
       }}
       onChange={handleChange}
       onBlur={() => {
@@ -2055,6 +2068,127 @@ const FreeNumericInput = React.forwardRef(function FreeNumericInput(
     />
   );
 });
+
+/**
+ * Splits an HH:MM string into separate Hour and Minute numeric inputs.
+ */
+function SplitHourMinInput({
+  value = '00:00',
+  onCommit,
+  maxHours = 23,
+  minTotalMin = 0,
+  firstRef = null,
+}) {
+  const [hStr, mStr] = String(value || '00:00').split(':');
+  const hours = Math.min(maxHours, Math.max(0, parseInt(hStr, 10) || 0));
+  const minutes = Math.min(59, Math.max(0, parseInt(mStr, 10) || 0));
+
+  const commitParts = (nextH, nextM) => {
+    let h = Math.min(maxHours, Math.max(0, Math.round(Number(nextH) || 0)));
+    let m = Math.min(59, Math.max(0, Math.round(Number(nextM) || 0)));
+    if (h * 60 + m < minTotalMin) {
+      h = Math.floor(minTotalMin / 60);
+      m = minTotalMin % 60;
+    }
+    onCommit(`${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`);
+  };
+
+  return (
+    <div className="grid grid-cols-2 gap-1.5">
+      <div className="flex items-center rounded-lg border border-[#334155] bg-[#0f172a] focus-within:border-[#eab308]">
+        <span className="px-1.5 text-[10px] font-bold text-slate-500 border-r border-[#334155] select-none">
+          H
+        </span>
+        <FreeNumericInput
+          ref={firstRef}
+          min={0}
+          minDigits={2}
+          allowDecimal={false}
+          value={hours}
+          onCommit={(val) => commitParts(val, minutes)}
+          className="w-full bg-transparent px-1.5 py-2 text-center text-sm font-mono tabular-nums text-slate-100 focus:outline-none"
+        />
+      </div>
+      <div className="flex items-center rounded-lg border border-[#334155] bg-[#0f172a] focus-within:border-[#eab308]">
+        <span className="px-1.5 text-[10px] font-bold text-slate-500 border-r border-[#334155] select-none">
+          M
+        </span>
+        <FreeNumericInput
+          min={0}
+          minDigits={2}
+          allowDecimal={false}
+          value={minutes}
+          onCommit={(val) => commitParts(hours, val)}
+          className="w-full bg-transparent px-1.5 py-2 text-center text-sm font-mono tabular-nums text-slate-100 focus:outline-none"
+        />
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Splits an MM:SS.mmm lap time string into Minute, Second, and Millisecond inputs.
+ */
+function SplitLapTimeInput({ value = '01:45.320', onCommit }) {
+  const [minPart = '01', secMsPart = '45.320'] = String(value || '01:45.320').split(':');
+  const [secPart = '45', msPart = '320'] = secMsPart.split('.');
+  const mins = Math.min(59, Math.max(0, parseInt(minPart, 10) || 0));
+  const secs = Math.min(59, Math.max(0, parseInt(secPart, 10) || 0));
+  const ms = Math.min(999, Math.max(0, parseInt(msPart.padEnd(3, '0').slice(0, 3), 10) || 0));
+
+  const commitParts = (nextMin, nextSec, nextMs) => {
+    const m = Math.min(59, Math.max(0, Math.round(Number(nextMin) || 0)));
+    const s = Math.min(59, Math.max(0, Math.round(Number(nextSec) || 0)));
+    const mil = Math.min(999, Math.max(0, Math.round(Number(nextMs) || 0)));
+    onCommit(
+      `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}.${String(mil).padStart(3, '0')}`
+    );
+  };
+
+  return (
+    <div className="grid grid-cols-3 gap-1.5">
+      <div className="flex items-center rounded-lg border border-[#334155] bg-[#0f172a] focus-within:border-[#eab308]">
+        <span className="px-1.5 text-[10px] font-bold text-slate-500 border-r border-[#334155] select-none">
+          Min
+        </span>
+        <FreeNumericInput
+          min={0}
+          minDigits={2}
+          allowDecimal={false}
+          value={mins}
+          onCommit={(val) => commitParts(val, secs, ms)}
+          className="w-full bg-transparent px-1 py-2 text-center text-sm font-mono tabular-nums text-slate-100 focus:outline-none"
+        />
+      </div>
+      <div className="flex items-center rounded-lg border border-[#334155] bg-[#0f172a] focus-within:border-[#eab308]">
+        <span className="px-1.5 text-[10px] font-bold text-slate-500 border-r border-[#334155] select-none">
+          Seg
+        </span>
+        <FreeNumericInput
+          min={0}
+          minDigits={2}
+          allowDecimal={false}
+          value={secs}
+          onCommit={(val) => commitParts(mins, val, ms)}
+          className="w-full bg-transparent px-1 py-2 text-center text-sm font-mono tabular-nums text-slate-100 focus:outline-none"
+        />
+      </div>
+      <div className="flex items-center rounded-lg border border-[#334155] bg-[#0f172a] focus-within:border-[#eab308]">
+        <span className="px-1.5 text-[10px] font-bold text-slate-500 border-r border-[#334155] select-none">
+          Ms
+        </span>
+        <FreeNumericInput
+          min={0}
+          minDigits={3}
+          allowDecimal={false}
+          value={ms}
+          onCommit={(val) => commitParts(mins, secs, val)}
+          className="w-full bg-transparent px-1 py-2 text-center text-sm font-mono tabular-nums text-slate-100 focus:outline-none"
+        />
+      </div>
+    </div>
+  );
+}
 
 function normalizeRaceDurationStr(raw) {
   const trimmed = (raw || '').trim();
@@ -3696,7 +3830,7 @@ export default function App() {
           : { virtualEnergyPerLapPct: fuelSaveInsights.targetEnergyPerLapPct }),
       }));
       showToast(
-        `Modo Maximizar: ${fuelSaveInsights.targetStintLaps}v/stint (${fuelSaveInsights.targetFuelPerLapL.toFixed(2)} L/v)`,
+        `Modo Econômico: ${fuelSaveInsights.targetStintLaps}v/stint (${fuelSaveInsights.targetFuelPerLapL.toFixed(2)} L/v)`,
         'success'
       );
     } else {
@@ -3708,7 +3842,7 @@ export default function App() {
         baseFuelPerLapL: undefined,
         baseVirtualEnergyPerLapPct: undefined,
       }));
-      showToast('Modo Conservador restaurado', 'info');
+      showToast('Modo Agressivo restaurado', 'info');
     }
   };
 
@@ -4727,45 +4861,41 @@ export default function App() {
               </div>
 
               <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="mb-1 flex items-center gap-1 text-[11px] font-medium text-slate-400">
-                    <Clock className="h-3 w-3 text-[#eab308]" />
-                    Início da Sessão
-                  </label>
-                  <input
-                    ref={mobileSessionStartRef}
-                    type="time"
-                    value={params.sessionStart}
-                    onChange={(e) => handleParamChange('sessionStart', e.target.value)}
-                    className="w-full rounded-lg border border-[#334155] bg-[#0f172a] px-2.5 py-2 text-sm font-mono text-slate-100 focus:border-[#eab308] focus:outline-none"
-                  />
+                <div className="col-span-2 grid grid-cols-2 gap-5">
+                  <div>
+                    <label className="mb-1 flex items-center gap-1 text-[11px] font-medium text-slate-400">
+                      <Clock className="h-3 w-3 text-[#eab308]" />
+                      Início da Sessão
+                    </label>
+                    <SplitHourMinInput
+                      firstRef={mobileSessionStartRef}
+                      value={params.sessionStart}
+                      maxHours={23}
+                      minTotalMin={0}
+                      onCommit={(val) => handleParamChange('sessionStart', val)}
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1 flex items-center gap-1 text-[11px] font-medium text-slate-400">
+                      <Timer className="h-3 w-3 text-[#eab308]" />
+                      Duração Corrida
+                    </label>
+                    <SplitHourMinInput
+                      value={params.raceDurationStr}
+                      maxHours={99}
+                      minTotalMin={10}
+                      onCommit={(val) => handleParamChange('raceDurationStr', val)}
+                    />
+                  </div>
                 </div>
-                <div>
-                  <label className="mb-1 flex items-center gap-1 text-[11px] font-medium text-slate-400">
-                    <Timer className="h-3 w-3 text-[#eab308]" />
-                    Duração Corrida (00:00)
-                  </label>
-                  <FreeFormattedTextInput
-                    placeholder="06:00"
-                    inputMode="numeric"
-                    value={params.raceDurationStr}
-                    normalize={normalizeRaceDurationStr}
-                    onCommit={(val) => handleParamChange('raceDurationStr', val)}
-                    className="w-full rounded-lg border border-[#334155] bg-[#0f172a] px-2.5 py-2 text-sm font-mono tabular-nums text-slate-100 focus:border-[#eab308] focus:outline-none"
-                  />
-                </div>
-                <div>
+                <div className="col-span-2">
                   <label className="mb-1 flex items-center gap-1 text-[11px] font-medium text-slate-400">
                     <Gauge className="h-3 w-3 text-[#22c55e]" />
                     Tempo de Volta
                   </label>
-                  <FreeFormattedTextInput
-                    placeholder="01:45.320"
-                    inputMode="decimal"
+                  <SplitLapTimeInput
                     value={params.lapTimeStr}
-                    normalize={normalizeLapTimeStr}
                     onCommit={(val) => handleParamChange('lapTimeStr', val)}
-                    className="w-full rounded-lg border border-[#334155] bg-[#0f172a] px-2.5 py-2 text-sm font-mono tabular-nums text-slate-100 focus:border-[#eab308] focus:outline-none"
                   />
                 </div>
                 <div>
@@ -5073,7 +5203,7 @@ export default function App() {
                         : 'text-slate-400 hover:text-slate-200'
                     }`}
                   >
-                    Conservador
+                    Agressivo
                   </button>
                   <button
                     type="button"
@@ -5084,7 +5214,7 @@ export default function App() {
                         : 'text-slate-400 hover:text-emerald-300'
                     }`}
                   >
-                    Maximizar
+                    Econômico
                   </button>
                 </div>
               </div>
@@ -5458,21 +5588,28 @@ export default function App() {
                             : 'border-amber-500/35 focus:border-[#eab308]'
                         }`}
                       >
-                        {PIT_SCENARIOS.map((sc) => (
-                          <option key={sc.id} value={sc.id}>
-                            {sc.label} (
-                            {calculatePitStopDetails({
-                              scenarioId: sc.id,
-                              params,
-                              carClass: params.carClass || 'LMGT3',
-                              nextStintLaps: row.nextStintLaps,
-                              remainingFuelL: row.remainingFuelL,
-                              remainingEnergyPct: row.remainingEnergyPct,
-                              hasDriverSwap: row.hasDriverSwap,
-                              fillToMax: row.fillToMax,
-                            }).stationarySec.toFixed(1)}
-                            s)
-                          </option>
+                        {PIT_SCENARIOS.map((sc, idx) => (
+                          <React.Fragment key={sc.id}>
+                            <option value={sc.id}>
+                              {sc.label} (
+                              {calculatePitStopDetails({
+                                scenarioId: sc.id,
+                                params,
+                                carClass: params.carClass || 'LMGT3',
+                                nextStintLaps: row.nextStintLaps,
+                                remainingFuelL: row.remainingFuelL,
+                                remainingEnergyPct: row.remainingEnergyPct,
+                                hasDriverSwap: row.hasDriverSwap,
+                                fillToMax: row.fillToMax,
+                              }).stationarySec.toFixed(1)}
+                              s)
+                            </option>
+                            {(idx === 1 || idx === 3 || idx === 5) && (
+                              <option disabled className="text-slate-500">
+                                ────────────────────
+                              </option>
+                            )}
+                          </React.Fragment>
                         ))}
                       </select>
                       </div>
@@ -5805,46 +5942,42 @@ export default function App() {
 
               {/* Grid of Main Inputs */}
               <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="mb-1 flex items-center gap-1 text-[11px] font-medium text-slate-400">
-                    <Clock className="h-3 w-3 text-[#eab308]" />
-                    Início da Sessão
-                  </label>
-                  <input
-                    type="time"
-                    value={params.sessionStart}
-                    onChange={(e) => handleParamChange('sessionStart', e.target.value)}
-                    className="w-full rounded-lg border border-[#334155] bg-[#0f172a] px-2.5 py-2 text-sm font-mono text-slate-100 focus:border-[#eab308] focus:outline-none"
-                  />
+                <div className="col-span-2 grid grid-cols-2 gap-5">
+                  <div>
+                    <label className="mb-1 flex items-center gap-1 text-[11px] font-medium text-slate-400">
+                      <Clock className="h-3 w-3 text-[#eab308]" />
+                      Início da Sessão
+                    </label>
+                    <SplitHourMinInput
+                      value={params.sessionStart}
+                      maxHours={23}
+                      minTotalMin={0}
+                      onCommit={(val) => handleParamChange('sessionStart', val)}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="mb-1 flex items-center gap-1 text-[11px] font-medium text-slate-400">
+                      <Timer className="h-3 w-3 text-[#eab308]" />
+                      Duração Corrida
+                    </label>
+                    <SplitHourMinInput
+                      value={params.raceDurationStr}
+                      maxHours={99}
+                      minTotalMin={10}
+                      onCommit={(val) => handleParamChange('raceDurationStr', val)}
+                    />
+                  </div>
                 </div>
 
-                <div>
-                  <label className="mb-1 flex items-center gap-1 text-[11px] font-medium text-slate-400">
-                    <Timer className="h-3 w-3 text-[#eab308]" />
-                    Duração Corrida (00:00)
-                  </label>
-                  <FreeFormattedTextInput
-                    placeholder="06:00"
-                    inputMode="numeric"
-                    value={params.raceDurationStr}
-                    normalize={normalizeRaceDurationStr}
-                    onCommit={(val) => handleParamChange('raceDurationStr', val)}
-                    className="w-full rounded-lg border border-[#334155] bg-[#0f172a] px-2.5 py-2 text-sm font-mono tabular-nums text-slate-100 focus:border-[#eab308] focus:outline-none"
-                  />
-                </div>
-
-                <div>
+                <div className="col-span-2">
                   <label className="mb-1 flex items-center gap-1 text-[11px] font-medium text-slate-400">
                     <Gauge className="h-3 w-3 text-[#22c55e]" />
                     Tempo de Volta
                   </label>
-                  <FreeFormattedTextInput
-                    placeholder="01:45.320"
-                    inputMode="decimal"
+                  <SplitLapTimeInput
                     value={params.lapTimeStr}
-                    normalize={normalizeLapTimeStr}
                     onCommit={(val) => handleParamChange('lapTimeStr', val)}
-                    className="w-full rounded-lg border border-[#334155] bg-[#0f172a] px-2.5 py-2 text-sm font-mono tabular-nums text-slate-100 focus:border-[#eab308] focus:outline-none"
                   />
                 </div>
 
@@ -6200,7 +6333,7 @@ export default function App() {
                           : 'text-slate-400 hover:text-slate-200'
                       }`}
                     >
-                      Conservador
+                      Agressivo
                     </button>
                     <button
                       type="button"
@@ -6211,7 +6344,7 @@ export default function App() {
                           : 'text-slate-400 hover:text-emerald-300'
                       }`}
                     >
-                      Maximizar
+                      Econômico
                     </button>
                   </div>
                 </div>
@@ -6714,21 +6847,28 @@ export default function App() {
                                     }
                                     className="mx-auto rounded-md border border-amber-500/35 bg-[#0f172a] px-2 py-0.5 text-[11px] font-medium text-slate-100 focus:border-[#eab308] focus:outline-none cursor-pointer"
                                   >
-                                    {PIT_SCENARIOS.map((sc) => (
-                                      <option key={sc.id} value={sc.id}>
-                                        {sc.label} (
-                                        {calculatePitStopDetails({
-                                          scenarioId: sc.id,
-                                          params,
-                                          carClass: params.carClass || 'LMGT3',
-                                          nextStintLaps: row.nextStintLaps,
-                                          remainingFuelL: row.remainingFuelL,
-                                          remainingEnergyPct: row.remainingEnergyPct,
-                                          hasDriverSwap: row.hasDriverSwap,
-                              fillToMax: row.fillToMax,
-                                        }).stationarySec.toFixed(1)}
-                                        s)
-                                      </option>
+                                    {PIT_SCENARIOS.map((sc, idx) => (
+                                      <React.Fragment key={sc.id}>
+                                        <option value={sc.id}>
+                                          {sc.label} (
+                                          {calculatePitStopDetails({
+                                            scenarioId: sc.id,
+                                            params,
+                                            carClass: params.carClass || 'LMGT3',
+                                            nextStintLaps: row.nextStintLaps,
+                                            remainingFuelL: row.remainingFuelL,
+                                            remainingEnergyPct: row.remainingEnergyPct,
+                                            hasDriverSwap: row.hasDriverSwap,
+                                fillToMax: row.fillToMax,
+                                          }).stationarySec.toFixed(1)}
+                                          s)
+                                        </option>
+                                        {(idx === 1 || idx === 3 || idx === 5) && (
+                                          <option disabled className="text-slate-500">
+                                            ────────────────────
+                                          </option>
+                                        )}
+                                      </React.Fragment>
                                     ))}
                                   </select>
                                 </td>
@@ -7068,21 +7208,28 @@ export default function App() {
                               : 'border-amber-500/35 focus:border-[#eab308]'
                           }`}
                         >
-                          {PIT_SCENARIOS.map((sc) => (
-                            <option key={sc.id} value={sc.id}>
-                              {sc.label} (
-                              {calculatePitStopDetails({
-                                scenarioId: sc.id,
-                                params,
-                                carClass: params.carClass || 'LMGT3',
-                                nextStintLaps: row.nextStintLaps,
-                                remainingFuelL: row.remainingFuelL,
-                                remainingEnergyPct: row.remainingEnergyPct,
-                                hasDriverSwap: row.hasDriverSwap,
-                              fillToMax: row.fillToMax,
-                              }).stationarySec.toFixed(1)}
-                              s)
-                            </option>
+                          {PIT_SCENARIOS.map((sc, idx) => (
+                            <React.Fragment key={sc.id}>
+                              <option value={sc.id}>
+                                {sc.label} (
+                                {calculatePitStopDetails({
+                                  scenarioId: sc.id,
+                                  params,
+                                  carClass: params.carClass || 'LMGT3',
+                                  nextStintLaps: row.nextStintLaps,
+                                  remainingFuelL: row.remainingFuelL,
+                                  remainingEnergyPct: row.remainingEnergyPct,
+                                  hasDriverSwap: row.hasDriverSwap,
+                                fillToMax: row.fillToMax,
+                                }).stationarySec.toFixed(1)}
+                                s)
+                              </option>
+                              {(idx === 1 || idx === 3 || idx === 5) && (
+                                <option disabled className="text-slate-500">
+                                  ────────────────────
+                                </option>
+                              )}
+                            </React.Fragment>
                           ))}
                         </select>
                         </div>

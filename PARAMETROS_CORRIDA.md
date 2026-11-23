@@ -106,9 +106,9 @@ Total de **20 circuitos** mapeados com traçado vetorial 2D:
 
 | Parâmetro | Escopo | Formato / Tipo | Padrão | Regras / Observações |
 | :--- | :--- | :--- | :--- | :--- |
-| **Início da Sessão** (`sessionStart`) | Evento | `HH:MM` (24h, `<input type="time">`) | `14:00` | Define o horário inicial do **Free Practice**, seguido por **Qualy** e **Corrida** (`wrap` de 24h). |
-| **Duração Corrida** (`raceDurationStr`) | Evento | `HH:MM` (ex.: `06:00`, `24:00`) | `06:00` | Ao sair do campo (`onBlur`/`Enter`), normaliza para `HH:MM` (mínimo `00:10`). Também aceita dígitos compactos (ex.: `6` → `06:00`, `0130` → `01:30`). |
-| **Tempo de Volta** (`lapTimeStr`) | Carro | `MM:SS.mmm` (ex.: `01:45.320`) | `01:45.320` | Aceita `.` ou `,` para milissegundos, `MM:SS` ou segundos puros (`> 5s`). Normaliza para `MM:SS.mmm` no `onBlur`/`Enter`. |
+| **Início da Sessão** (`sessionStart`) | Evento | 2 campos: `H` (`00–23`) e `M` (`00–59`) | `14:00` *(reset: `16:00`)* | Preenchimento separado em **Hora** e **Minuto** (mínimo 2 dígitos), definindo o início do **Free Practice**, seguido por **Qualy** e **Corrida** (`wrap` de 24h). |
+| **Duração Corrida** (`raceDurationStr`) | Evento | 2 campos: `H` (`00–99`) e `M` (`00–59`) | `06:00` *(reset: `08:00`)* | Preenchimento separado em **Hora** e **Minuto** (mínimo 2 dígitos; duração mínima total de `00:10`). |
+| **Tempo de Volta** (`lapTimeStr`) | Carro | 3 campos: `Min` (`00–59`), `Seg` (`00–59`), `Ms` (`000–999`) | `01:45.320` | Preenchimento separado em **Minuto** (2 dígitos), **Segundo** (2 dígitos) e **Milésimo** (3 dígitos). |
 | **Tanque (Litros)** (`tankCapacityL`) | Carro | Inteiro (`>= 1`) | `100` | Capacidade total do tanque de combustível do carro em litros. |
 | **Consumo (L/volta)** (`fuelPerLapL`) | Carro | Decimal (`>= 0.1`, aceita `,` ou `.`) | `3.1` | Consumo médio de combustível por volta em litros. |
 | **Energia Virt. (%/v)** (`virtualEnergyPerLapPct`) | Carro *(apenas WEC)* | Decimal (`>= 0.1`, aceita `,` ou `.`) | `2.1` | Consumo médio de Energia Virtual por volta em `%`. Oculto no regulamento `ELMS`. |
@@ -208,6 +208,6 @@ No card de **Fuel Ratio & Autonomia** (Mobile e Desktop), o painel exibe métric
    - Soma **`+1` volta** (`safeRaceLaps = minRaceLaps + 1`) e exibe o total de combustível (`L`) e Energia Virtual (`% VE`) necessários para completar a prova com margem de segurança.
 2. **Relógio na Última Volta (`raceClockAtLastLapSec`):**
    - Estima quantos segundos restarão no cronômetro da corrida no momento em que o carro abrir a última volta. Valores `<= 20s` recebem alerta em âmbar recomendando a volta de segurança.
-3. **Chavinha `Conservador | Maximizar` (Tank Maximizer):**
+3. **Chavinha `Agressivo | Econômico` (Tank Maximizer):**
    - Calcula a meta de consumo (`L/v` e `%/v`) necessária para ganhar **`+1` volta por stint** (`maxStintLaps + 1`) e informa se a economia elimina alguma parada (`-N pit`).
-   - Ao alternar para **Maximizar**, os valores originais são preservados (`baseFuelPerLapL` / `baseVirtualEnergyPerLapPct`) e a meta é aplicada; ao retornar para **Conservador**, os valores originais são restaurados.
+   - Ao alternar para **Econômico**, os valores originais são preservados (`baseFuelPerLapL` / `baseVirtualEnergyPerLapPct`) e a meta é aplicada; ao retornar para **Agressivo**, os valores originais são restaurados.
