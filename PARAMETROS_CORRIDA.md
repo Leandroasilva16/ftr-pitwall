@@ -208,6 +208,6 @@ No card de **Fuel Ratio & Autonomia** (Mobile e Desktop), o painel exibe métric
    - Soma **`+1` volta** (`safeRaceLaps = minRaceLaps + 1`) e exibe o total de combustível (`L`) e Energia Virtual (`% VE`) necessários para completar a prova com margem de segurança.
 2. **Relógio na Última Volta (`raceClockAtLastLapSec`):**
    - Estima quantos segundos restarão no cronômetro da corrida no momento em que o carro abrir a última volta. Valores `<= 20s` recebem alerta em âmbar recomendando a volta de segurança.
-3. **Chavinha `Agressivo | Econômico` (Tank Maximizer):**
-   - Calcula a meta de consumo (`L/v` e `%/v`) necessária para ganhar **`+1` volta por stint** (`maxStintLaps + 1`) e informa se a economia elimina alguma parada (`-N pit`).
-   - Ao alternar para **Econômico**, os valores originais são preservados (`baseFuelPerLapL` / `baseVirtualEnergyPerLapPct`) e a meta é aplicada; ao retornar para **Agressivo**, os valores originais são restaurados.
+3. **Chavinha `🔥 Agressivo | 🌿 Econômico` (Tank Maximizer):**
+   - **🔥 Agressivo:** tema visual em vermelho/laranja incandescente com brilho pulsante quando ativo; utiliza o consumo máximo/flat-out configurado.
+   - **🌿 Econômico:** tema ecológico em verde esmeralda/lima quando ativo; calcula e aplica a meta de consumo (`L/v` e `%/v`) para ganhar **`+1` volta por stint** (`maxStintLaps + 1`), preservando os valores originais (`baseFuelPerLapL` / `baseVirtualEnergyPerLapPct`) para restauração ao voltar para **Agressivo**, e informa se a economia elimina alguma parada (`-N pit`).

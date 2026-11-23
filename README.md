@@ -11,7 +11,7 @@ Aplicação web (Desktop e Mobile/PWA) desenvolvida para planejamento estratégi
 - **Modo Plano vs. Modo Corrida:**
   - **Plano:** definição livre da escala de pilotos (limite de 6 pilotos por sessão, com opção `ND` fora da contagem), estratégia de pitstop entre stints (7 cenários) e escolha/reaproveitamento livre de pneus (`NOVO`, `MANTER`, `USADO`).
   - **Corrida:** importação manual do planejamento (`Exportar Planejamento para Corrida`), edição de duração de stints em caso de imprevistos, registro individual de desgaste de pneus (`Pneus Fim`) e marcação quadriculada de stints/pits concluídos.
-- **Fuel Ratio, Autonomia & Tank Maximizer:** cálculo automático de autonomia máxima por tanque e energia virtual, abastecimento máximo nos stints intermediários, chavinha **Agressivo | Econômico** (`+1 volta/stint`), cálculo de voltas `Min / Safe` e **Relógio na Última Volta**.
+- **Fuel Ratio, Autonomia & Tank Maximizer:** cálculo automático de autonomia máxima por tanque e energia virtual, abastecimento máximo nos stints intermediários, chavinha **🔥 Agressivo | 🌿 Econômico** (`+1 volta/stint`), cálculo de voltas `Min / Safe` e **Relógio na Última Volta**.
 - **Gerenciador e Calculadora de Pneus:** contagem de pneus usados no cabeçalho (alternando a cada 5s entre melhor pneu usado e desgaste/volta), calculadora de desgaste por regra de 3 e modal de ranking para reaproveitamento.
 - **Documentação Técnica:**
   - [PARAMETROS_CORRIDA.md](PARAMETROS_CORRIDA.md) — Parâmetros de evento/carro, fórmulas de autonomia e Tank Maximizer.

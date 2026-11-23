@@ -5197,24 +5197,24 @@ export default function App() {
                   <button
                     type="button"
                     onClick={() => toggleTankMaximizer(false)}
-                    className={`rounded px-2 py-1 transition-colors cursor-pointer ${
+                    className={`rounded px-2 py-1 transition-all cursor-pointer ${
                       !fuelSaveInsights.isMaximizerActive
-                        ? 'bg-slate-700 text-white'
-                        : 'text-slate-400 hover:text-slate-200'
+                        ? 'bg-gradient-to-r from-red-600 via-orange-500 to-amber-500 text-white font-extrabold shadow-[0_0_12px_rgba(239,68,68,0.85)] border border-orange-300/60 animate-pulse'
+                        : 'text-red-400/75 hover:text-red-300'
                     }`}
                   >
-                    Agressivo
+                    🔥 Agressivo
                   </button>
                   <button
                     type="button"
                     onClick={() => toggleTankMaximizer(true)}
-                    className={`rounded px-2 py-1 transition-colors cursor-pointer ${
+                    className={`rounded px-2 py-1 transition-all cursor-pointer ${
                       fuelSaveInsights.isMaximizerActive
-                        ? 'bg-emerald-500/25 text-emerald-300 border border-emerald-500/40'
-                        : 'text-slate-400 hover:text-emerald-300'
+                        ? 'bg-gradient-to-r from-emerald-600 via-green-500 to-lime-500 text-slate-950 font-extrabold shadow-[0_0_10px_rgba(34,197,94,0.7)] border border-lime-300/60'
+                        : 'text-emerald-400/75 hover:text-emerald-300'
                     }`}
                   >
-                    Econômico
+                    🌿 Econômico
                   </button>
                 </div>
               </div>
@@ -6327,24 +6327,24 @@ export default function App() {
                     <button
                       type="button"
                       onClick={() => toggleTankMaximizer(false)}
-                      className={`rounded px-2 py-1 transition-colors cursor-pointer ${
+                      className={`rounded px-2 py-1 transition-all cursor-pointer ${
                         !fuelSaveInsights.isMaximizerActive
-                          ? 'bg-slate-700 text-white'
-                          : 'text-slate-400 hover:text-slate-200'
+                          ? 'bg-gradient-to-r from-red-600 via-orange-500 to-amber-500 text-white font-extrabold shadow-[0_0_12px_rgba(239,68,68,0.85)] border border-orange-300/60 animate-pulse'
+                          : 'text-red-400/75 hover:text-red-300'
                       }`}
                     >
-                      Agressivo
+                      🔥 Agressivo
                     </button>
                     <button
                       type="button"
                       onClick={() => toggleTankMaximizer(true)}
-                      className={`rounded px-2 py-1 transition-colors cursor-pointer ${
+                      className={`rounded px-2 py-1 transition-all cursor-pointer ${
                         fuelSaveInsights.isMaximizerActive
-                          ? 'bg-emerald-500/25 text-emerald-300 border border-emerald-500/40'
-                          : 'text-slate-400 hover:text-emerald-300'
+                          ? 'bg-gradient-to-r from-emerald-600 via-green-500 to-lime-500 text-slate-950 font-extrabold shadow-[0_0_10px_rgba(34,197,94,0.7)] border border-lime-300/60'
+                          : 'text-emerald-400/75 hover:text-emerald-300'
                       }`}
                     >
-                      Econômico
+                      🌿 Econômico
                     </button>
                   </div>
                 </div>
