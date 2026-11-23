@@ -163,7 +163,8 @@ const LMU_CARS = [
   { id: 'toyota-gr010', name: 'Toyota GR010 Hybrid', brand: 'toyota', classId: 'Hypercar' },
   { id: 'vanwall-680', name: 'Vanwall Vandervell 680', brand: 'vanwall', classId: 'Hypercar' },
   // LMP2
-  { id: 'oreca-07', name: 'Oreca 07 - Gibson', brand: 'oreca', classId: 'LMP2' },
+  { id: 'oreca-07', name: 'Oreca 07 - Gibson (WEC - Restrito 400kW)', brand: 'oreca', classId: 'LMP2' },
+  { id: 'oreca-07-elms', name: 'Oreca 07 - Gibson (ELMS - Sem Restrição)', brand: 'oreca', classId: 'LMP2' },
   // LMP3
   { id: 'adess-ad25', name: 'ADESS AD25 / ADESS-03 Evo', brand: 'adess', classId: 'LMP3' },
   { id: 'duqueine-d09', name: 'Duqueine D09', brand: 'duqueine', classId: 'LMP3' },
@@ -1391,6 +1392,7 @@ function calculatePitStopDetails({
   remainingFuelL = 0,
   remainingEnergyPct = 0,
   hasDriverSwap = false,
+  fillToMax = false,
 }) {
   const isElms = params.championship === 'ELMS';
   const tankL = Math.max(1, Number(params.tankCapacityL) || 100);
@@ -1406,14 +1408,14 @@ function calculatePitStopDetails({
   let deltaLiters = 0;
   let refuelSec = 0;
 
-  if (needsRefuel && targetLaps > 0) {
+  if (needsRefuel && (fillToMax || targetLaps > 0)) {
     if (isElms) {
-      neededLiters = Math.min(tankL, Math.max(0, targetLaps * fuelPerLap));
+      neededLiters = fillToMax ? tankL : Math.min(tankL, Math.max(0, targetLaps * fuelPerLap));
       deltaLiters = Math.min(tankL, Math.max(0, neededLiters - Math.max(0, remainingFuelL)));
       refuelSec = deltaLiters > 0 ? deltaLiters / 2.5 + 3 : 0;
     } else {
-      neededEnergyPct = Math.min(100, Math.max(0, targetLaps * energyPerLap));
-      neededLiters = Math.min(tankL, Math.max(0, targetLaps * fuelPerLap));
+      neededEnergyPct = fillToMax ? 100 : Math.min(100, Math.max(0, targetLaps * energyPerLap));
+      neededLiters = fillToMax ? tankL : Math.min(tankL, Math.max(0, targetLaps * fuelPerLap));
       deltaEnergyPct = Math.min(100, Math.max(0, neededEnergyPct - Math.max(0, remainingEnergyPct)));
       deltaLiters = Math.min(tankL, Math.max(0, neededLiters - Math.max(0, remainingFuelL)));
       refuelSec = deltaEnergyPct > 0 ? deltaEnergyPct / 2.5 + 3 : 0;
@@ -1438,12 +1440,14 @@ function calculatePitStopDetails({
 
   const deltaEnergyRounded = Math.round(deltaEnergyPct);
   const deltaLitersRounded = Math.round(deltaLiters);
+  const neededEnergyRounded = Math.round(neededEnergyPct);
+  const neededLitersRounded = Math.round(neededLiters);
   const mfdTargetLabel =
     !needsRefuel || (isElms ? deltaLitersRounded <= 0 : deltaEnergyRounded <= 0 && deltaLitersRounded <= 0)
       ? 'Sem abastec.'
       : isElms
-      ? `+${deltaLitersRounded}L`
-      : `+${deltaEnergyRounded}% E (${deltaLitersRounded}L)`;
+      ? `${neededLitersRounded}L`
+      : `${neededEnergyRounded}% E (${neededLitersRounded}L)`;
 
   return {
     stationarySec,
@@ -1637,6 +1641,7 @@ function computeCarSchedule({ eventConfig, car, stintMode, telemetry }) {
         );
         nextStintLaps = baseNextLaps + (isNextLastStint ? 1 : 0);
 
+        const fillToMax = !isNextLastStint && !hasNextCustomDuration;
         pitDetails = calculatePitStopDetails({
           scenarioId: pitScenario,
           params: combinedParams,
@@ -1645,6 +1650,7 @@ function computeCarSchedule({ eventConfig, car, stintMode, telemetry }) {
           remainingFuelL,
           remainingEnergyPct,
           hasDriverSwap,
+          fillToMax,
         });
         estPitMin = pitDetails.totalSec / 60;
       }
@@ -1676,6 +1682,11 @@ function computeCarSchedule({ eventConfig, car, stintMode, telemetry }) {
       remainingFuelL,
       remainingEnergyPct,
       hasDriverSwap,
+      fillToMax: !isLastStint && !(
+        nextOverride.durationMinOverride !== undefined &&
+        nextOverride.durationMinOverride !== null &&
+        !Number.isNaN(Number(nextOverride.durationMinOverride))
+      ) && remainingRaceMin - rawStintMin - pitDurationMin > telemetry.maxStintMin + 0.05,
       isLastStint,
       tiresStart,
       tiresEnd,
@@ -2566,24 +2577,48 @@ export default function App() {
     if (!targetCarId || targetCarId === activeCarId || !cars[targetCarId]) return;
     const sourceCar = activeCar;
     const targetCar = cars[targetCarId];
+
+    const mergePreservingDrivers = (sourcePre, targetPre) => {
+      const cloned = JSON.parse(JSON.stringify(sourcePre || DEFAULT_PRE_SESSIONS));
+      if (cloned.fp) cloned.fp.driver = targetPre?.fp?.driver || 'ND';
+      if (cloned.qualy) cloned.qualy.driver = targetPre?.qualy?.driver || 'ND';
+      return cloned;
+    };
+
+    const mergeOverridesPreservingDrivers = (sourceOvr, targetOvr) => {
+      const cloned = JSON.parse(JSON.stringify(sourceOvr || {}));
+      Object.keys(cloned).forEach((k) => {
+        if (cloned[k] && typeof cloned[k] === 'object') {
+          cloned[k].driver = targetOvr?.[k]?.driver || 'ND';
+        }
+      });
+      return cloned;
+    };
+
     setCars((prev) => ({
       ...prev,
       [targetCarId]: {
         ...prev[targetCarId],
         carParams: JSON.parse(JSON.stringify(sourceCar.carParams)),
-        preSessions: JSON.parse(JSON.stringify(sourceCar.preSessions)),
-        stintOverrides: JSON.parse(JSON.stringify(sourceCar.stintOverrides)),
+        preSessions: mergePreservingDrivers(sourceCar.preSessions, targetCar.preSessions),
+        stintOverrides: mergeOverridesPreservingDrivers(
+          sourceCar.stintOverrides,
+          targetCar.stintOverrides
+        ),
         racePreSessions: sourceCar.racePreSessions
-          ? JSON.parse(JSON.stringify(sourceCar.racePreSessions))
+          ? mergePreservingDrivers(sourceCar.racePreSessions, targetCar.racePreSessions)
           : null,
         raceStintOverrides: sourceCar.raceStintOverrides
-          ? JSON.parse(JSON.stringify(sourceCar.raceStintOverrides))
+          ? mergeOverridesPreservingDrivers(
+              sourceCar.raceStintOverrides,
+              targetCar.raceStintOverrides
+            )
           : null,
       },
     }));
     setCloneModalOpen(false);
     showToast(
-      `Estratégia de "${sourceCar.label}" copiada para "${targetCar.label}"!`,
+      `Estratégia de "${sourceCar.label}" copiada para "${targetCar.label}" (pilotos preservados)!`,
       'success'
     );
   };
@@ -2623,7 +2658,30 @@ export default function App() {
       confirmLabel: 'Resetar Parâmetros',
       tone: 'amber',
       onConfirm: () => {
-        setParams(DEFAULT_PARAMS);
+        setEventConfig((prev) => ({
+          ...prev,
+          circuitId: 'interlagos',
+          sessionStart: '16:00',
+          raceDurationStr: '08:00',
+          fpDurationMin: 5,
+          qualyDurationMin: 15,
+        }));
+        updateActiveCar((car) => ({
+          ...car,
+          label: 'FTR #41',
+          selectedDrivers: [],
+          carParams: {
+            ...DEFAULT_CAR_PARAMS,
+            carClass: 'LMGT3',
+            carId: 'porsche-911-lmgt3',
+            tankCapacityL: 90,
+            fuelPerLapL: 3.5,
+            virtualEnergyPerLapPct: 3.5,
+            availableTires: 32,
+            pitlaneLossSec: 30,
+            tireWearPerLapPct: { FL: 1, FR: 1, RL: 1, RR: 1 },
+          },
+        }));
         showToast('Parâmetros da corrida resetados!', 'success');
       },
     });
@@ -3547,6 +3605,112 @@ export default function App() {
   const raceStints = useMemo(() => schedule.filter((r) => r.type === 'race'), [schedule]);
   const raceStintCount = raceStints.length;
   const totalEstimatedLaps = raceStints.reduce((acc, r) => acc + r.laps, 0);
+
+  const fuelSaveInsights = useMemo(() => {
+    const totalRaceSec = Math.max(60, parseDurationHHMMToMinutes(eventConfig.raceDurationStr) * 60);
+    const lapTimeSec = Math.max(1, telemetry.lapTimeSec || 90);
+    const tankL = Math.max(1, Number(params.tankCapacityL) || 90);
+    const isMaximizerActive = Boolean(params.tankMaximizerActive);
+    const fuelPerLapL = Math.max(0.1, Number(params.fuelPerLapL) || 3.5);
+    const energyPerLapPct = Math.max(0.1, Number(params.virtualEnergyPerLapPct) || 3.5);
+    const baseFuelPerLapL = isMaximizerActive
+      ? Math.max(0.1, Number(params.baseFuelPerLapL) || fuelPerLapL)
+      : fuelPerLapL;
+    const baseEnergyPerLapPct = isMaximizerActive
+      ? Math.max(0.1, Number(params.baseVirtualEnergyPerLapPct) || energyPerLapPct)
+      : energyPerLapPct;
+
+    const totalPitLossSec = raceStints
+      .slice(0, Math.max(0, raceStints.length - 1))
+      .reduce((acc, s) => acc + (s.pitDetails?.totalSec || 0), 0);
+
+    const effectiveDrivingSec = Math.max(lapTimeSec, totalRaceSec - totalPitLossSec);
+    const minRaceLaps = Math.max(1, Math.ceil(effectiveDrivingSec / lapTimeSec));
+    const safeRaceLaps = minRaceLaps + 1;
+
+    const elapsedBeforeLastMinLapSec = (minRaceLaps - 1) * lapTimeSec + totalPitLossSec;
+    const raceClockAtLastLapSec = Math.max(0, Math.round(totalRaceSec - elapsedBeforeLastMinLapSec));
+    const safetyLapRecommended = raceClockAtLastLapSec <= 20;
+
+    const minTotalFuelL = Math.ceil(minRaceLaps * fuelPerLapL);
+    const safeTotalFuelL = Math.ceil(safeRaceLaps * fuelPerLapL);
+    const minTotalEnergyPct = telemetry.isElms ? 0 : Math.ceil(minRaceLaps * energyPerLapPct);
+    const safeTotalEnergyPct = telemetry.isElms ? 0 : Math.ceil(safeRaceLaps * energyPerLapPct);
+
+    const baseMaxByFuel = Math.floor(tankL / baseFuelPerLapL);
+    const baseMaxByEnergy = telemetry.isElms ? baseMaxByFuel : Math.floor(100 / baseEnergyPerLapPct);
+    const baseMaxStintLaps = Math.max(
+      1,
+      telemetry.isElms ? baseMaxByFuel : Math.min(baseMaxByFuel, baseMaxByEnergy)
+    );
+
+    const targetStintLaps = baseMaxStintLaps + 1;
+    const targetFuelPerLapL = Math.min(
+      baseFuelPerLapL,
+      Math.max(0.1, Math.floor((tankL / targetStintLaps) * 100) / 100)
+    );
+    const targetEnergyPerLapPct = telemetry.isElms
+      ? baseEnergyPerLapPct
+      : Math.min(
+          baseEnergyPerLapPct,
+          Math.max(0.1, Math.floor((100 / targetStintLaps) * 100) / 100)
+        );
+
+    const stintsFlatOut = Math.max(1, Math.ceil(safeRaceLaps / baseMaxStintLaps));
+    const stintsWithSave = Math.max(1, Math.ceil(safeRaceLaps / targetStintLaps));
+    const savedStops = Math.max(0, stintsFlatOut - stintsWithSave);
+
+    return {
+      isMaximizerActive,
+      baseFuelPerLapL,
+      baseEnergyPerLapPct,
+      minRaceLaps,
+      safeRaceLaps,
+      raceClockAtLastLapSec,
+      safetyLapRecommended,
+      minTotalFuelL,
+      safeTotalFuelL,
+      minTotalEnergyPct,
+      safeTotalEnergyPct,
+      targetStintLaps,
+      targetFuelPerLapL,
+      targetEnergyPerLapPct,
+      savedStops,
+    };
+  }, [eventConfig.raceDurationStr, telemetry, params, raceStints]);
+
+  const toggleTankMaximizer = (enableMaximizer) => {
+    const nextState =
+      typeof enableMaximizer === 'boolean' ? enableMaximizer : !fuelSaveInsights.isMaximizerActive;
+    if (nextState === fuelSaveInsights.isMaximizerActive) return;
+
+    if (nextState) {
+      setParams((prev) => ({
+        ...prev,
+        tankMaximizerActive: true,
+        baseFuelPerLapL: prev.fuelPerLapL,
+        baseVirtualEnergyPerLapPct: prev.virtualEnergyPerLapPct,
+        fuelPerLapL: fuelSaveInsights.targetFuelPerLapL,
+        ...(telemetry.isElms
+          ? {}
+          : { virtualEnergyPerLapPct: fuelSaveInsights.targetEnergyPerLapPct }),
+      }));
+      showToast(
+        `Modo Maximizar: ${fuelSaveInsights.targetStintLaps}v/stint (${fuelSaveInsights.targetFuelPerLapL.toFixed(2)} L/v)`,
+        'success'
+      );
+    } else {
+      setParams((prev) => ({
+        ...prev,
+        tankMaximizerActive: false,
+        fuelPerLapL: prev.baseFuelPerLapL ?? prev.fuelPerLapL,
+        virtualEnergyPerLapPct: prev.baseVirtualEnergyPerLapPct ?? prev.virtualEnergyPerLapPct,
+        baseFuelPerLapL: undefined,
+        baseVirtualEnergyPerLapPct: undefined,
+      }));
+      showToast('Modo Conservador restaurado', 'info');
+    }
+  };
 
   const raceDriverStats = useMemo(() => {
     const map = new Map();
@@ -4693,7 +4857,7 @@ export default function App() {
                       <span>Desgaste Estimado (%/volta)</span>
                       <span className="inline-flex items-center gap-0.5 rounded border border-amber-500/40 bg-amber-500/15 px-1.5 py-0.5 text-[9px] font-bold text-amber-300">
                         <Calculator className="h-2.5 w-2.5" />
-                        Calc
+                        Calculadora
                       </span>
                     </button>
                     <span className="font-mono text-[10px] text-slate-400">
@@ -4853,6 +5017,77 @@ export default function App() {
               )}
               <span>•</span>
               <span className="text-slate-200 font-semibold">{raceStintCount} stints</span>
+            </div>
+
+            <div className="mt-2.5 rounded-lg border border-[#334155] bg-[#0f172a]/75 p-2.5 space-y-2">
+              <div className="flex items-center justify-between gap-2 text-[10px] font-mono tabular-nums">
+                <div>
+                  <span className="text-slate-400">Voltas: </span>
+                  <span className="font-bold text-slate-200">{fuelSaveInsights.minRaceLaps}v</span>
+                  <span className="text-slate-500"> / </span>
+                  <span className="font-bold text-emerald-300">Safe {fuelSaveInsights.safeRaceLaps}v</span>
+                </div>
+                <div
+                  className={`rounded px-1.5 py-0.5 font-bold ${
+                    fuelSaveInsights.safetyLapRecommended
+                      ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
+                      : 'bg-slate-800 text-slate-300 border border-[#334155]'
+                  }`}
+                  title="Tempo restante no relógio da corrida ao iniciar a última volta"
+                >
+                  Relógio Últ. Volta: {fuelSaveInsights.raceClockAtLastLapSec}s
+                </div>
+              </div>
+              <div className="flex items-center justify-between gap-2 text-[10px] font-mono tabular-nums text-slate-400">
+                <span>
+                  Total Safe: <strong className="text-slate-200">{fuelSaveInsights.safeTotalFuelL}L</strong>
+                  {!telemetry.isElms && (
+                    <> / <strong className="text-sky-300">{fuelSaveInsights.safeTotalEnergyPct}% VE</strong></>
+                  )}
+                </span>
+                {fuelSaveInsights.savedStops > 0 && (
+                  <span className="rounded bg-emerald-500/15 px-1.5 py-0.5 font-bold text-emerald-300 border border-emerald-500/30">
+                    -{fuelSaveInsights.savedStops} pit
+                  </span>
+                )}
+              </div>
+              <div className="flex items-center justify-between gap-2 border-t border-[#334155]/60 pt-2">
+                <div className="min-w-0">
+                  <div className="text-[10px] font-bold uppercase tracking-wider text-emerald-400">
+                    Tank Maximizer (+1v → {fuelSaveInsights.targetStintLaps}v/stint)
+                  </div>
+                  <div className="text-[11px] font-mono tabular-nums text-slate-200">
+                    Meta: <strong>{fuelSaveInsights.targetFuelPerLapL.toFixed(2)} L/v</strong>
+                    {!telemetry.isElms && (
+                      <> • <strong className="text-sky-300">{fuelSaveInsights.targetEnergyPerLapPct.toFixed(2)}%/v</strong></>
+                    )}
+                  </div>
+                </div>
+                <div className="inline-flex shrink-0 rounded-md border border-[#334155] bg-[#020617] p-0.5 text-[10px] font-bold">
+                  <button
+                    type="button"
+                    onClick={() => toggleTankMaximizer(false)}
+                    className={`rounded px-2 py-1 transition-colors cursor-pointer ${
+                      !fuelSaveInsights.isMaximizerActive
+                        ? 'bg-slate-700 text-white'
+                        : 'text-slate-400 hover:text-slate-200'
+                    }`}
+                  >
+                    Conservador
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => toggleTankMaximizer(true)}
+                    className={`rounded px-2 py-1 transition-colors cursor-pointer ${
+                      fuelSaveInsights.isMaximizerActive
+                        ? 'bg-emerald-500/25 text-emerald-300 border border-emerald-500/40'
+                        : 'text-slate-400 hover:text-emerald-300'
+                    }`}
+                  >
+                    Maximizar
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -5234,6 +5469,7 @@ export default function App() {
                               remainingFuelL: row.remainingFuelL,
                               remainingEnergyPct: row.remainingEnergyPct,
                               hasDriverSwap: row.hasDriverSwap,
+                              fillToMax: row.fillToMax,
                             }).stationarySec.toFixed(1)}
                             s)
                           </option>
@@ -5706,7 +5942,7 @@ export default function App() {
                       <span>Desgaste Estimado (%/volta)</span>
                       <span className="inline-flex items-center gap-0.5 rounded border border-amber-500/40 bg-amber-500/15 px-1.5 py-0.5 text-[9px] font-bold text-amber-300">
                         <Calculator className="h-2.5 w-2.5" />
-                        Calc
+                        Calculadora
                       </span>
                     </button>
                     <span className="font-mono text-[10px] text-slate-400">
@@ -5908,6 +6144,77 @@ export default function App() {
                 )}
                 <span>•</span>
                 <span className="text-slate-200 font-semibold">{raceStintCount} stints</span>
+              </div>
+
+              <div className="mt-2.5 rounded-lg border border-[#334155] bg-[#0f172a]/75 p-2.5 space-y-2">
+                <div className="flex items-center justify-between gap-2 text-[10px] font-mono tabular-nums">
+                  <div>
+                    <span className="text-slate-400">Voltas: </span>
+                    <span className="font-bold text-slate-200">{fuelSaveInsights.minRaceLaps}v</span>
+                    <span className="text-slate-500"> / </span>
+                    <span className="font-bold text-emerald-300">Safe {fuelSaveInsights.safeRaceLaps}v</span>
+                  </div>
+                  <div
+                    className={`rounded px-1.5 py-0.5 font-bold ${
+                      fuelSaveInsights.safetyLapRecommended
+                        ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
+                        : 'bg-slate-800 text-slate-300 border border-[#334155]'
+                    }`}
+                    title="Tempo restante no relógio da corrida ao iniciar a última volta"
+                  >
+                    Relógio Últ. Volta: {fuelSaveInsights.raceClockAtLastLapSec}s
+                  </div>
+                </div>
+                <div className="flex items-center justify-between gap-2 text-[10px] font-mono tabular-nums text-slate-400">
+                  <span>
+                    Total Safe: <strong className="text-slate-200">{fuelSaveInsights.safeTotalFuelL}L</strong>
+                    {!telemetry.isElms && (
+                      <> / <strong className="text-sky-300">{fuelSaveInsights.safeTotalEnergyPct}% VE</strong></>
+                    )}
+                  </span>
+                  {fuelSaveInsights.savedStops > 0 && (
+                    <span className="rounded bg-emerald-500/15 px-1.5 py-0.5 font-bold text-emerald-300 border border-emerald-500/30">
+                      -{fuelSaveInsights.savedStops} pit
+                    </span>
+                  )}
+                </div>
+                <div className="flex items-center justify-between gap-2 border-t border-[#334155]/60 pt-2">
+                  <div className="min-w-0">
+                    <div className="text-[10px] font-bold uppercase tracking-wider text-emerald-400">
+                      Tank Maximizer (+1v → {fuelSaveInsights.targetStintLaps}v/stint)
+                    </div>
+                    <div className="text-[11px] font-mono tabular-nums text-slate-200">
+                      Meta: <strong>{fuelSaveInsights.targetFuelPerLapL.toFixed(2)} L/v</strong>
+                      {!telemetry.isElms && (
+                        <> • <strong className="text-sky-300">{fuelSaveInsights.targetEnergyPerLapPct.toFixed(2)}%/v</strong></>
+                      )}
+                    </div>
+                  </div>
+                  <div className="inline-flex shrink-0 rounded-md border border-[#334155] bg-[#020617] p-0.5 text-[10px] font-bold">
+                    <button
+                      type="button"
+                      onClick={() => toggleTankMaximizer(false)}
+                      className={`rounded px-2 py-1 transition-colors cursor-pointer ${
+                        !fuelSaveInsights.isMaximizerActive
+                          ? 'bg-slate-700 text-white'
+                          : 'text-slate-400 hover:text-slate-200'
+                      }`}
+                    >
+                      Conservador
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => toggleTankMaximizer(true)}
+                      className={`rounded px-2 py-1 transition-colors cursor-pointer ${
+                        fuelSaveInsights.isMaximizerActive
+                          ? 'bg-emerald-500/25 text-emerald-300 border border-emerald-500/40'
+                          : 'text-slate-400 hover:text-emerald-300'
+                      }`}
+                    >
+                      Maximizar
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -6418,6 +6725,7 @@ export default function App() {
                                           remainingFuelL: row.remainingFuelL,
                                           remainingEnergyPct: row.remainingEnergyPct,
                                           hasDriverSwap: row.hasDriverSwap,
+                              fillToMax: row.fillToMax,
                                         }).stationarySec.toFixed(1)}
                                         s)
                                       </option>
@@ -6771,6 +7079,7 @@ export default function App() {
                                 remainingFuelL: row.remainingFuelL,
                                 remainingEnergyPct: row.remainingEnergyPct,
                                 hasDriverSwap: row.hasDriverSwap,
+                              fillToMax: row.fillToMax,
                               }).stationarySec.toFixed(1)}
                               s)
                             </option>

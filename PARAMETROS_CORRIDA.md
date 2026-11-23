@@ -1,6 +1,10 @@
 # Parâmetros de Corrida — FTR PITWALL (LMU)
 
-Documentação completa dos parâmetros globais de evento, parâmetros individuais por carro e regras de cálculo de autonomia, *Fuel Ratio* e pitstop implementadas em `src/App.jsx`.
+Documentação completa dos parâmetros globais de evento, parâmetros individuais por carro, escalação de pilotos e regras de cálculo de autonomia, *Fuel Ratio*, *Tank Maximizer* e pitstop implementadas em [`src/App.jsx`](src/App.jsx).
+
+> Veja também os guias dedicados:
+> - **[PROCEDIMENTOS_PITSTOP.md](PROCEDIMENTOS_PITSTOP.md)** — Cenários de parada, tempos de mangueira/pneus/piloto e alvos no MFD.
+> - **[GERENCIAMENTO_PNEUS.md](GERENCIAMENTO_PNEUS.md)** — Estoque de pneus, calculadora de desgaste, reaproveitamento e regras de troca automática.
 
 ---
 
@@ -110,8 +114,20 @@ Total de **20 circuitos** mapeados com traçado vetorial 2D:
 | **Energia Virt. (%/v)** (`virtualEnergyPerLapPct`) | Carro *(apenas WEC)* | Decimal (`>= 0.1`, aceita `,` ou `.`) | `2.1` | Consumo médio de Energia Virtual por volta em `%`. Oculto no regulamento `ELMS`. |
 | **Free Practice (min)** (`fpDurationMin`) | Evento | Inteiro em minutos (`>= 0`) | `5` | Duração da sessão de treino livre antes do Qualy. Voltas estimadas: `Math.floor((fpDurationMin * 60) / lapTimeSec)`. |
 | **Qualy (min)** (`qualyDurationMin`) | Evento | Inteiro em minutos (`>= 0`) | `15` | Duração da classificação antes da largada. Voltas estimadas: `Math.floor((qualyDurationMin * 60) / lapTimeSec)`. |
-| **Pneus Disponíveis** (`availableTires`) | Carro | Inteiro (`>= 0`) | `24` | Quantidade total de pneus **secos** disponíveis para o carro. Pneus de **chuva (`💧`)** são ilimitados e não entram nessa contagem. |
+| **Pneus Disponíveis** (`availableTires`) | Carro | Inteiro (`>= 0`) | `24` *(reset: `32`)* | Quantidade total de pneus **secos** disponíveis para o carro. Pneus de **chuva (`💧`)** são ilimitados e não entram nessa contagem. |
 | **Passagem pelo Pitlane** (`pitlaneLossSec`) | Carro | Inteiro em segundos (`>= 0`) | `30` | Tempo perdido apenas percorrendo o pitlane (entrada + saída em velocidade limitada), separado do tempo parado no box. |
+| **Desgaste Estimado (%/volta)** (`tireWearPerLapPct`) | Carro | Objeto `{ FL, FR, RL, RR }` | `1.0 / 1.2 / 0.8 / 0.9` *(reset: `1.0`)* | Desgaste médio por volta em cada canto; pode ser calculado pela **Calculadora de Desgaste** (regra de 3). |
+| **Pilotos do Carro** (`allowedDrivers`) | Carro | Lista de nomes | Todos *(reset: nenhum)* | Filtro de pilotos escalados para aquele carro; somente eles aparecem nos seletores dos stints. |
+
+### Valores Padrão ao Clicar em "Resetar Parâmetros"
+Ao acionar o reset dos parâmetros de corrida do carro ativo:
+- **Carro:** `#41` | **Pilotos do Carro:** nenhum selecionado
+- **Circuito:** Interlagos (`interlagos`) | **Categoria:** `LMGT3`
+- **Início da Sessão:** `16:00` | **Duração da Corrida:** `08:00`
+- **Tanque:** `90 L` *(para LMGT3)* | **Consumo:** `3,50 L/volta` | **Energia Virtual:** `3,50 %/volta`
+- **Free Practice:** `5 min` | **Qualy:** `15 min`
+- **Desgaste Estimado de Pneus:** `1%` em todos os cantos (`FL`, `FR`, `RL`, `RR`)
+- **Pneus Disponíveis:** `32` | **Pitlane Loss:** `30s`
 
 ---
 
@@ -180,3 +196,18 @@ Calculado em `computeCarTelemetry(eventConfig, carParams)`:
 
 5. **Duração Máxima do Stint (minutos):**
    $$\text{maxStintMin} = \frac{\text{maxStintLaps} \times \text{lapTimeSec}}{60}$$
+
+---
+
+## 8. Tank Maximizer, Safe Lap e Relógio na Última Volta
+
+No card de **Fuel Ratio & Autonomia** (Mobile e Desktop), o painel exibe métricas estratégicas adicionais:
+
+1. **Voltas da Corrida (`Min` / `Safe`):**
+   - Desconta o tempo total perdido em pitstops (`totalPitLossSec`) da duração total da corrida para estimar as voltas mínimas (`minRaceLaps`).
+   - Soma **`+1` volta** (`safeRaceLaps = minRaceLaps + 1`) e exibe o total de combustível (`L`) e Energia Virtual (`% VE`) necessários para completar a prova com margem de segurança.
+2. **Relógio na Última Volta (`raceClockAtLastLapSec`):**
+   - Estima quantos segundos restarão no cronômetro da corrida no momento em que o carro abrir a última volta. Valores `<= 20s` recebem alerta em âmbar recomendando a volta de segurança.
+3. **Chavinha `Conservador | Maximizar` (Tank Maximizer):**
+   - Calcula a meta de consumo (`L/v` e `%/v`) necessária para ganhar **`+1` volta por stint** (`maxStintLaps + 1`) e informa se a economia elimina alguma parada (`-N pit`).
+   - Ao alternar para **Maximizar**, os valores originais são preservados (`baseFuelPerLapL` / `baseVirtualEnergyPerLapPct`) e a meta é aplicada; ao retornar para **Conservador**, os valores originais são restaurados.

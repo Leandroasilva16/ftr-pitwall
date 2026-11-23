@@ -7,11 +7,16 @@ Aplicação web (Desktop e Mobile/PWA) desenvolvida para planejamento estratégi
 ## ✨ Principais Funcionalidades
 
 - **Acesso por PIN (Sala Ao Vivo):** bloqueio de visualização/edição até informar o PIN da equipe, com sincronização em tempo real e contador de membros conectados via **Supabase Realtime**.
+- **Multi-Carros & Escalação por Carro:** suporte a até 3 carros simultâneos com parâmetros independentes, cópia de estratégia (sem copiar pilotos) e seleção dos pilotos escalados para cada carro.
 - **Modo Plano vs. Modo Corrida:**
-  - **Plano:** definição livre da escala de pilotos (limite de 6 pilotos por sessão, com opção `ND` fora da contagem), estratégia de pitstop entre stints e escolha livre de pneus (`NOVO`, `MANTER`, `USADO`).
+  - **Plano:** definição livre da escala de pilotos (limite de 6 pilotos por sessão, com opção `ND` fora da contagem), estratégia de pitstop entre stints (7 cenários) e escolha/reaproveitamento livre de pneus (`NOVO`, `MANTER`, `USADO`).
   - **Corrida:** importação manual do planejamento (`Exportar Planejamento para Corrida`), edição de duração de stints em caso de imprevistos, registro individual de desgaste de pneus (`Pneus Fim`) e marcação quadriculada de stints/pits concluídos.
-- **Fuel Ratio & Autonomia:** cálculo automático de autonomia máxima por tanque e energia virtual, voltas estimadas e horários de cada stint.
-- **Gerenciador de Pneus:** análise automática dos melhores pneus usados por canto (`FL`, `FR`, `RL`, `RR`) com modal de ranking completo.
+- **Fuel Ratio, Autonomia & Tank Maximizer:** cálculo automático de autonomia máxima por tanque e energia virtual, abastecimento máximo nos stints intermediários, chavinha **Conservador | Maximizar** (`+1 volta/stint`), cálculo de voltas `Min / Safe` e **Relógio na Última Volta**.
+- **Gerenciador e Calculadora de Pneus:** contagem de pneus usados no cabeçalho (alternando a cada 5s entre melhor pneu usado e desgaste/volta), calculadora de desgaste por regra de 3 e modal de ranking para reaproveitamento.
+- **Documentação Técnica:**
+  - [PARAMETROS_CORRIDA.md](PARAMETROS_CORRIDA.md) — Parâmetros de evento/carro, fórmulas de autonomia e Tank Maximizer.
+  - [PROCEDIMENTOS_PITSTOP.md](PROCEDIMENTOS_PITSTOP.md) — Procedimentos de pitstop, cenários e alvos no MFD.
+  - [GERENCIAMENTO_PNEUS.md](GERENCIAMENTO_PNEUS.md) — Estoque, desgaste, reaproveitamento e trocas automáticas de pneus.
 - **Calendário LMU com Pré-Cadastro:** eventos oficiais com bandeira do país, traçado SVG dos circuitos e pré-cadastro de pilotos por etapa e categorias viáveis (`Hypercar`, `LMP2`, `LMGT3`).
 - **Resumo para WhatsApp & PWA:** geração rápida de resumo formatado para o grupo da equipe e instalação como aplicativo no celular (Chrome/Android e iOS).
 
