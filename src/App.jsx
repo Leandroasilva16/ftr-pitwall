@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef, createContext, useContext } from 'react';
 import LZString from 'lz-string';
 import {
   Flag,
@@ -1223,6 +1223,7 @@ function normalizeMultiCarPayload(raw) {
       activeCarId,
       cars: normalizedCars,
       eventSignups: raw.eventSignups || {},
+      availabilityPoll: raw.availabilityPoll || {},
     };
   }
 
@@ -1275,6 +1276,7 @@ function normalizeMultiCarPayload(raw) {
     activeCarId: 'car-1',
     cars: { 'car-1': car1 },
     eventSignups: raw.eventSignups || {},
+    availabilityPoll: raw.availabilityPoll || {},
   };
 }
 
@@ -1985,6 +1987,193 @@ function CheckeredStripButton({ done, onToggle, title = 'Marcar como concluído'
   );
 }
 
+const NumericKeypadContext = createContext(null);
+
+function NumericKeypadProvider({ children }) {
+  const [keypad, setKeypad] = useState(null);
+
+  const closeKeypad = () => setKeypad(null);
+
+  const openKeypad = ({ value, min = 0, allowDecimal = true, minDigits = 0, onCommit }) => {
+    const initial =
+      value === undefined || value === null
+        ? ''
+        : minDigits > 0 && !allowDecimal
+        ? String(value).padStart(minDigits, '0')
+        : String(value);
+    setKeypad({
+      draft: initial,
+      pristine: true,
+      min,
+      allowDecimal,
+      minDigits,
+      onCommit,
+    });
+  };
+
+  const commitValue = (state) => {
+    if (!state) return;
+    const cleaned = state.draft.trim().replace(',', '.');
+    let nextVal = state.min;
+    if (cleaned !== '' && cleaned !== '.') {
+      const parsed = Number(cleaned);
+      if (!Number.isNaN(parsed)) {
+        nextVal = Math.max(state.min, state.allowDecimal ? parsed : Math.round(parsed));
+      }
+    }
+    state.onCommit(nextVal);
+    setKeypad(null);
+  };
+
+  const pressDigit = (d) => {
+    setKeypad((prev) => {
+      if (!prev) return prev;
+      if (prev.pristine) {
+        return { ...prev, draft: d === '.' ? '0.' : d, pristine: false };
+      }
+      if (d === '.') {
+        if (!prev.allowDecimal || prev.draft.includes('.')) return prev;
+        return { ...prev, draft: prev.draft === '' ? '0.' : `${prev.draft}.` };
+      }
+      return { ...prev, draft: `${prev.draft}${d}` };
+    });
+  };
+
+  const pressBackspace = () => {
+    setKeypad((prev) => {
+      if (!prev) return prev;
+      return { ...prev, draft: prev.draft.slice(0, -1), pristine: false };
+    });
+  };
+
+  const pressClear = () => {
+    setKeypad((prev) => (prev ? { ...prev, draft: '', pristine: false } : prev));
+  };
+
+  useEffect(() => {
+    if (!keypad) return;
+    const onKeyDown = (e) => {
+      if (e.key >= '0' && e.key <= '9') {
+        e.preventDefault();
+        pressDigit(e.key);
+      } else if ((e.key === '.' || e.key === ',') && keypad.allowDecimal) {
+        e.preventDefault();
+        pressDigit('.');
+      } else if (e.key === 'Backspace') {
+        e.preventDefault();
+        pressBackspace();
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        commitValue(keypad);
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        closeKeypad();
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [keypad]);
+
+  return (
+    <NumericKeypadContext.Provider value={{ openKeypad }}>
+      {children}
+      {keypad && (
+        <div
+          className="fixed inset-0 z-[70] flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-[2px] p-3"
+          onClick={closeKeypad}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-[320px] rounded-2xl border border-[#334155] bg-[#0f172a] p-3.5 shadow-2xl"
+          >
+            <div className="mb-3 flex items-center justify-between gap-2 rounded-xl border border-[#334155] bg-[#020617] px-3 py-2.5">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                {keypad.allowDecimal ? 'Decimal' : 'Inteiro'}
+              </span>
+              <span className="font-mono text-2xl font-extrabold tabular-nums text-white truncate">
+                {keypad.draft === '' ? '0' : keypad.draft}
+              </span>
+            </div>
+
+            <div className="grid grid-cols-3 gap-2 font-mono text-lg font-bold">
+              {['7', '8', '9', '4', '5', '6', '1', '2', '3'].map((digit) => (
+                <button
+                  key={digit}
+                  type="button"
+                  onClick={() => pressDigit(digit)}
+                  className="rounded-xl border border-[#334155] bg-[#1e293b] py-3 text-slate-100 hover:bg-slate-700 active:scale-95 transition-all cursor-pointer"
+                >
+                  {digit}
+                </button>
+              ))}
+
+              {keypad.allowDecimal ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => pressDigit('.')}
+                    className="rounded-xl border border-[#334155] bg-[#1e293b] py-3 text-amber-300 hover:bg-slate-700 active:scale-95 transition-all cursor-pointer"
+                  >
+                    .
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => pressDigit('0')}
+                    className="rounded-xl border border-[#334155] bg-[#1e293b] py-3 text-slate-100 hover:bg-slate-700 active:scale-95 transition-all cursor-pointer"
+                  >
+                    0
+                  </button>
+                </>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => pressDigit('0')}
+                  className="col-span-2 rounded-xl border border-[#334155] bg-[#1e293b] py-3 text-slate-100 hover:bg-slate-700 active:scale-95 transition-all cursor-pointer"
+                >
+                  0
+                </button>
+              )}
+
+              <button
+                type="button"
+                onClick={pressBackspace}
+                className="rounded-xl border border-[#334155] bg-slate-800 py-3 text-amber-300 hover:bg-slate-700 active:scale-95 transition-all cursor-pointer"
+                title="Apagar"
+              >
+                ⌫
+              </button>
+            </div>
+
+            <div className="mt-2.5 grid grid-cols-3 gap-2 text-xs font-bold">
+              <button
+                type="button"
+                onClick={pressClear}
+                className="rounded-xl border border-[#334155] bg-slate-800/80 py-2.5 text-slate-300 hover:bg-slate-700 cursor-pointer"
+              >
+                Limpar
+              </button>
+              <button
+                type="button"
+                onClick={closeKeypad}
+                className="rounded-xl border border-[#334155] bg-slate-800/80 py-2.5 text-slate-400 hover:bg-slate-700 cursor-pointer"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={() => commitValue(keypad)}
+                className="rounded-xl bg-[#22c55e] py-2.5 text-slate-950 font-extrabold hover:bg-emerald-400 active:scale-95 transition-all cursor-pointer"
+              >
+                OK
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </NumericKeypadContext.Provider>
+  );
+}
+
 const FreeNumericInput = React.forwardRef(function FreeNumericInput(
   {
     value,
@@ -1998,6 +2187,7 @@ const FreeNumericInput = React.forwardRef(function FreeNumericInput(
   },
   ref
 ) {
+  const keypadCtx = useContext(NumericKeypadContext);
   const formatVal = (v) => {
     if (v === undefined || v === null) return '';
     const str = String(v);
@@ -2042,19 +2232,38 @@ const FreeNumericInput = React.forwardRef(function FreeNumericInput(
     onCommit(clamped);
   };
 
+  const openCustomKeypad = (e) => {
+    if (!keypadCtx) return;
+    e.currentTarget.blur();
+    keypadCtx.openKeypad({
+      value,
+      min,
+      allowDecimal,
+      minDigits,
+      onCommit,
+    });
+  };
+
   return (
     <input
       ref={ref}
       type="text"
-      inputMode={allowDecimal ? 'decimal' : 'numeric'}
+      readOnly={Boolean(keypadCtx)}
+      inputMode={keypadCtx ? 'none' : allowDecimal ? 'decimal' : 'numeric'}
       value={isFocused ? draft : formatVal(value)}
       placeholder={placeholder}
-      onFocus={() => {
+      onClick={openCustomKeypad}
+      onFocus={(e) => {
+        if (keypadCtx) {
+          openCustomKeypad(e);
+          return;
+        }
         setIsFocused(true);
         setDraft(formatVal(value));
       }}
       onChange={handleChange}
       onBlur={() => {
+        if (keypadCtx) return;
         setIsFocused(false);
         commit();
       }}
@@ -2283,6 +2492,10 @@ export default function App() {
   const [eventSignups, setEventSignups] = useState(
     () => initialStateRef.current.eventSignups || {}
   );
+  const [availabilityPoll, setAvailabilityPoll] = useState(
+    () => initialStateRef.current.availabilityPoll || {}
+  );
+  const [showAvailabilityPollModal, setShowAvailabilityPollModal] = useState(false);
 
   const activeCar = useMemo(
     () => cars[activeCarId] || cars[carOrder[0]] || createDefaultCarState('car-1', true),
@@ -2455,6 +2668,7 @@ export default function App() {
     activeCarId,
     cars,
     eventSignups,
+    availabilityPoll,
   });
 
   const applyNormalizedState = (normalized, preserveActiveCar = false) => {
@@ -2469,6 +2683,9 @@ export default function App() {
     if (normalized.eventSignups) {
       setEventSignups(normalized.eventSignups);
     }
+    if (normalized.availabilityPoll) {
+      setAvailabilityPoll(normalized.availabilityPoll);
+    }
   };
 
   useEffect(() => {
@@ -2482,6 +2699,7 @@ export default function App() {
           activeCarId,
           cars,
           eventSignups,
+          availabilityPoll,
         })
       );
     } catch {
@@ -2492,7 +2710,7 @@ export default function App() {
     } catch {
       // ignore quota errors
     }
-  }, [eventConfig, carOrder, activeCarId, cars, eventSignups]);
+  }, [eventConfig, carOrder, activeCarId, cars, eventSignups, availabilityPoll]);
 
   // Supabase Realtime Subscription (when configured and live room enabled)
   useEffect(() => {
@@ -2639,6 +2857,7 @@ export default function App() {
     activeCarId,
     cars,
     eventSignups,
+    availabilityPoll,
     liveRoomEnabled,
     syncStatus,
     roomPin,
@@ -3672,65 +3891,63 @@ export default function App() {
   };
 
   const handleCopyWhatsApp = async () => {
-    const totalRaceMin = parseDurationHHMMToMinutes(params.raceDurationStr);
     const lines = [
-      `🏁 *FTR PITWALL — Endurance Strategist (LMU)*`,
-      `🛣️ *Circuito:* ${selectedCircuit.name} (${selectedCircuit.country})`,
-      `🏎️ *Carro (${activeCar.label}):* [${selectedClassMeta.label}] ${selectedCar.name}`,
-      `⏱️ *Início:* ${params.sessionStart} | *Corrida:* ${params.raceDurationStr} (${totalRaceMin} min)`,
+      `🏁 *FTR PITWALL — ${activeCar.label}*`,
+      `🛣️ ${selectedCircuit.name} • [${selectedClassMeta.label}] ${selectedCar.name}`,
+      `⏱️ Início: ${params.sessionStart} | Duração: ${params.raceDurationStr} | Volta: ${params.lapTimeStr}`,
       telemetry.isElms
-        ? `⛽ *Regulamento:* ELMS | *Autonomia Máx:* ${telemetry.maxStintLaps} voltas (~${telemetry.maxStintMin.toFixed(1)} min)`
-        : `⛽ *Fuel Ratio:* ${telemetry.fuelRatio.toFixed(2)} L/% | *Autonomia Máx:* ${telemetry.maxStintLaps} voltas (~${telemetry.maxStintMin.toFixed(1)} min)`,
-      `⏱️ *Volta Base:* ${params.lapTimeStr}`,
+        ? `⛽ Autonomia: ${telemetry.maxStintLaps}v/stint (~${telemetry.maxStintMin.toFixed(0)}m) • ELMS`
+        : `⛽ Autonomia: ${telemetry.maxStintLaps}v/stint (~${telemetry.maxStintMin.toFixed(0)}m) • Ratio ${telemetry.fuelRatio.toFixed(2)} L/%`,
       ``,
-      `📋 *CRONOGRAMA DE STINTS:*`,
+      `📋 *CRONOGRAMA:*`,
     ];
 
     enrichedSchedule.forEach((row) => {
-      const timeRange = `${formatMinutesToHHMM(row.startMin)} - ${formatMinutesToHHMM(row.endMin)}`;
-      const pitInfo =
-        row.type === 'race' && !row.isLastStint
-          ? ` | Pit MFD: ${row.mfdTargetLabel} • ${PIT_SCENARIOS.find((p) => p.id === row.pitScenario)?.label} (Box ${row.pitStationarySec}s + Pit ${row.pitlaneLossSec}s)`
-          : row.isLastStint
-            ? ' | 🏁 Bandeira Quadriculada'
-            : '';
-      if (row.type === 'fp') {
-        lines.push(
-          `• *${row.label}* (${timeRange}) — ${row.driver} | ${Math.round(row.durationMin)}m (${row.laps}v)\n  🛞 Sem desgaste de pneus`
-        );
-      } else {
-        const fmtStart = (k) => {
-          const m = row.startTireMeta?.[k];
-          if (!m) return 'NOVO';
-          if (m.mode === 'new') return `${m.tireId}:NOVO`;
-          if (m.mode === 'keep') return `${m.tireId}:MANTER(${m.pct === 'ND' ? 'ND' : `${m.pct}%`})`;
-          return `${m.tireId}:${m.pct === 'ND' ? 'ND' : `${m.pct}%`}`;
-        };
-        const tiresStartInfo = `FL(${fmtStart('FL')}) FR(${fmtStart('FR')}) RL(${fmtStart('RL')}) RR(${fmtStart('RR')})`;
-        const tiresEndInfo = row.tiresEndEnabled
-          ? `FL(${row.endTireMeta?.FL?.tireId || ''}:${row.tiresEnd.FL}%) FR(${row.endTireMeta?.FR?.tireId || ''}:${row.tiresEnd.FR}%) RL(${row.endTireMeta?.RL?.tireId || ''}:${row.tiresEnd.RL}%) RR(${row.endTireMeta?.RR?.tireId || ''}:${row.tiresEnd.RR}%)`
-          : 'Aguardando registro';
-        lines.push(
-          `• *${row.label}* (${timeRange}) — ${row.driver} | ${Math.round(row.durationMin)}m (${row.laps}v)${pitInfo}\n  🟢 Início: ${tiresStartInfo}\n  🛞 Fim: ${tiresEndInfo}`
-        );
+      const timeRange = `${formatMinutesToHHMM(row.startMin)}–${formatMinutesToHHMM(row.endMin)}`;
+      if (row.type === 'fp' || row.type === 'qualy') {
+        const tag = row.type === 'fp' ? 'FP' : 'Qualy';
+        lines.push(`• *${tag}* (${timeRange}) ${row.driver} • ${row.laps}v`);
+        return;
       }
+
+      const scenarioLabel = PIT_SCENARIOS.find((p) => p.id === row.pitScenario)?.label || '';
+      const pitInfo = row.isLastStint
+        ? ' | 🏁 Fim'
+        : ` | Pit: ${row.mfdTargetLabel} (${scenarioLabel} • ${row.pitStationarySec}s)`;
+
+      const usedOrWet = TIRE_CORNERS.map(({ key }) => {
+        const m = row.startTireMeta?.[key];
+        if (!m) return null;
+        if (m.mode === 'wet') return `${key}:💧`;
+        if (m.mode === 'used') return `${key}:${m.tireId}(${m.pct}%)`;
+        return null;
+      }).filter(Boolean);
+
+      const tireTag = usedOrWet.length > 0 ? ` | 🛞 ${usedOrWet.join(' ')}` : '';
+      const endTag = row.tiresEndEnabled
+        ? ` | Fim: ${row.tiresEnd.FL}/${row.tiresEnd.FR}/${row.tiresEnd.RL}/${row.tiresEnd.RR}%`
+        : '';
+
+      lines.push(
+        `• *S${row.stintNum}* (${timeRange}) *${row.driver}* • ${row.laps}v${pitInfo}${tireTag}${endTag}`
+      );
     });
 
-    lines.push(``);
-    lines.push(`♻️ *MELHORES PNEUS P/ REAPROVEITAR:*`);
-    TIRE_CORNERS.forEach(({ key }) => {
+    const bestTires = TIRE_CORNERS.map(({ key }) => {
       const rec = tireRecommendations[key];
-      if (rec?.best) {
-        lines.push(`• *${key} ${rec.best.tireId}:* ${rec.best.pct}% (${rec.best.sourceLabel}) — SUGERIDO`);
-      }
-    });
+      return rec?.best ? `${key} ${rec.best.tireId}(${rec.best.pct}%)` : null;
+    }).filter(Boolean);
+
+    if (bestTires.length > 0) {
+      lines.push(``);
+      lines.push(`♻️ *Melhores Pneus:* ${bestTires.join(' | ')}`);
+    }
 
     try {
       await navigator.clipboard.writeText(lines.join('\n'));
       setCopied(true);
       setTimeout(() => setCopied(false), 2500);
     } catch {
-      // Fallback if clipboard is unavailable
       setCopied(true);
       setTimeout(() => setCopied(false), 2500);
     }
@@ -3739,6 +3956,76 @@ export default function App() {
   const raceStints = useMemo(() => schedule.filter((r) => r.type === 'race'), [schedule]);
   const raceStintCount = raceStints.length;
   const totalEstimatedLaps = raceStints.reduce((acc, r) => acc + r.laps, 0);
+
+  const { pollDrivers, driverCarBadges } = useMemo(() => {
+    const allowedSet = new Set();
+    const badgesMap = {};
+    carOrder.forEach((cid) => {
+      const car = cars[cid];
+      const list = car?.selectedDrivers;
+      if (Array.isArray(list)) {
+        list.forEach((d) => {
+          if (d && d !== 'ND') {
+            allowedSet.add(d);
+            if (!badgesMap[d]) badgesMap[d] = [];
+            badgesMap[d].push({
+              id: cid,
+              label: car.label || cid,
+              badgeClass: CAR_SLOT_PRESETS[cid]?.badgeClass || 'border-slate-600 bg-slate-800 text-slate-200',
+            });
+          }
+        });
+      }
+    });
+    return {
+      pollDrivers: DRIVERS.filter((d) => d !== 'ND' && allowedSet.has(d)),
+      driverCarBadges: badgesMap,
+    };
+  }, [carOrder, cars]);
+
+  const pollCarSchedules = useMemo(() => {
+    if (!showAvailabilityPollModal) return [];
+    return carOrder.map((cid) => {
+      const car = cars[cid];
+      if (!car) return null;
+      const carTel = computeCarTelemetry(eventConfig, car.carParams || DEFAULT_CAR_PARAMS);
+      const carSched = computeCarSchedule({
+        eventConfig,
+        car,
+        stintMode,
+        telemetry: carTel,
+      }).filter((r) => r.type === 'race');
+      return {
+        carId: cid,
+        label: car.label || cid,
+        carClass: car.carParams?.carClass || 'LMGT3',
+        badgeClass: CAR_SLOT_PRESETS[cid]?.badgeClass || 'border-slate-600 bg-slate-800 text-slate-200',
+        stints: carSched,
+      };
+    }).filter(Boolean);
+  }, [showAvailabilityPollModal, carOrder, cars, eventConfig, stintMode]);
+
+  const togglePollVote = (carId, stintNum, driver) => {
+    setAvailabilityPoll((prev) => {
+      const carPoll = prev[carId] || {};
+      const stintVotes = carPoll[stintNum] || {};
+      return {
+        ...prev,
+        [carId]: {
+          ...carPoll,
+          [stintNum]: {
+            ...stintVotes,
+            [driver]: !stintVotes[driver],
+          },
+        },
+      };
+    });
+  };
+
+  const clearAllPolls = () => {
+    setAvailabilityPoll({});
+    showToast('Enquete de horários limpa', 'info');
+  };
 
   const fuelSaveInsights = useMemo(() => {
     const totalRaceSec = Math.max(60, parseDurationHHMMToMinutes(eventConfig.raceDurationStr) * 60);
@@ -4003,10 +4290,33 @@ export default function App() {
           );
         })}
       </div>
+
+      <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-[#334155]/70 pt-2.5 text-[10px]">
+        <span className="text-slate-400">Atualização semanal:</span>
+        <div className="flex items-center gap-2">
+          <a
+            href="https://www.lmuschedule.com/special-event/beginner"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="rounded border border-sky-500/35 bg-sky-500/10 px-2 py-0.5 font-semibold text-sky-300 hover:bg-sky-500/20 transition-colors"
+          >
+            Special Event / Beginner ↗
+          </a>
+          <a
+            href="https://www.lmuschedule.com/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="rounded border border-[#334155] bg-[#0f172a] px-2 py-0.5 font-semibold text-slate-300 hover:text-white transition-colors"
+          >
+            LMU Schedule ↗
+          </a>
+        </div>
+      </div>
     </div>
   );
 
   return (
+    <NumericKeypadProvider>
     <div className="min-h-screen bg-[#0f172a] text-slate-100 flex flex-col">
       {/* TOP BAR */}
       <header className="sticky top-0 z-40 border-b border-[#334155] bg-[#0f172a]/95 backdrop-blur-md">
@@ -4030,6 +4340,21 @@ export default function App() {
                 <p className="text-xs text-slate-400">Engenharia de Corrida</p>
               </div>
             </div>
+
+            <button
+              type="button"
+              disabled={isPinLocked}
+              onClick={() => setShowAvailabilityPollModal(true)}
+              title="Abrir enquete de horários dos stints"
+              className={`xl:hidden flex flex-col items-center justify-center gap-0.5 rounded-md border px-2 py-1 text-[9px] font-bold leading-none transition-all shrink-0 ${
+                isPinLocked
+                  ? 'border-[#334155] bg-[#1e293b]/50 text-slate-400 opacity-40 pointer-events-none'
+                  : 'border-sky-500/40 bg-sky-500/15 text-sky-300 hover:bg-sky-500/25 active:scale-95 cursor-pointer'
+              }`}
+            >
+              <Users className="h-3.5 w-3.5" />
+              <span>Enquete</span>
+            </button>
 
             {/* Car Brand Logo + Flag (left col) | Class + Short Track (right col) on Mobile & < xl */}
             <button
@@ -4074,14 +4399,14 @@ export default function App() {
                   aria-hidden="true"
                   className="pointer-events-none absolute inset-[-150%] animate-[spin_3s_linear_infinite] bg-[conic-gradient(from_0deg,transparent_0deg_250deg,#eab308_310deg,#fef08a_335deg,transparent_360deg)]"
                 />
-                <div className="relative flex items-center justify-center gap-2 rounded-[7px] bg-[#0f172a] bg-gradient-to-r from-[#1e293b]/90 via-[#0f172a] to-[#1e293b]/90 px-3 py-1.5 text-xs text-center">
-                  <Sparkles className="h-3.5 w-3.5 shrink-0 text-[#eab308]" />
-                  <div className="min-w-0">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-[#eab308] mr-1.5">
-                      {isImmediateNextHeaderEvent ? 'Próxima Corrida:' : 'Em Breve:'}
+                <div className="relative flex items-center justify-center gap-1.5 sm:gap-2 rounded-[7px] bg-[#0f172a] bg-gradient-to-r from-[#1e293b]/90 via-[#0f172a] to-[#1e293b]/90 px-2 py-1 sm:px-3 sm:py-1.5 text-[11px] sm:text-xs text-center max-w-full">
+                  <Sparkles className="h-3 w-3 sm:h-3.5 sm:w-3.5 shrink-0 text-[#eab308]" />
+                  <div className="min-w-0 truncate">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-[#eab308] mr-1">
+                      {isImmediateNextHeaderEvent ? 'PRÓXIMA:' : 'EM BREVE:'}
                     </span>
                     <span className="font-bold text-white">{activeHeaderEvent.track}</span>
-                    <span className="ml-1.5 font-mono text-[11px] text-amber-200">
+                    <span className="ml-1 sm:ml-1.5 font-mono text-[10px] sm:text-[11px] text-amber-200">
                       ({activeHeaderEvent.dates})
                     </span>
                   </div>
@@ -4314,6 +4639,21 @@ export default function App() {
             <div className={`inline-flex ${isPinLocked ? 'opacity-40 pointer-events-none' : ''}`}>
               <StintModeToggleSwitch mode={stintMode} onToggle={handleToggleStintMode} />
             </div>
+
+            <button
+              type="button"
+              disabled={isPinLocked}
+              onClick={() => setShowAvailabilityPollModal(true)}
+              title="Abrir enquete de horários dos stints"
+              className={`hidden xl:inline-flex items-center gap-1 whitespace-nowrap rounded-lg border px-2.5 py-1.5 text-xs font-bold transition-all ${
+                isPinLocked
+                  ? 'border-[#334155] bg-[#1e293b]/50 text-slate-400 opacity-40 pointer-events-none'
+                  : 'border-sky-500/40 bg-sky-500/15 text-sky-300 hover:bg-sky-500/25 cursor-pointer'
+              }`}
+            >
+              <Users className="h-3.5 w-3.5" />
+              <span>Enquete</span>
+            </button>
 
             <button
               type="button"
@@ -8563,6 +8903,177 @@ export default function App() {
         </div>
       )}
 
+      {/* AVAILABILITY POLL MODAL */}
+      {showAvailabilityPollModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-3 sm:p-4 backdrop-blur-sm"
+          onClick={() => setShowAvailabilityPollModal(false)}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="flex max-h-[88vh] w-full max-w-3xl flex-col rounded-2xl border border-[#334155] bg-[#0f172a] shadow-2xl overflow-hidden"
+          >
+            <div className="flex items-center justify-between gap-2 border-b border-[#334155] bg-[#1e293b] px-4 py-3">
+              <div className="flex items-center gap-2 min-w-0">
+                <Users className="h-4 w-4 shrink-0 text-sky-400" />
+                <div className="min-w-0">
+                  <h3 className="truncate text-sm font-bold text-white">
+                    Enquete de Horários ({carOrder.map((cid) => cars[cid]?.label || cid).join(' • ')})
+                  </h3>
+                  <p className="truncate text-[11px] text-slate-400">
+                    Pilotos de todos os carros • marque todos os horários disponíveis
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                {pollDrivers.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={clearAllPolls}
+                    className="rounded-lg border border-[#334155] bg-[#0f172a] px-2.5 py-1 text-[11px] font-semibold text-slate-300 hover:text-white cursor-pointer"
+                  >
+                    Limpar
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setShowAvailabilityPollModal(false)}
+                  className="rounded-lg border border-[#334155] bg-[#0f172a] p-1 text-slate-400 hover:text-white cursor-pointer"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+
+            <div className="flex-1 overflow-auto p-3 sm:p-4">
+              {pollDrivers.length === 0 ? (
+                <div className="rounded-xl border border-dashed border-[#334155] bg-[#1e293b]/50 p-6 text-center">
+                  <p className="text-xs font-semibold text-slate-200">
+                    Nenhum piloto associado aos carros criados ainda.
+                  </p>
+                  <p className="mt-1 text-[11px] text-slate-400">
+                    Vá em <strong>Parâmetros → Pilotos do Carro</strong> para selecionar os pilotos que participarão desta corrida.
+                  </p>
+                </div>
+              ) : (
+                <table className="w-full border-collapse text-left text-xs">
+                  <thead>
+                    <tr className="border-b border-[#334155] text-[10px] uppercase tracking-wider text-slate-400">
+                      <th className="sticky left-0 z-10 bg-[#0f172a] py-2 pr-3 font-bold">
+                        Stint / Horário
+                      </th>
+                      {pollDrivers.map((drv) => {
+                        const totalVotes = pollCarSchedules.reduce((acc, cs) => {
+                          const carPoll = availabilityPoll[cs.carId] || {};
+                          return acc + cs.stints.filter((r) => Boolean(carPoll[r.stintNum]?.[drv])).length;
+                        }, 0);
+                        const badges = driverCarBadges[drv] || [];
+                        return (
+                          <th key={`poll-col-${drv}`} className="px-2 py-2 text-center align-top">
+                            <div className="flex flex-col items-center gap-1">
+                              <DriverAvatar90s driver={drv} size={24} />
+                              <span className="font-bold text-slate-200 whitespace-nowrap">
+                                {drv.split(' ')[0]}
+                              </span>
+                              <div className="flex flex-wrap justify-center gap-0.5">
+                                {badges.map((b) => (
+                                  <span
+                                    key={`badge-${drv}-${b.id}`}
+                                    className={`rounded border px-1 py-0.2 text-[8px] font-bold ${b.badgeClass}`}
+                                  >
+                                    {b.label}
+                                  </span>
+                                ))}
+                              </div>
+                              <span className="rounded bg-slate-800 px-1.5 py-0.5 font-mono text-[9px] text-sky-300">
+                                {totalVotes}v
+                              </span>
+                            </div>
+                          </th>
+                        );
+                      })}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[#334155]/60">
+                    {pollCarSchedules.map((cs) => {
+                      const carPoll = availabilityPoll[cs.carId] || {};
+                      return (
+                        <React.Fragment key={`poll-car-${cs.carId}`}>
+                          {pollCarSchedules.length > 1 && (
+                            <tr className="bg-[#1e293b]/80">
+                              <td
+                                colSpan={1 + pollDrivers.length}
+                                className="px-2 py-1.5 text-[11px] font-extrabold uppercase tracking-wider text-slate-200"
+                              >
+                                <span className={`inline-block rounded border px-1.5 py-0.5 mr-2 text-[10px] ${cs.badgeClass}`}>
+                                  {cs.label}
+                                </span>
+                                <span className="text-slate-400 font-semibold">{cs.carClass}</span>
+                              </td>
+                            </tr>
+                          )}
+                          {cs.stints.map((row) => {
+                            const stintVotes = carPoll[row.stintNum] || {};
+                            const rowCount = pollDrivers.filter((d) => Boolean(stintVotes[d])).length;
+                            const timeRange = `${formatMinutesToHHMM(row.startMin)}–${formatMinutesToHHMM(row.endMin)}`;
+                            return (
+                              <tr key={`poll-row-${cs.carId}-${row.stintNum}`} className="hover:bg-[#1e293b]/40">
+                                <td className="sticky left-0 z-10 bg-[#0f172a] py-2 pr-3">
+                                  <div className="flex items-center justify-between gap-2">
+                                    <div>
+                                      <div className="font-bold text-slate-100">
+                                        Stint {row.stintNum}
+                                      </div>
+                                      <div className="font-mono text-[10px] text-slate-400">
+                                        {timeRange} • {row.laps}v
+                                      </div>
+                                    </div>
+                                    <span
+                                      className={`rounded px-1.5 py-0.5 font-mono text-[10px] font-bold ${
+                                        rowCount > 0
+                                          ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30'
+                                          : 'bg-red-500/10 text-red-300 border border-red-500/20'
+                                      }`}
+                                    >
+                                      {rowCount}/{pollDrivers.length}
+                                    </span>
+                                  </div>
+                                </td>
+                                {pollDrivers.map((drv) => {
+                                  const voted = Boolean(stintVotes[drv]);
+                                  return (
+                                    <td
+                                      key={`poll-cell-${cs.carId}-${row.stintNum}-${drv}`}
+                                      className="px-1.5 py-1.5 text-center"
+                                    >
+                                      <button
+                                        type="button"
+                                        onClick={() => togglePollVote(cs.carId, row.stintNum, drv)}
+                                        className={`w-full min-w-[54px] rounded-lg border py-1.5 text-[11px] font-bold transition-all cursor-pointer ${
+                                          voted
+                                            ? 'border-emerald-500/50 bg-emerald-500/20 text-emerald-300 shadow-[0_0_8px_rgba(34,197,94,0.2)]'
+                                            : 'border-[#334155] bg-[#1e293b]/50 text-slate-500 hover:border-slate-500 hover:text-slate-300'
+                                        }`}
+                                      >
+                                        {voted ? '✓ Pode' : '—'}
+                                      </button>
+                                    </td>
+                                  );
+                                })}
+                              </tr>
+                            );
+                          })}
+                        </React.Fragment>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* CONFIRMATION MODAL */}
       {confirmDialog && (
         <div
@@ -8638,5 +9149,6 @@ export default function App() {
       )}
       </div>
     </div>
+    </NumericKeypadProvider>
   );
 }

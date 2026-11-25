@@ -17,7 +17,7 @@ Aplicação web (Desktop e Mobile/PWA) desenvolvida para planejamento estratégi
   - [PARAMETROS_CORRIDA.md](PARAMETROS_CORRIDA.md) — Parâmetros de evento/carro, fórmulas de autonomia e Tank Maximizer.
   - [PROCEDIMENTOS_PITSTOP.md](PROCEDIMENTOS_PITSTOP.md) — Procedimentos de pitstop, cenários e alvos no MFD.
   - [GERENCIAMENTO_PNEUS.md](GERENCIAMENTO_PNEUS.md) — Estoque, desgaste, reaproveitamento e trocas automáticas de pneus.
-- **Calendário LMU com Pré-Cadastro:** eventos oficiais com bandeira do país, traçado SVG dos circuitos e pré-cadastro de pilotos por etapa e categorias viáveis (`Hypercar`, `LMP2`, `LMGT3`).
+- **Calendário LMU com Pré-Cadastro:** eventos oficiais com bandeira do país, traçado SVG dos circuitos, pré-cadastro de pilotos por etapa e links diretos para o [LMU Schedule](https://www.lmuschedule.com/) e [Special Event / Beginner](https://www.lmuschedule.com/special-event/beginner) (atualizado semanalmente).
 - **Resumo para WhatsApp & PWA:** geração rápida de resumo formatado para o grupo da equipe e instalação como aplicativo no celular (Chrome/Android e iOS).
 
 ---
