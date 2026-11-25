@@ -1223,7 +1223,6 @@ function normalizeMultiCarPayload(raw) {
       activeCarId,
       cars: normalizedCars,
       eventSignups: raw.eventSignups || {},
-      availabilityPoll: raw.availabilityPoll || {},
     };
   }
 
@@ -1276,7 +1275,6 @@ function normalizeMultiCarPayload(raw) {
     activeCarId: 'car-1',
     cars: { 'car-1': car1 },
     eventSignups: raw.eventSignups || {},
-    availabilityPoll: raw.availabilityPoll || {},
   };
 }
 
@@ -2492,10 +2490,6 @@ export default function App() {
   const [eventSignups, setEventSignups] = useState(
     () => initialStateRef.current.eventSignups || {}
   );
-  const [availabilityPoll, setAvailabilityPoll] = useState(
-    () => initialStateRef.current.availabilityPoll || {}
-  );
-  const [showAvailabilityPollModal, setShowAvailabilityPollModal] = useState(false);
 
   const activeCar = useMemo(
     () => cars[activeCarId] || cars[carOrder[0]] || createDefaultCarState('car-1', true),
@@ -2668,7 +2662,6 @@ export default function App() {
     activeCarId,
     cars,
     eventSignups,
-    availabilityPoll,
   });
 
   const applyNormalizedState = (normalized, preserveActiveCar = false) => {
@@ -2683,9 +2676,6 @@ export default function App() {
     if (normalized.eventSignups) {
       setEventSignups(normalized.eventSignups);
     }
-    if (normalized.availabilityPoll) {
-      setAvailabilityPoll(normalized.availabilityPoll);
-    }
   };
 
   useEffect(() => {
@@ -2699,7 +2689,6 @@ export default function App() {
           activeCarId,
           cars,
           eventSignups,
-          availabilityPoll,
         })
       );
     } catch {
@@ -2710,7 +2699,7 @@ export default function App() {
     } catch {
       // ignore quota errors
     }
-  }, [eventConfig, carOrder, activeCarId, cars, eventSignups, availabilityPoll]);
+  }, [eventConfig, carOrder, activeCarId, cars, eventSignups]);
 
   // Supabase Realtime Subscription (when configured and live room enabled)
   useEffect(() => {
@@ -2857,7 +2846,6 @@ export default function App() {
     activeCarId,
     cars,
     eventSignups,
-    availabilityPoll,
     liveRoomEnabled,
     syncStatus,
     roomPin,
@@ -3957,76 +3945,6 @@ export default function App() {
   const raceStintCount = raceStints.length;
   const totalEstimatedLaps = raceStints.reduce((acc, r) => acc + r.laps, 0);
 
-  const { pollDrivers, driverCarBadges } = useMemo(() => {
-    const allowedSet = new Set();
-    const badgesMap = {};
-    carOrder.forEach((cid) => {
-      const car = cars[cid];
-      const list = car?.selectedDrivers;
-      if (Array.isArray(list)) {
-        list.forEach((d) => {
-          if (d && d !== 'ND') {
-            allowedSet.add(d);
-            if (!badgesMap[d]) badgesMap[d] = [];
-            badgesMap[d].push({
-              id: cid,
-              label: car.label || cid,
-              badgeClass: CAR_SLOT_PRESETS[cid]?.badgeClass || 'border-slate-600 bg-slate-800 text-slate-200',
-            });
-          }
-        });
-      }
-    });
-    return {
-      pollDrivers: DRIVERS.filter((d) => d !== 'ND' && allowedSet.has(d)),
-      driverCarBadges: badgesMap,
-    };
-  }, [carOrder, cars]);
-
-  const pollCarSchedules = useMemo(() => {
-    if (!showAvailabilityPollModal) return [];
-    return carOrder.map((cid) => {
-      const car = cars[cid];
-      if (!car) return null;
-      const carTel = computeCarTelemetry(eventConfig, car.carParams || DEFAULT_CAR_PARAMS);
-      const carSched = computeCarSchedule({
-        eventConfig,
-        car,
-        stintMode,
-        telemetry: carTel,
-      }).filter((r) => r.type === 'race');
-      return {
-        carId: cid,
-        label: car.label || cid,
-        carClass: car.carParams?.carClass || 'LMGT3',
-        badgeClass: CAR_SLOT_PRESETS[cid]?.badgeClass || 'border-slate-600 bg-slate-800 text-slate-200',
-        stints: carSched,
-      };
-    }).filter(Boolean);
-  }, [showAvailabilityPollModal, carOrder, cars, eventConfig, stintMode]);
-
-  const togglePollVote = (carId, stintNum, driver) => {
-    setAvailabilityPoll((prev) => {
-      const carPoll = prev[carId] || {};
-      const stintVotes = carPoll[stintNum] || {};
-      return {
-        ...prev,
-        [carId]: {
-          ...carPoll,
-          [stintNum]: {
-            ...stintVotes,
-            [driver]: !stintVotes[driver],
-          },
-        },
-      };
-    });
-  };
-
-  const clearAllPolls = () => {
-    setAvailabilityPoll({});
-    showToast('Enquete de horários limpa', 'info');
-  };
-
   const fuelSaveInsights = useMemo(() => {
     const totalRaceSec = Math.max(60, parseDurationHHMMToMinutes(eventConfig.raceDurationStr) * 60);
     const lapTimeSec = Math.max(1, telemetry.lapTimeSec || 90);
@@ -4341,21 +4259,6 @@ export default function App() {
               </div>
             </div>
 
-            <button
-              type="button"
-              disabled={isPinLocked}
-              onClick={() => setShowAvailabilityPollModal(true)}
-              title="Abrir enquete de horários dos stints"
-              className={`xl:hidden flex flex-col items-center justify-center gap-0.5 rounded-md border px-2 py-1 text-[9px] font-bold leading-none transition-all shrink-0 ${
-                isPinLocked
-                  ? 'border-[#334155] bg-[#1e293b]/50 text-slate-400 opacity-40 pointer-events-none'
-                  : 'border-sky-500/40 bg-sky-500/15 text-sky-300 hover:bg-sky-500/25 active:scale-95 cursor-pointer'
-              }`}
-            >
-              <Users className="h-3.5 w-3.5" />
-              <span>Enquete</span>
-            </button>
-
             {/* Car Brand Logo + Flag (left col) | Class + Short Track (right col) on Mobile & < xl */}
             <button
               type="button"
@@ -4639,21 +4542,6 @@ export default function App() {
             <div className={`inline-flex ${isPinLocked ? 'opacity-40 pointer-events-none' : ''}`}>
               <StintModeToggleSwitch mode={stintMode} onToggle={handleToggleStintMode} />
             </div>
-
-            <button
-              type="button"
-              disabled={isPinLocked}
-              onClick={() => setShowAvailabilityPollModal(true)}
-              title="Abrir enquete de horários dos stints"
-              className={`hidden xl:inline-flex items-center gap-1 whitespace-nowrap rounded-lg border px-2.5 py-1.5 text-xs font-bold transition-all ${
-                isPinLocked
-                  ? 'border-[#334155] bg-[#1e293b]/50 text-slate-400 opacity-40 pointer-events-none'
-                  : 'border-sky-500/40 bg-sky-500/15 text-sky-300 hover:bg-sky-500/25 cursor-pointer'
-              }`}
-            >
-              <Users className="h-3.5 w-3.5" />
-              <span>Enquete</span>
-            </button>
 
             <button
               type="button"
@@ -8898,177 +8786,6 @@ export default function App() {
                   Concluído
                 </button>
               </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* AVAILABILITY POLL MODAL */}
-      {showAvailabilityPollModal && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-3 sm:p-4 backdrop-blur-sm"
-          onClick={() => setShowAvailabilityPollModal(false)}
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            className="flex max-h-[88vh] w-full max-w-3xl flex-col rounded-2xl border border-[#334155] bg-[#0f172a] shadow-2xl overflow-hidden"
-          >
-            <div className="flex items-center justify-between gap-2 border-b border-[#334155] bg-[#1e293b] px-4 py-3">
-              <div className="flex items-center gap-2 min-w-0">
-                <Users className="h-4 w-4 shrink-0 text-sky-400" />
-                <div className="min-w-0">
-                  <h3 className="truncate text-sm font-bold text-white">
-                    Enquete de Horários ({carOrder.map((cid) => cars[cid]?.label || cid).join(' • ')})
-                  </h3>
-                  <p className="truncate text-[11px] text-slate-400">
-                    Pilotos de todos os carros • marque todos os horários disponíveis
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-center gap-2 shrink-0">
-                {pollDrivers.length > 0 && (
-                  <button
-                    type="button"
-                    onClick={clearAllPolls}
-                    className="rounded-lg border border-[#334155] bg-[#0f172a] px-2.5 py-1 text-[11px] font-semibold text-slate-300 hover:text-white cursor-pointer"
-                  >
-                    Limpar
-                  </button>
-                )}
-                <button
-                  type="button"
-                  onClick={() => setShowAvailabilityPollModal(false)}
-                  className="rounded-lg border border-[#334155] bg-[#0f172a] p-1 text-slate-400 hover:text-white cursor-pointer"
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              </div>
-            </div>
-
-            <div className="flex-1 overflow-auto p-3 sm:p-4">
-              {pollDrivers.length === 0 ? (
-                <div className="rounded-xl border border-dashed border-[#334155] bg-[#1e293b]/50 p-6 text-center">
-                  <p className="text-xs font-semibold text-slate-200">
-                    Nenhum piloto associado aos carros criados ainda.
-                  </p>
-                  <p className="mt-1 text-[11px] text-slate-400">
-                    Vá em <strong>Parâmetros → Pilotos do Carro</strong> para selecionar os pilotos que participarão desta corrida.
-                  </p>
-                </div>
-              ) : (
-                <table className="w-full border-collapse text-left text-xs">
-                  <thead>
-                    <tr className="border-b border-[#334155] text-[10px] uppercase tracking-wider text-slate-400">
-                      <th className="sticky left-0 z-10 bg-[#0f172a] py-2 pr-3 font-bold">
-                        Stint / Horário
-                      </th>
-                      {pollDrivers.map((drv) => {
-                        const totalVotes = pollCarSchedules.reduce((acc, cs) => {
-                          const carPoll = availabilityPoll[cs.carId] || {};
-                          return acc + cs.stints.filter((r) => Boolean(carPoll[r.stintNum]?.[drv])).length;
-                        }, 0);
-                        const badges = driverCarBadges[drv] || [];
-                        return (
-                          <th key={`poll-col-${drv}`} className="px-2 py-2 text-center align-top">
-                            <div className="flex flex-col items-center gap-1">
-                              <DriverAvatar90s driver={drv} size={24} />
-                              <span className="font-bold text-slate-200 whitespace-nowrap">
-                                {drv.split(' ')[0]}
-                              </span>
-                              <div className="flex flex-wrap justify-center gap-0.5">
-                                {badges.map((b) => (
-                                  <span
-                                    key={`badge-${drv}-${b.id}`}
-                                    className={`rounded border px-1 py-0.2 text-[8px] font-bold ${b.badgeClass}`}
-                                  >
-                                    {b.label}
-                                  </span>
-                                ))}
-                              </div>
-                              <span className="rounded bg-slate-800 px-1.5 py-0.5 font-mono text-[9px] text-sky-300">
-                                {totalVotes}v
-                              </span>
-                            </div>
-                          </th>
-                        );
-                      })}
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-[#334155]/60">
-                    {pollCarSchedules.map((cs) => {
-                      const carPoll = availabilityPoll[cs.carId] || {};
-                      return (
-                        <React.Fragment key={`poll-car-${cs.carId}`}>
-                          {pollCarSchedules.length > 1 && (
-                            <tr className="bg-[#1e293b]/80">
-                              <td
-                                colSpan={1 + pollDrivers.length}
-                                className="px-2 py-1.5 text-[11px] font-extrabold uppercase tracking-wider text-slate-200"
-                              >
-                                <span className={`inline-block rounded border px-1.5 py-0.5 mr-2 text-[10px] ${cs.badgeClass}`}>
-                                  {cs.label}
-                                </span>
-                                <span className="text-slate-400 font-semibold">{cs.carClass}</span>
-                              </td>
-                            </tr>
-                          )}
-                          {cs.stints.map((row) => {
-                            const stintVotes = carPoll[row.stintNum] || {};
-                            const rowCount = pollDrivers.filter((d) => Boolean(stintVotes[d])).length;
-                            const timeRange = `${formatMinutesToHHMM(row.startMin)}–${formatMinutesToHHMM(row.endMin)}`;
-                            return (
-                              <tr key={`poll-row-${cs.carId}-${row.stintNum}`} className="hover:bg-[#1e293b]/40">
-                                <td className="sticky left-0 z-10 bg-[#0f172a] py-2 pr-3">
-                                  <div className="flex items-center justify-between gap-2">
-                                    <div>
-                                      <div className="font-bold text-slate-100">
-                                        Stint {row.stintNum}
-                                      </div>
-                                      <div className="font-mono text-[10px] text-slate-400">
-                                        {timeRange} • {row.laps}v
-                                      </div>
-                                    </div>
-                                    <span
-                                      className={`rounded px-1.5 py-0.5 font-mono text-[10px] font-bold ${
-                                        rowCount > 0
-                                          ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30'
-                                          : 'bg-red-500/10 text-red-300 border border-red-500/20'
-                                      }`}
-                                    >
-                                      {rowCount}/{pollDrivers.length}
-                                    </span>
-                                  </div>
-                                </td>
-                                {pollDrivers.map((drv) => {
-                                  const voted = Boolean(stintVotes[drv]);
-                                  return (
-                                    <td
-                                      key={`poll-cell-${cs.carId}-${row.stintNum}-${drv}`}
-                                      className="px-1.5 py-1.5 text-center"
-                                    >
-                                      <button
-                                        type="button"
-                                        onClick={() => togglePollVote(cs.carId, row.stintNum, drv)}
-                                        className={`w-full min-w-[54px] rounded-lg border py-1.5 text-[11px] font-bold transition-all cursor-pointer ${
-                                          voted
-                                            ? 'border-emerald-500/50 bg-emerald-500/20 text-emerald-300 shadow-[0_0_8px_rgba(34,197,94,0.2)]'
-                                            : 'border-[#334155] bg-[#1e293b]/50 text-slate-500 hover:border-slate-500 hover:text-slate-300'
-                                        }`}
-                                      >
-                                        {voted ? '✓ Pode' : '—'}
-                                      </button>
-                                    </td>
-                                  );
-                                })}
-                              </tr>
-                            );
-                          })}
-                        </React.Fragment>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              )}
             </div>
           </div>
         </div>
